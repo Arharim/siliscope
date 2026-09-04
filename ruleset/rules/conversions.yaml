@@ -1,0 +1,156 @@
+rules:
+  - id: ss.conv.signed-unsigned-mix
+    title: Do not mix signed and unsigned in one expression
+    severity: warning
+    languages: [c, cpp]
+    check: types
+    default: "on"
+    summary: Usual arithmetic conversions between signed and unsigned integers are forbidden.
+  - id: ss.conv.no-signed-bitwise
+    title: Bitwise operators shall not be applied to signed operands
+    severity: warning
+    languages: [c, cpp]
+    check: types
+    default: "on"
+    summary: "Bitwise &, |, ^, ~, <<, >> apply only to unsigned integers."
+  - id: ss.conv.shift-range
+    title: Shift amount shall be in range for an unsigned left operand
+    severity: error
+    languages: [c, cpp]
+    check: types
+    default: "on"
+    summary: >
+      Right operand of a shift shall be non-negative and less than the bit-width
+      of the (promoted, unsigned) left operand.
+  - id: ss.conv.u-suffix
+    title: Unsigned integer literals shall have a U suffix
+    severity: warning
+    languages: [c, cpp]
+    check: syntax
+    default: "on"
+    summary: Write 1u, not 1, when the context is unsigned.
+  - id: ss.conv.no-unsigned-wrap-const
+    title: Constant expressions shall not wrap unsigned
+    severity: warning
+    languages: [c, cpp]
+    check: types
+    default: "on"
+    summary: An unsigned wrap in a constant expression is a defect (unless a documented mask).
+  - id: ss.conv.no-unary-minus-unsigned
+    title: Do not apply unary minus to unsigned values
+    severity: warning
+    languages: [c, cpp]
+    check: types
+    default: "on"
+    summary: "Unary minus on unsigned is well-defined wrap, almost never the intent."
+  - id: ss.conv.no-cv-away
+    title: A cast shall not remove const or volatile from a pointed-to type
+    severity: error
+    languages: [c, cpp]
+    check: types
+    default: "on"
+    summary: Do not cast T const * to T *.
+  - id: ss.conv.no-ptr-int
+    title: Do not convert between object pointers and integers except in HAL
+    severity: warning
+    languages: [c, cpp]
+    check: types
+    default: "on"
+    summary: >
+      Pointer/integer casts are confined to a small HAL layer (MMIO). Everywhere
+      else they are errors.
+    notes: Need a HAL path allowlist in config.
+  - id: ss.conv.no-object-ptr-cast
+    title: Do not convert between pointers to unrelated object types
+    severity: warning
+    languages: [c, cpp]
+    check: types
+    default: "on"
+    summary: Object-pointer casts other than to/from void * (C) or through an explicit overlay type are forbidden.
+  - id: ss.conv.no-fn-ptr-cast
+    title: Do not convert a function pointer to any other type
+    severity: error
+    languages: [c, cpp]
+    check: types
+    default: "on"
+    summary: Function pointers only convert to the exact same function type (or nullptr).
+  - id: ss.conv.no-mixed-categories
+    title: Do not treat bool, character, and enum as generic integers
+    severity: advisory
+    languages: [c]
+    check: types
+    default: "off"
+    summary: >
+      Arithmetic, shifts, and bitwise ops belong on explicitly sized integers.
+      bool is for conditions, char for text, enum for named states. Mixing those
+      categories in one expression is off by default because it is noisy; turn
+      it on when the project wants a strict integer model.
+  - id: ss.conv.no-fp-eq
+    title: Do not test floating values for equality
+    severity: warning
+    languages: [c, cpp]
+    check: types
+    default: "on"
+    summary: "Equality == and != on floating types are forbidden; use a documented epsilon or integer conversion."
+  - id: ss.conv.no-div-zero
+    title: Divisor shall be demonstrably non-zero
+    severity: error
+    languages: [c, cpp]
+    check: dataflow
+    default: "on"
+    summary: "Division / and remainder % shall not have a zero right-hand side."
+  - id: ss.conv.no-signed-overflow
+    title: Signed integer arithmetic must not overflow
+    severity: error
+    languages: [c, cpp]
+    check: dataflow
+    default: "on"
+    summary: >
+      +, -, *, /, unary minus, and shifts on signed values stay in range of
+      the type. Overflow is undefined. Widen first, or use unsigned two's
+      complement where wrap is the contract (and say so).
+  - id: ss.conv.no-silent-narrow
+    title: Do not silently narrow an integer
+    severity: warning
+    languages: [c, cpp]
+    check: types
+    default: "on"
+    summary: >
+      Assigning a wider integer to a narrower one, or a value that does not
+      fit, needs an explicit conversion and a reason. Implicit truncation in
+      a register write is a HAL exception.
+  - id: ss.conv.no-fp-narrow
+    title: Do not drop floating precision without saying so
+    severity: warning
+    languages: [c, cpp]
+    check: types
+    default: "on"
+    summary: double to float, or long double to double, is an explicit conversion.
+  - id: ss.conv.fp-to-int-explicit
+    title: Float-to-integer conversion is explicit and range-checked
+    severity: warning
+    languages: [c, cpp]
+    check: types
+    default: "on"
+    summary: >
+      Do not assign a floating value to an integer type by accident. Convert
+      with a named helper that defines rounding and what happens out of range.
+  - id: ss.conv.no-assign-as-value
+    title: Do not use the value of an assignment
+    severity: warning
+    languages: [c, cpp]
+    check: syntax
+    default: "on"
+    summary: >
+      a = b is a statement. Do not write if ((a = f()) != 0) or c = d = 0
+      except d = e = 0 as adjacent simple assignments of the same constant
+      in a driver init block.
+  - id: ss.conv.no-int-to-enum
+    title: Do not cast an arbitrary integer to an enum
+    severity: warning
+    languages: [c, cpp]
+    check: types
+    default: "on"
+    summary: >
+      An enum holds its enumerators. A raw int from a bus is validated against
+      the known set before it becomes the enum type.

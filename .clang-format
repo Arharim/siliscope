@@ -1,0 +1,42 @@
+# clang-format 15+ (tested with 22). LLVM base: same family as LibTooling.
+BasedOnStyle: LLVM
+Language: Cpp
+Standard: c++17
+ColumnLimit: 100
+IndentWidth: 2
+UseTab: Never
+LineEnding: LF
+InsertNewlineAtEOF: true
+ReflowComments: true
+
+# Braces / wrapping
+BreakBeforeBraces: Attach
+InsertBraces: true
+AlwaysBreakTemplateDeclarations: Yes
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+PackConstructorInitializers: NextLine
+BinPackArguments: false
+BinPackParameters: false
+
+PointerAlignment: Right
+ReferenceAlignment: Pointer
+QualifierAlignment: Leave
+
+# Includes: project → LLVM/Clang → STL/system
+SortIncludes: CaseSensitive
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex: '^"siliscope/'
+    Priority: 1
+  - Regex: '^<(clang|clang-c|llvm)/'
+    Priority: 2
+  - Regex: '^"(clang|llvm)/'
+    Priority: 2
+  - Regex: '^<.*'
+    Priority: 3
+  - Regex: '.*'
+    Priority: 4
+
+PenaltyReturnTypeOnItsOwnLine: 200

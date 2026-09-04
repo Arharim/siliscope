@@ -1,0 +1,87 @@
+rules:
+  - id: ss.decl.min-scope
+    title: Keep names as local as their uses
+    severity: warning
+    languages: [c, cpp]
+    check: types
+    default: "on"
+    summary: Declare a local at first use. File scope only when the module actually shares it. No stray globals.
+  - id: ss.decl.no-shadow
+    title: An inner identifier shall not hide an outer one
+    severity: warning
+    languages: [c, cpp]
+    check: types
+    default: "on"
+    summary: No shadowing of functions, parameters, locals, or file-scope names.
+  - id: ss.decl.distinct
+    title: Identifiers shall be distinct in the significant characters
+    severity: warning
+    languages: [c, cpp]
+    check: types
+    default: "on"
+    summary: >
+      External identifiers unique in the first 31 characters; no colliding
+      names across the same scope and namespace.
+  - id: ss.decl.no-reserved
+    title: Do not use reserved identifiers
+    severity: warning
+    languages: [c, cpp]
+    check: syntax
+    default: "on"
+    summary: "No names starting with __ or _ followed by an uppercase letter. No redefinition of C/C++ keywords or libc names."
+  - id: ss.decl.one-per-line
+    title: One identifier per declaration
+    severity: warning
+    languages: [c, cpp]
+    check: syntax
+    default: "on"
+    summary: "Declaring two identifiers in one statement (int a, b;) is forbidden."
+  - id: ss.decl.ptr-null
+    title: Pointers without an address shall be initialized to NULL / nullptr
+    severity: warning
+    languages: [c, cpp]
+    check: types
+    default: "on"
+    summary: A pointer object is never left indeterminate.
+  - id: ss.decl.const
+    title: Use const for objects and pointees that are not modified
+    severity: advisory
+    languages: [c, cpp]
+    check: types
+    default: "advisory"
+    summary: Pointer/reference parameters that are not written shall be const. Locals that are not reassigned should be const.
+  - id: ss.decl.volatile
+    title: volatile is only for memory that the compiler must not cache
+    severity: warning
+    languages: [c, cpp]
+    check: review
+    default: "on"
+    summary: >
+      MMIO registers, objects written from an ISR and read in thread context
+      (or vice versa), and similar shall be volatile. Do not use volatile as a
+      fake mutex.
+  - id: ss.decl.no-unused
+    title: Do not leave unused static functions or objects
+    severity: warning
+    languages: [c, cpp]
+    check: types
+    default: "on"
+    summary: A static function, file-scope object, or typedef that is never used is dead code.
+  - id: ss.decl.align-same
+    title: Alignment of an object is the same in every declaration
+    severity: warning
+    languages: [c, cpp]
+    check: types
+    default: "on"
+    summary: >
+      _Alignas / alignas on one declaration and a different (or missing) alignment
+      on another is undefined at link time.
+  - id: ss.decl.extern-in-one-header
+    title: A shared object is declared in one header
+    severity: warning
+    languages: [c]
+    check: types
+    default: "on"
+    summary: >
+      extern T g_foo appears in a single header, not re-declared in every .c.
+      The definition lives in one .c.

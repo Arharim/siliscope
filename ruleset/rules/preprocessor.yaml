@@ -1,0 +1,93 @@
+rules:
+  - id: ss.pre.limited
+    title: Preprocessor is only for include guards, includes, and simple macros
+    severity: warning
+    languages: [c, cpp]
+    check: syntax
+    default: "on"
+    summary: >
+      Prefer the compiler over the preprocessor. Include guards, #include, and
+      small typed constants/macros are fine. Token paste, recursive macros, and
+      a forest of #if feature flags produce N untested variants of the same
+      firmware. Extra #if needs a comment saying why.
+  - id: ss.pre.macro-parens
+    title: Macro expansions and parameters shall be parenthesized
+    severity: warning
+    languages: [c, cpp]
+    check: syntax
+    default: "on"
+    summary: A function-like macro body and every parameter use shall be wrapped in parentheses.
+  - id: ss.pre.no-keyword-macro
+    title: Do not redefine keywords with the preprocessor
+    severity: error
+    languages: [c, cpp]
+    check: syntax
+    default: "on"
+    summary: "The #define directive shall not alter a keyword, operator, or other language token."
+  - id: ss.pre.prefer-inline
+    title: Prefer static inline functions to function-like macros
+    severity: advisory
+    languages: [c, cpp]
+    check: syntax
+    default: "advisory"
+    summary: Write a function unless a macro is the only way (stringize, include).
+  - id: ss.pre.include-guard
+    title: Every header shall have an include guard
+    severity: warning
+    languages: [c, cpp]
+    check: syntax
+    default: "on"
+    summary: "An #ifndef/#define/#endif guard or #pragma once (project choice) wraps every header."
+  - id: ss.pre.no-commented-code
+    title: Do not comment out code
+    severity: advisory
+    languages: [c, cpp]
+    check: syntax
+    default: "advisory"
+    summary: Deleted code belongs in version control, not in comments.
+  - id: ss.pre.comment-tokens
+    title: Comments shall not contain comment or line-continuation tokens
+    severity: warning
+    languages: [c, cpp]
+    check: syntax
+    default: "on"
+    summary: "Comments shall not contain /* or // tokens. A // comment shall not end with a backslash."
+  - id: ss.pre.ifdef-same-file
+    title: "#if / #ifdef shall be closed in the same file"
+    severity: warning
+    languages: [c, cpp]
+    check: syntax
+    default: "on"
+    summary: "Matching #endif lives in the same translation-unit file as the opening directive."
+  - id: ss.pre.no-path-in-include
+    title: "#include names shall not contain absolute paths"
+    severity: warning
+    languages: [c, cpp]
+    check: syntax
+    default: "on"
+    summary: No drive letters or rooted paths in include names.
+  - id: ss.pre.no-unused-include
+    title: Do not include a header the file does not use
+    severity: advisory
+    languages: [c, cpp]
+    check: types
+    default: "advisory"
+    summary: Every #include in a .c/.cpp contributes a used type, macro, or declaration.
+  - id: ss.pre.source-includes-own-header
+    title: A source file includes its own public header first
+    severity: warning
+    languages: [c]
+    check: syntax
+    default: "on"
+    summary: >
+      foo.c includes "foo.h" so the compiler checks that the header is
+      self-contained and that definitions match prototypes.
+  - id: ss.pre.no-stringify-then-paste
+    title: Do not stringify a parameter and then paste it
+    severity: warning
+    languages: [c, cpp]
+    check: syntax
+    default: "on"
+    summary: >
+      Do not apply stringify to a macro parameter that is immediately token-pasted.
+      That combination is a portability trap.

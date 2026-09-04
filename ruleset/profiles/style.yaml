@@ -1,0 +1,22 @@
+# Optional formatting/naming. Do not mix into safety CI by default.
+name: style
+languages: [c, cpp]
+description: >
+  Whitespace, braces, snake_case, 80 columns. Enable next to clang-format
+  or as a project style gate.
+
+include:
+  from_default: false
+  extra:
+    - ss.style.line-width
+    - ss.style.brace-own-line
+    - ss.style.no-tabs
+    - ss.style.indent-4
+    - ss.style.one-stmt
+    - ss.style.snake-case
+    - ss.style.type-suffix-t
+    - ss.style.yoda
+    - ss.style.no-register-auto
+    - ss.style.module-files
+    - ss.emb.isr-naming
+    - ss.emb.thread-naming

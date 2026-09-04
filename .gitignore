@@ -1,0 +1,50 @@
+# Third-party PDFs and page dumps — do not publish
+/docs
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+.env
+.python-version
+
+# Analyzer / compiler output (when the tool exists)
+/build/
+/__cmake_systeminformation/
+/target/
+/dist/
+/out/
+*.o
+*.obj
+*.a
+*.lib
+*.exe
+*.dll
+*.so
+*.dylib
+compile_commands.json
+*.sarif
+*.log
+
+# Tests and coverage artefacts
+/coverage/
+.coverage
+htmlcov/
+*.profraw
+
+# clangd index
+.cache/
+
+# OS / editor
+Thumbs.db
+Desktop.ini
+.DS_Store
+*~
+*.swp
+.vs/
+.idea/
+*.user
+*.suo
+.vscode/*.code-workspace

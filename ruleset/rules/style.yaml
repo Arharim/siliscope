@@ -1,0 +1,71 @@
+rules:
+  - id: ss.style.line-width
+    title: Line width at most 80 columns
+    severity: style
+    languages: [c, cpp]
+    check: syntax
+    default: "off"
+    summary: Soft wrap at 80 columns. The limit is configurable.
+  - id: ss.style.brace-own-line
+    title: Opening brace on its own line (Allman)
+    severity: style
+    languages: [c, cpp]
+    check: syntax
+    default: "off"
+    summary: "The opening brace after if/for/while/function starts on the next line, aligned with the keyword."
+  - id: ss.style.no-tabs
+    title: No tab characters
+    severity: style
+    languages: [c, cpp]
+    check: syntax
+    default: "off"
+    summary: Indent with spaces only.
+  - id: ss.style.indent-4
+    title: Indent is 4 spaces
+    severity: style
+    languages: [c, cpp]
+    check: syntax
+    default: "off"
+    summary: Each nesting level is a multiple of 4.
+  - id: ss.style.one-stmt
+    title: One statement per line
+    severity: style
+    languages: [c, cpp]
+    check: syntax
+    default: "off"
+    summary: No stacked statements on a line.
+  - id: ss.style.snake-case
+    title: Functions and variables are snake_case, macros are UPPER_CASE
+    severity: style
+    languages: [c, cpp]
+    check: syntax
+    default: "off"
+    summary: No uppercase in function/variable names; no lowercase in macro names.
+  - id: ss.style.type-suffix-t
+    title: Typedef names end with _t
+    severity: style
+    languages: [c]
+    check: syntax
+    default: "off"
+    summary: New types are lowercase_with_underscores ending in _t, public types prefixed by the module name.
+  - id: ss.style.yoda
+    title: Constant on the left of ==
+    severity: style
+    languages: [c, cpp]
+    check: syntax
+    default: "off"
+    summary: if (MAX == x) rather than if (x == MAX).
+  - id: ss.style.no-register-auto
+    title: Do not use register or C auto
+    severity: style
+    languages: [c]
+    check: syntax
+    default: "off"
+    summary: Obsolete storage-class specifiers.
+  - id: ss.style.module-files
+    title: One public header per .c, matching basename, include-guarded
+    severity: style
+    languages: [c]
+    check: syntax
+    default: "off"
+    summary: adc.c includes "adc.h". Header exports only the public API.

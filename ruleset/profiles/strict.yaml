@@ -1,0 +1,28 @@
+# Maximum Siliscope coverage: default embedded-c plus the noisy but useful extras.
+name: strict
+languages: [c, cpp]
+description: >
+  Turns on advisory checks that are right for high-assurance firmware and
+  noisy on typical HALs. Use in CI after the default profile is clean, or
+  on selected directories.
+
+extends: embedded-c
+
+include:
+  extra:
+    - ss.ctrl.named-loop-limit
+    - ss.ctrl.no-nested-ternary
+    - ss.ctrl.no-continue
+    - ss.fn.max-params
+    - ss.fn.cyclomatic
+    - ss.fn.param-names-consistent
+    - ss.conv.no-mixed-categories
+    - ss.expr.named-constants
+    - ss.expr.float-literal-suffix
+    - ss.pre.no-unused-include
+    - ss.type.no-representation-pun
+    - ss.cpp.no-default-args
+    - ss.cpp.enum-class
+    - ss.cpp.no-friend
+
+exclude: []

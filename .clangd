@@ -1,0 +1,35 @@
+# Valid clangd config: one fragment = If? + sibling blocks.
+# Separate conditions with ---. See https://clangd.llvm.org/config.html
+#
+# QueryDriver is a *CLI* flag (--query-driver), not a YAML key.
+# CompilationDatabase lives under CompileFlags.
+
+CompileFlags:
+  CompilationDatabase: build
+  Compiler: C:/msys64/ucrt64/bin/g++.exe
+  BuiltinHeaders: Clangd
+  Add:
+    - --target=x86_64-w64-windows-gnu
+    - -std=c++17
+    - -Iinclude
+    - -ferror-limit=0
+    - -Wall
+    - -Wextra
+    - -isystem
+    - C:/msys64/ucrt64/include/c++/15.2.0
+    - -isystem
+    - C:/msys64/ucrt64/include/c++/15.2.0/x86_64-w64-mingw32
+    - -isystem
+    - C:/msys64/ucrt64/include/c++/15.2.0/backward
+    - -isystem
+    - C:/msys64/ucrt64/lib/gcc/x86_64-w64-mingw32/15.2.0/include
+    - -isystem
+    - C:/msys64/ucrt64/include
+    - -isystem
+    - C:/msys64/ucrt64/lib/gcc/x86_64-w64-mingw32/15.2.0/include-fixed
+
+---
+If:
+  PathMatch: tests/lit/.*\.(c|h)
+CompileFlags:
+  Add: [-std=c11, -Wno-unknown-attributes]

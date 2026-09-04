@@ -1,0 +1,172 @@
+rules:
+  - id: ss.ctrl.no-goto
+    title: Do not use goto
+    severity: warning
+    languages: [c, cpp]
+    check: syntax
+    default: "on"
+    summary: >
+      Do not write goto. Irreducible control flow blocks stack-depth and
+      loop-bound analysis on a fixed MCU stack.
+    notes: >
+      A documented cleanup-goto in one function is a deviation, not the default.
+  - id: ss.ctrl.no-setjmp
+    title: Do not use setjmp or longjmp
+    severity: error
+    languages: [c, cpp]
+    check: syntax
+    default: "on"
+    summary: Do not include <setjmp.h> or call setjmp/longjmp.
+  - id: ss.ctrl.no-recursion
+    title: Do not recurse, directly or indirectly
+    severity: error
+    languages: [c, cpp]
+    check: callgraph
+    default: "on"
+    summary: The call graph of the program shall be acyclic.
+    rationale: >
+      Recursion makes stack-high-water proofs impossible on a fixed MCU stack.
+  - id: ss.ctrl.loop-bound
+    title: Loops must not run away
+    severity: error
+    languages: [c, cpp]
+    check: cfg
+    default: "on"
+    summary: >
+      A firmware loop either has an obvious iteration cap (counter, remaining
+      bytes, timeout) or is the one documented superloop that is meant never
+      to return. Anything in between is a hang waiting to happen.
+    exceptions:
+      - The idle/superloop in main or a scheduler, marked noreturn or written as for(;;).
+  - id: ss.ctrl.braces
+    title: Brace every if, else, switch, for, while, and do body
+    severity: warning
+    languages: [c, cpp]
+    check: syntax
+    default: "on"
+    summary: Even a single statement or empty body shall be a compound statement.
+  - id: ss.ctrl.if-else-final
+    title: An if / else if chain shall end with else
+    severity: warning
+    languages: [c, cpp]
+    check: syntax
+    default: "on"
+    summary: Terminate every if-else if cascade with an else, even if empty with a comment.
+  - id: ss.ctrl.no-assignment-in-condition
+    title: Do not assign in if / while / switch controlling expressions
+    severity: warning
+    languages: [c, cpp]
+    check: syntax
+    default: "on"
+    summary: Controlling expressions shall not contain assignment.
+  - id: ss.ctrl.boolean-condition
+    title: Conditions should be actual Booleans
+    severity: warning
+    languages: [c, cpp]
+    check: types
+    default: "on"
+    summary: >
+      if/while/for/do tests a bool / _Bool or a comparison. Do not use an
+      implicit "nonzero integer means true".
+  - id: ss.ctrl.no-invariant-condition
+    title: Controlling expressions shall not be invariant
+    severity: warning
+    languages: [c, cpp]
+    check: dataflow
+    default: "on"
+    summary: Do not write conditions a checker can prove always true or always false, except for documented static_assert-style guards.
+  - id: ss.ctrl.no-fp-loop-counter
+    title: Loop counters shall not be floating-point
+    severity: error
+    languages: [c, cpp]
+    check: types
+    default: "on"
+    summary: A loop counter shall have integer type.
+  - id: ss.ctrl.for-well-formed
+    title: A for loop shall have a single well-formed counter
+    severity: warning
+    languages: [c, cpp]
+    check: cfg
+    default: "on"
+    summary: >
+      One loop counter, modified only in the for-expression; no extra assignments
+      in the controlling expression.
+  - id: ss.ctrl.single-break-in-loop
+    title: A loop shall have at most one break or goto
+    severity: advisory
+    languages: [c, cpp]
+    check: cfg
+    default: "advisory"
+    summary: At most one early-exit jump out of a loop body.
+  - id: ss.ctrl.no-continue
+    title: Prefer not to use continue
+    severity: advisory
+    languages: [c, cpp]
+    check: syntax
+    default: "off"
+    summary: Avoid continue; restructure the loop instead.
+  - id: ss.ctrl.switch-well-formed
+    title: Switch statements shall be well-formed
+    severity: warning
+    languages: [c, cpp]
+    check: syntax
+    default: "on"
+    summary: >
+      Labels only at the top level of the switch body; every non-empty clause
+      ends with break or throw; a default exists; no boolean switch expression;
+      no empty clauses.
+  - id: ss.ctrl.switch-fallthrough-comment
+    title: Intentional switch fall-through shall be commented
+    severity: warning
+    languages: [c, cpp]
+    check: syntax
+    default: "on"
+    summary: A case that falls through to the next label shall have an explicit comment or annotation.
+  - id: ss.ctrl.unreachable
+    title: Do not ship unreachable code
+    severity: warning
+    languages: [c, cpp]
+    check: cfg
+    default: "on"
+    summary: Every statement shall be reachable on some path, except compiler-specific unreachable markers.
+  - id: ss.ctrl.no-dead-code
+    title: Do not ship dead (effect-free) code
+    severity: advisory
+    languages: [c, cpp]
+    check: cfg
+    default: "advisory"
+    summary: Remove statements that cannot affect observable behaviour.
+  - id: ss.ctrl.max-if-nesting
+    title: Do not nest if-else more than two levels
+    severity: advisory
+    languages: [c, cpp]
+    check: syntax
+    default: "advisory"
+    summary: Deeper selection shall become functions or a switch.
+  - id: ss.ctrl.empty-loop-comment
+    title: An empty loop body is braces plus a comment
+    severity: warning
+    languages: [c, cpp]
+    check: syntax
+    default: "on"
+    summary: >
+      for/while/do with no work still has a compound statement and a comment
+      that says why the wait is empty (flag, peripheral, timeout).
+  - id: ss.ctrl.named-loop-limit
+    title: Loop limits are named constants, not magic numbers
+    severity: advisory
+    languages: [c, cpp]
+    check: syntax
+    default: "advisory"
+    summary: >
+      The bound of a for/while is a named constant, sizeof, or a parameter —
+      not a bare 64 or 256 that will rot when the buffer size changes.
+  - id: ss.ctrl.no-nested-ternary
+    title: Do not nest the ternary operator
+    severity: advisory
+    languages: [c, cpp]
+    check: syntax
+    default: "advisory"
+    summary: >
+      A single ternary is allowed as a full expression. Nesting ternaries or
+      burying the operator inside another expression is hard to audit; use if/else.

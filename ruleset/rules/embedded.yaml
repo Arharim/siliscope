@@ -1,0 +1,115 @@
+rules:
+  - id: ss.emb.isr-marked
+    title: An ISR shall be declared with the compiler's interrupt ABI
+    severity: error
+    languages: [c, cpp]
+    check: syntax
+    default: "on"
+    summary: >
+      Functions installed in the vector table shall use the target interrupt
+      attribute/pragma (__interrupt, __attribute__((interrupt)), IRQn handlers
+      as required by the CMSIS startup).
+  - id: ss.emb.isr-naming
+    title: ISR function names shall end with _isr
+    severity: style
+    languages: [c, cpp]
+    check: syntax
+    default: "off"
+    summary: >
+      Optional house style. Off by default: CMSIS and vendor startups use
+      SysTick_Handler / USART1_IRQHandler, not *_isr.
+    notes: Config can match *_IRQHandler, *_Handler, or *_isr.
+  - id: ss.emb.isr-not-called
+    title: An ISR shall not be called like a normal function
+    severity: error
+    languages: [c, cpp]
+    check: callgraph
+    default: "on"
+    summary: Direct calls to interrupt handlers from thread code are forbidden (wrong stack/CPU state).
+  - id: ss.emb.default-isr
+    title: Unhandled vectors shall have a default ISR
+    severity: advisory
+    languages: [c, cpp]
+    check: review
+    default: "advisory"
+    summary: Unexpected interrupt sources shall hit a stub that latches the fault and asserts, not a wild jump.
+  - id: ss.emb.isr-body
+    title: ISR bodies shall be short and non-blocking
+    severity: warning
+    languages: [c, cpp]
+    check: review
+    default: "on"
+    summary: >
+      No heap, no unbounded loops, no blocking RTOS calls, no floating-point
+      unless the FPU context is saved. Prefer set-a-flag / push-to-queue and return.
+  - id: ss.emb.localize-extensions
+    title: Compiler extensions, pragmas, and inline asm stay in the HAL
+    severity: warning
+    languages: [c, cpp]
+    check: syntax
+    default: "on"
+    summary: >
+      #pragma, __attribute__, inline asm, and vendor keywords are confined to a
+      small set of driver files. Application code stays in ISO C/C++.
+  - id: ss.emb.thread-naming
+    title: Thread entry functions shall be named *_thread or *_task
+    severity: style
+    languages: [c, cpp]
+    check: syntax
+    default: "off"
+    summary: Optional house style so thread entries are grep-able. Off by default.
+  - id: ss.emb.no-errno-host
+    title: Do not depend on host errno / locale / file APIs
+    severity: warning
+    languages: [c, cpp]
+    check: syntax
+    default: "on"
+    summary: Newlib-nano errno and locale pull large, locking, allocating code. Keep them out of the image unless a BSP explicitly provides them.
+  - id: ss.emb.cs-balanced
+    title: Critical sections are entered and left on every path
+    severity: error
+    languages: [c, cpp]
+    check: cfg
+    default: "on"
+    summary: >
+      A lock / irq-disable / taskENTER_CRITICAL has a matching release on
+      every return, including error returns. No early return that leaves
+      interrupts off.
+  - id: ss.emb.irq-mask-balanced
+    title: Save/restore of the interrupt mask is paired
+    severity: error
+    languages: [c, cpp]
+    check: cfg
+    default: "on"
+    summary: >
+      __disable_irq / cpsid / BASEPRI changes are restored with the saved
+      value, not with a blind enable. Nested drivers must not globally
+      re-enable interrupts they did not own.
+  - id: ss.emb.isr-no-fp
+    title: An ISR does not touch floating point unless the FPU is stacked
+    severity: warning
+    languages: [c, cpp]
+    check: types
+    default: "on"
+    summary: >
+      Using float in an ISR without lazy-stacking / explicit FPU context
+      corrupts the thread's registers. Keep ISRs integer, or document the
+      FPU policy in the startup file.
+  - id: ss.emb.no-log-in-isr
+    title: An ISR does not format logs or call the console
+    severity: warning
+    languages: [c, cpp]
+    check: callgraph
+    default: "on"
+    summary: >
+      printf, snprintf into a shared buffer, and blocking UART from IRQ
+      context are forbidden. Set a flag or push a small integer event.
+  - id: ss.emb.layout-static-assert
+    title: Hardware structs assert size and offsets at compile time
+    severity: warning
+    languages: [c, cpp]
+    check: syntax
+    default: "on"
+    summary: >
+      A packed register or protocol struct has static_assert / _Static_assert
+      on sizeof and on offsetof of each field that maps to a datasheet.

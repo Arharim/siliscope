@@ -1,0 +1,98 @@
+rules:
+  - id: ss.type.fixed-width
+    title: Use fixed-width integers when width matters
+    severity: warning
+    languages: [c, cpp]
+    check: types
+    default: "on"
+    summary: >
+      Do not use short or long. Use stdint.h names (int8_t … uint32_t) whenever
+      the width is part of the contract. Restrict char to string/character data.
+  - id: ss.type.bool
+    title: Boolean data shall have Boolean type
+    severity: warning
+    languages: [c, cpp]
+    check: types
+    default: "on"
+    summary: Use bool / _Bool. Do not cast integers to Boolean; use a relational operator.
+  - id: ss.type.explicit
+    title: Types shall be specified explicitly
+    severity: warning
+    languages: [c]
+    check: syntax
+    default: "on"
+    summary: Do not omit the type (implicit int is forbidden).
+  - id: ss.type.no-restrict
+    title: Do not use restrict
+    severity: warning
+    languages: [c]
+    check: syntax
+    default: "on"
+    summary: The restrict qualifier shall not appear.
+  - id: ss.type.bitfield
+    title: Bit-fields shall be explicitly signed or unsigned integers
+    severity: warning
+    languages: [c, cpp]
+    check: types
+    default: "on"
+    summary: >
+      Plain int bit-fields are implementation-defined. Single-bit fields shall
+      not be signed. Prefer unsigned.
+  - id: ss.type.no-union
+    title: Unions are discouraged
+    severity: advisory
+    languages: [c, cpp]
+    check: syntax
+    default: "advisory"
+    summary: Do not use union unless the overlay is a documented hardware or wire format.
+    notes: Default advisory — packed register maps almost always use unions.
+  - id: ss.type.hw-layout
+    title: Hardware and protocol structs shall have a defined layout
+    severity: warning
+    languages: [c, cpp]
+    check: review
+    default: "on"
+    summary: >
+      Structs that map to registers, DMA, or a wire format shall use an explicit
+      packing strategy (static_assert on sizeof/offsetof, packed attribute localized
+      to a HAL file).
+  - id: ss.type.enum-init
+    title: Enumerator values shall not collide accidentally
+    severity: warning
+    languages: [c, cpp]
+    check: types
+    default: "on"
+    summary: Initialize none, only the first, or all enumerators — never a mix that hides duplicates.
+  - id: ss.type.array-size
+    title: Array declarations shall specify a size
+    severity: warning
+    languages: [c, cpp]
+    check: syntax
+    default: "on"
+    summary: "Do not declare an array of unspecified size except as a function parameter (which decays anyway; prefer a pointer and a length)."
+  - id: ss.type.no-fp-unless-needed
+    title: Avoid floating point on targets without FPU
+    severity: advisory
+    languages: [c, cpp]
+    check: types
+    default: "advisory"
+    summary: Do not introduce float/double unless the module is explicitly numeric. Prefer fixed-point.
+  - id: ss.type.no-bool-math
+    title: Do not do arithmetic on bool
+    severity: warning
+    languages: [c, cpp]
+    check: types
+    default: "on"
+    summary: >
+      ++ on bool is gone from C++. Adding booleans to integers is a category
+      mix. Use a real counter.
+  - id: ss.type.no-representation-pun
+    title: Do not assume the in-memory picture of a value
+    severity: advisory
+    languages: [c, cpp]
+    check: review
+    default: "advisory"
+    summary: >
+      Endianness, padding, negative-zero, and pointer size are not portable
+      facts. Overlay a documented packed struct in the HAL, or serialize
+      field by field.

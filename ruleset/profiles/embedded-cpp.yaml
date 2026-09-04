@@ -1,0 +1,45 @@
+# Firmware that is C++ (typically C++11/14/17, -fno-exceptions -fno-rtti).
+name: embedded-cpp
+languages: [cpp]
+description: >
+  embedded-c plus a C++ subset that fits MCU toolchains: no heap after init,
+  no exceptions, no RTTI.
+
+extends: embedded-c
+
+include:
+  extra:
+    - ss.cpp.nullptr
+    - ss.cpp.no-cstyle-cast
+    - ss.cpp.override
+    - ss.cpp.virtual-dtor
+    - ss.cpp.no-throw-dtor
+    - ss.cpp.no-exceptions
+    - ss.cpp.no-rtti
+    - ss.cpp.no-using-directive
+    - ss.cpp.special-members
+    - ss.cpp.no-implicit-conversion
+    - ss.cpp.private-data
+    - ss.cpp.init-members
+    - ss.cpp.no-throw-spec
+    - ss.cpp.no-heap-stl
+    - ss.cpp.no-vector-bool
+    - ss.cpp.no-move-const
+    - ss.cpp.no-using-in-header
+    - ss.cpp.no-throwing-swap
+    - ss.cpp.no-default-args
+    - ss.cpp.enum-class
+    - ss.conc.no-recursive-mutex
+
+exclude:
+  - ss.fn.prototype            # C-only implicit-int / K&R
+  - ss.type.explicit
+  - ss.type.no-restrict
+  - ss.mem.no-vla
+  - ss.mem.no-flexible-array
+  - ss.mem.sizeof-array-param
+  - ss.fn.inline-is-static
+  - ss.fn.header-decl
+  - ss.decl.extern-in-one-header
+  - ss.pre.source-includes-own-header
+  - ss.ptr.no-void-arith

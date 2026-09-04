@@ -1,0 +1,161 @@
+rules:
+  - id: ss.cpp.nullptr
+    title: Use nullptr, not NULL or 0, for pointers
+    severity: warning
+    languages: [cpp]
+    check: syntax
+    default: "on"
+    summary: The null pointer constant is nullptr.
+  - id: ss.cpp.no-cstyle-cast
+    title: No C-style or functional casts
+    severity: warning
+    languages: [cpp]
+    check: syntax
+    default: "on"
+    summary: Use static_cast / const_cast / reinterpret_cast (the last only in HAL). No dynamic_cast if exceptions/RTTI are off.
+    notes: Many MCU builds disable RTTI. dynamic_cast is then a link error — treat as forbidden in embedded-cpp.
+  - id: ss.cpp.override
+    title: Overriding functions shall be marked override
+    severity: warning
+    languages: [cpp]
+    check: types
+    default: "on"
+    summary: Use override (and final when the class is closed).
+  - id: ss.cpp.virtual-dtor
+    title: A polymorphic base shall have a virtual, protected, or deleted destructor
+    severity: error
+    languages: [cpp]
+    check: types
+    default: "on"
+    summary: Deleting through a non-virtual base destructor is UB.
+  - id: ss.cpp.no-throw-dtor
+    title: Destructors shall not throw
+    severity: error
+    languages: [cpp]
+    check: types
+    default: "on"
+    summary: A destructor shall be noexcept and shall not throw.
+  - id: ss.cpp.no-exceptions
+    title: Do not use C++ exceptions in firmware
+    severity: warning
+    languages: [cpp]
+    check: syntax
+    default: "on"
+    summary: >
+      throw / try / catch are off in embedded-cpp (code size, EH tables, dtor
+      paths on a small stack). Error codes or std::optional-like types instead.
+    notes: A hosted/desktop profile can turn this off. Firmware keeps -fno-exceptions.
+  - id: ss.cpp.no-rtti
+    title: Do not use RTTI
+    severity: warning
+    languages: [cpp]
+    check: syntax
+    default: "on"
+    summary: No typeid or dynamic_cast. Compile with -fno-rtti.
+  - id: ss.cpp.no-using-directive
+    title: Do not use using-directives
+    severity: warning
+    languages: [cpp]
+    check: syntax
+    default: "on"
+    summary: using namespace X; is forbidden in headers and discouraged in sources. using-declarations for specific names are allowed in .cpp.
+  - id: ss.cpp.special-members
+    title: If you define one special member, define or delete all
+    severity: warning
+    languages: [cpp]
+    check: types
+    default: "on"
+    summary: Follow the rule of five; prefer =default when the behaviour matches.
+  - id: ss.cpp.no-implicit-conversion
+    title: User-defined conversions shall be explicit
+    severity: warning
+    languages: [cpp]
+    check: syntax
+    default: "on"
+    summary: Conversion operators and converting constructors are explicit.
+  - id: ss.cpp.private-data
+    title: Data members shall be private
+    severity: advisory
+    languages: [cpp]
+    check: syntax
+    default: "advisory"
+    summary: No public data. POD / packed HAL structs are an exemption.
+  - id: ss.cpp.init-members
+    title: Constructors shall initialize every base and member
+    severity: error
+    languages: [cpp]
+    check: types
+    default: "on"
+    summary: Member initializer lists cover all members, in declaration order.
+  - id: ss.cpp.no-throw-spec
+    title: Do not use dynamic exception specifications
+    severity: warning
+    languages: [cpp]
+    check: syntax
+    default: "on"
+    summary: "Dynamic exception specifications are deprecated; use noexcept if EH is enabled at all."
+  - id: ss.cpp.no-default-args
+    title: Do not use default function arguments
+    severity: advisory
+    languages: [cpp]
+    check: syntax
+    default: "advisory"
+    summary: >
+      Default arguments hide what the caller actually passed and interact badly
+      with overloads. Overload or require the argument.
+  - id: ss.cpp.no-heap-stl
+    title: Do not use heap-backed standard containers in firmware
+    severity: error
+    languages: [cpp]
+    check: types
+    default: "on"
+    summary: >
+      std::vector, string, map, list, function, and iostreams allocate.
+      Use std::array, etl, or a static pool. An init-only exception is a
+      documented deviation, same as malloc.
+  - id: ss.cpp.no-vector-bool
+    title: Do not use vector of bool
+    severity: warning
+    languages: [cpp]
+    check: types
+    default: "on"
+    summary: It is not a real container. Use array of uint8_t or a bitset with a fixed size.
+  - id: ss.cpp.no-move-const
+    title: Do not std::move from a const object
+    severity: warning
+    languages: [cpp]
+    check: types
+    default: "on"
+    summary: std::move on const falls back to a copy and lies about ownership.
+  - id: ss.cpp.enum-class
+    title: Prefer enum class over a plain unscoped enum
+    severity: advisory
+    languages: [cpp]
+    check: syntax
+    default: "advisory"
+    summary: Unscoped enumerators leak into the surrounding namespace and convert to int too easily.
+  - id: ss.cpp.no-using-in-header
+    title: Headers do not pull in a namespace with using
+    severity: warning
+    languages: [cpp]
+    check: syntax
+    default: "on"
+    summary: >
+      using namespace and using-declarations of unrelated names do not appear
+      in headers. using-declarations in a .cpp after the includes are allowed.
+  - id: ss.cpp.no-friend
+    title: Do not declare friends
+    severity: advisory
+    languages: [cpp]
+    check: syntax
+    default: "advisory"
+    summary: friend punches a hole in private. Prefer a named accessor. HAL POD structs are an exemption.
+  - id: ss.cpp.no-throwing-swap
+    title: swap used to implement assignment does not throw
+    severity: warning
+    languages: [cpp]
+    check: types
+    default: "on"
+    summary: >
+      If copy/move assignment is written as construct-and-swap, swap is
+      noexcept and does not allocate. Firmware should prefer =default anyway.

@@ -1,0 +1,154 @@
+rules:
+  - id: ss.fn.max-length
+    title: Keep a function to one page (~60–100 lines)
+    severity: advisory
+    languages: [c, cpp]
+    check: syntax
+    default: "advisory"
+    summary: >
+      A function should stay reviewable as one unit. Default warn above 80
+      lines of body; the threshold is configurable.
+    notes: Count statements/lines in the function body, not comments alone.
+  - id: ss.fn.single-exit
+    title: Prefer a single return at the end of the function
+    severity: advisory
+    languages: [c, cpp]
+    check: cfg
+    default: "off"
+    summary: A function should have one exit point at the end.
+    notes: >
+      Off by default. Early error returns are usually clearer than a flag plus
+      a single return at the bottom.
+  - id: ss.fn.check-return
+    title: Use or explicitly discard every non-void return value
+    severity: warning
+    languages: [c, cpp]
+    check: types
+    default: "on"
+    summary: >
+      The caller shall use the return value, or cast it to void (C) / [[maybe_unused]]
+      to show the discard is intentional.
+  - id: ss.fn.check-params
+    title: Callee shall validate parameters that can be wrong
+    severity: advisory
+    languages: [c, cpp]
+    check: review
+    default: "advisory"
+    summary: >
+      Public functions should reject null pointers and out-of-range arguments
+      (assert in debug, explicit error return in production).
+  - id: ss.fn.prototype
+    title: Functions shall be declared with prototypes and named parameters
+    severity: error
+    languages: [c]
+    check: syntax
+    default: "on"
+    summary: No implicit declarations; every definition matches a visible prototype with named parameters.
+  - id: ss.fn.return-all-paths
+    title: A non-void function shall return a value on every path
+    severity: error
+    languages: [c, cpp]
+    check: cfg
+    default: "on"
+    summary: Every exit path of a non-void function returns a value.
+  - id: ss.fn.no-unused-params
+    title: Do not leave unused parameters
+    severity: warning
+    languages: [c, cpp]
+    check: syntax
+    default: "on"
+    summary: >
+      Unused parameters shall be omitted, unnamed (C++), or marked with a project
+      UNUSED() macro / (void)param.
+  - id: ss.fn.static-internal
+    title: File-local objects and functions shall be static
+    severity: warning
+    languages: [c]
+    check: types
+    default: "on"
+    summary: Anything that does not need external linkage shall be declared static.
+  - id: ss.fn.no-stdarg
+    title: Do not use <stdarg.h> variadic functions
+    severity: warning
+    languages: [c, cpp]
+    check: syntax
+    default: "on"
+    summary: No va_list, va_start, or user-defined variadic functions.
+    exceptions:
+      - A single project log_printf wrapper, isolated and reviewed.
+  - id: ss.fn.no-block-scope
+    title: Do not declare functions at block scope
+    severity: warning
+    languages: [c, cpp]
+    check: syntax
+    default: "on"
+    summary: Function declarations belong at file / namespace scope.
+  - id: ss.fn.no-unused-label
+    title: Do not leave unused labels
+    severity: warning
+    languages: [c, cpp]
+    check: cfg
+    default: "on"
+    summary: A label that no goto/case refers to is dead and hides a leftover jump.
+  - id: ss.fn.max-params
+    title: Do not pass a long argument list
+    severity: advisory
+    languages: [c, cpp]
+    check: syntax
+    default: "advisory"
+    summary: >
+      More than eight parameters (configurable) usually means a missing struct.
+      Pack related args into a typed config object.
+  - id: ss.fn.cyclomatic
+    title: Keep cyclomatic complexity of a function bounded
+    severity: advisory
+    languages: [c, cpp]
+    check: cfg
+    default: "advisory"
+    summary: >
+      Default warn above 15 independent paths in one function. Split by
+      state, not by nesting another if.
+  - id: ss.fn.noreturn-does-not-return
+    title: A noreturn function does not return and is void
+    severity: warning
+    languages: [c, cpp]
+    check: cfg
+    default: "on"
+    summary: >
+      _Noreturn / [[noreturn]] is for panic/reset paths. The function has
+      void result and every path loops, resets, or transfers control away.
+  - id: ss.fn.single-definition
+    title: An external function or object has one definition
+    severity: warning
+    languages: [c, cpp]
+    check: types
+    default: "on"
+    summary: >
+      A name with external linkage is defined in exactly one translation unit.
+      Tentative duplicate definitions and copy-pasted globals are defects.
+  - id: ss.fn.header-decl
+    title: A public definition has a visible header declaration
+    severity: warning
+    languages: [c]
+    check: types
+    default: "on"
+    summary: >
+      Defining a non-static function or object without a prototype/extern in
+      the module header lets callers drift from the implementation.
+  - id: ss.fn.inline-is-static
+    title: A C inline function used in one TU is static
+    severity: warning
+    languages: [c]
+    check: syntax
+    default: "on"
+    summary: >
+      inline without static in C has confusing linkage. For helpers in a .c
+      file use static inline. Shared inlines live in a header with a clear
+      one-definition story.
+  - id: ss.fn.param-names-consistent
+    title: Parameter names match across declaration and definition
+    severity: advisory
+    languages: [c, cpp]
+    check: types
+    default: "advisory"
+    summary: If the header names a parameter, the .c uses the same name.

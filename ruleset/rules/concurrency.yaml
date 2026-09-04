@@ -1,0 +1,54 @@
+rules:
+  - id: ss.conc.no-data-race
+    title: Shared data shall have a defined synchronization story
+    severity: error
+    languages: [c, cpp]
+    check: review
+    default: "on"
+    summary: >
+      An object written from an ISR or another thread and read elsewhere shall
+      be volatile and/or protected by a critical section / queue / atomic with
+      a documented memory order.
+  - id: ss.conc.seq-cst-or-documented
+    title: Atomics shall not use relaxed ordering without a comment
+    severity: advisory
+    languages: [c, cpp]
+    check: syntax
+    default: "advisory"
+    summary: Default to sequentially consistent atomics. Relaxed/acquire/release need a comment citing the protocol.
+  - id: ss.conc.no-recursive-mutex
+    title: Do not use recursive mutexes
+    severity: advisory
+    languages: [cpp]
+    check: syntax
+    default: "advisory"
+    summary: Recursive locks hide lock-order bugs.
+  - id: ss.conc.lock-order
+    title: Nested locks follow a documented order
+    severity: warning
+    languages: [c, cpp]
+    check: review
+    default: "on"
+    summary: >
+      If two mutexes or critical-section ranks can nest, the project has a
+      total order (e.g. irq-off before mutex A before mutex B). Inverse
+      order is a deadlock.
+  - id: ss.conc.no-volatile-mutex
+    title: volatile is not a lock
+    severity: warning
+    languages: [c, cpp]
+    check: review
+    default: "on"
+    summary: >
+      volatile stops the compiler caching a load. It does not order stores
+      across cores or against an ISR on a weakly ordered CPU. Shared
+      read-modify-write needs a critical section, a queue, or an atomic.
+  - id: ss.conc.no-block-in-cs
+    title: Do not block while holding a lock or with IRQs off
+    severity: warning
+    languages: [c, cpp]
+    check: callgraph
+    default: "on"
+    summary: >
+      No delay, queue-wait, malloc, or flash-erase inside a critical section
+      or with the interrupt mask saved. Hold times stay bounded.

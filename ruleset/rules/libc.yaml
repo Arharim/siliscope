@@ -1,0 +1,100 @@
+rules:
+  - id: ss.libc.no-atoi
+    title: Do not use atoi / atof / atol / atoll
+    severity: warning
+    languages: [c, cpp]
+    check: syntax
+    default: "on"
+    summary: These functions have undefined behaviour on invalid input; use strto* with checks.
+  - id: ss.libc.no-abort-system
+    title: Do not use abort, exit, getenv, or system
+    severity: warning
+    languages: [c, cpp]
+    check: syntax
+    default: "on"
+    summary: No process-control or environment APIs on a bare-metal target.
+  - id: ss.libc.no-qsort-bsearch
+    title: Do not use qsort or bsearch
+    severity: advisory
+    languages: [c, cpp]
+    check: syntax
+    default: "advisory"
+    summary: Unbounded and callback-based; write a bounded search.
+  - id: ss.libc.no-time
+    title: Do not use <time.h>
+    severity: advisory
+    languages: [c, cpp]
+    check: syntax
+    default: "advisory"
+    summary: Host time APIs are not a firmware clock. Use the platform tick.
+  - id: ss.libc.no-signal
+    title: Do not use <signal.h>
+    severity: error
+    languages: [c, cpp]
+    check: syntax
+    default: "on"
+    summary: Standard signals are not MCU interrupts.
+  - id: ss.libc.no-stdio
+    title: Do not use stdio in shipped firmware
+    severity: warning
+    languages: [c, cpp]
+    check: syntax
+    default: "on"
+    summary: No printf/scanf/FILE in production images. A debug UART logger is an explicit exemption.
+  - id: ss.libc.no-unbounded-string
+    title: Do not use unbounded string functions
+    severity: error
+    languages: [c, cpp]
+    check: syntax
+    default: "on"
+    summary: No gets, strcpy, strcat, sprintf, strtok. Use the n-bounded forms with an explicit size.
+  - id: ss.libc.no-rand
+    title: Do not use rand / srand for anything that matters
+    severity: warning
+    languages: [c, cpp]
+    check: syntax
+    default: "on"
+    summary: libc rand is not a PRNG. Use a project generator or hardware RNG.
+  - id: ss.libc.no-tgmath-fenv
+    title: Do not use <tgmath.h> or <fenv.h>
+    severity: advisory
+    languages: [c]
+    check: syntax
+    default: "advisory"
+    summary: Type-generic math and FP environment are poorly supported on MCU libcs.
+  - id: ss.libc.copy-fits-dest
+    title: A copy length does not exceed the destination
+    severity: error
+    languages: [c, cpp]
+    check: dataflow
+    default: "on"
+    summary: >
+      memcpy, memmove, memset, strncpy, snprintf, and friends take a size that
+      is min(src_len, dest_capacity). Passing dest as if it were infinite is a
+      defect even when the function is the bounded variant.
+  - id: ss.libc.memcmp-not-for-c-strings
+    title: Do not memcmp C strings as if they were raw records
+    severity: warning
+    languages: [c, cpp]
+    check: types
+    default: "on"
+    summary: >
+      memcmp on char buffers that are strings compares padding past the NUL
+      and can read off the end. Use strcmp/strncmp, or memcmp only on a known
+      packed layout.
+  - id: ss.libc.ctype-uchar-or-eof
+    title: ctype arguments are unsigned char or EOF
+    severity: warning
+    languages: [c, cpp]
+    check: types
+    default: "on"
+    summary: >
+      isdigit, toupper, and the rest take the value of an unsigned char or EOF.
+      Passing a signed char with the high bit set is undefined.
+  - id: ss.libc.no-setlocale
+    title: Do not call setlocale
+    severity: warning
+    languages: [c, cpp]
+    check: syntax
+    default: "on"
+    summary: Locale pulls large, locking libc. Firmware stays in the C locale.

@@ -1,0 +1,50 @@
+# Default profile for MCU firmware written in C.
+name: embedded-c
+languages: [c]
+description: >
+  Siliscope C profile for bare-metal / RTOS firmware. Style rules are off.
+  Unions and function pointers are advisory because HALs need them.
+
+include:
+  from_default: true   # every rule with default: on
+  extra:
+    - ss.ctrl.single-break-in-loop
+    - ss.ctrl.no-dead-code
+    - ss.ctrl.max-if-nesting
+    - ss.fn.max-length
+    - ss.fn.check-params
+    - ss.fn.no-stdarg
+    - ss.type.no-union
+    - ss.type.no-fp-unless-needed
+    - ss.decl.const
+    - ss.pre.prefer-inline
+    - ss.pre.no-commented-code
+    - ss.libc.no-qsort-bsearch
+    - ss.libc.no-time
+    - ss.libc.no-tgmath-fenv
+    - ss.ptr.no-fn-pointer
+    - ss.emb.default-isr
+    - ss.conc.seq-cst-or-documented
+    - ss.ctrl.named-loop-limit
+    - ss.fn.max-params
+    - ss.fn.cyclomatic
+    - ss.expr.named-constants
+    - ss.pre.no-unused-include
+
+exclude:
+  - ss.fn.single-exit          # early return is allowed
+  - ss.ctrl.no-continue
+  - ss.conv.no-mixed-categories
+  - ss.expr.literal-suffix-case
+  - ss.emb.isr-naming          # CMSIS names differ
+  - ss.emb.thread-naming
+
+severity_overrides:
+  ss.mem.no-heap-after-init: error
+  ss.ctrl.no-recursion: error
+  ss.ctrl.no-setjmp: error
+  ss.mem.no-vla: error
+  ss.mem.no-dangling: error
+  ss.expr.uninit: error
+  ss.libc.no-unbounded-string: error
+  ss.libc.no-signal: error

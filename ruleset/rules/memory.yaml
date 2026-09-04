@@ -1,0 +1,102 @@
+rules:
+  - id: ss.mem.no-heap-after-init
+    title: No dynamic allocation after initialization
+    severity: error
+    languages: [c, cpp]
+    check: callgraph
+    default: "on"
+    summary: >
+      malloc, calloc, realloc, free, new, delete, and containers that allocate
+      shall not run after the system has left its init phase. Prefer never
+      linking the allocator.
+    rationale: >
+      Heap on MCU is unbounded latency, fragmentation, and a class of
+      use-after-free bugs. Stack use is bounded once recursion is banned.
+    notes: >
+      First checker: any call to malloc/free/new/delete is a violation.
+      A later mode can allow an init-only allowlist.
+  - id: ss.mem.no-vla
+    title: Variable-length arrays are forbidden
+    severity: error
+    languages: [c]
+    check: syntax
+    default: "on"
+    summary: Array sizes shall be integer constant expressions.
+  - id: ss.mem.no-flexible-array
+    title: Do not declare flexible array members
+    severity: warning
+    languages: [c]
+    check: syntax
+    default: "on"
+    summary: "A flexible array member (T x[]) at the end of a struct is forbidden."
+  - id: ss.mem.no-dangling
+    title: Do not let a pointer outlive the object it refers to
+    severity: error
+    languages: [c, cpp]
+    check: dataflow
+    default: "on"
+    summary: >
+      The address of an automatic object shall not be stored in an object with
+      longer lifetime or returned to the caller.
+  - id: ss.mem.no-overlap-copy
+    title: Do not assign or copy overlapping objects
+    severity: error
+    languages: [c, cpp]
+    check: dataflow
+    default: "on"
+    summary: memcpy and struct assignment shall not overlap; use memmove only where overlap is intended and allowed by profile.
+  - id: ss.mem.bounds
+    title: Pointer and array access shall be in bounds
+    severity: error
+    languages: [c, cpp]
+    check: dataflow
+    default: "on"
+    summary: Indexing and dereference shall be demonstrably inside a live object.
+  - id: ss.mem.no-null-deref
+    title: Do not dereference a null pointer
+    severity: error
+    languages: [c, cpp]
+    check: dataflow
+    default: "on"
+    summary: >
+      A pointer that may be null is checked before * or ->. Hardware that is
+      documented never-null (a linker symbol for SRAM) needs a comment at the
+      declaration.
+  - id: ss.mem.no-use-after-free
+    title: Do not use memory after it is released
+    severity: error
+    languages: [c, cpp]
+    check: dataflow
+    default: "on"
+    summary: >
+      After free/delete or returning a pool block, the pointer is not read,
+      written, or passed on. Prefer poisoning the pointer to NULL.
+    notes: Still useful if a project allows an init-time heap or a static pool.
+  - id: ss.mem.no-large-frame
+    title: Do not put large objects on the stack
+    severity: warning
+    languages: [c, cpp]
+    check: types
+    default: "on"
+    summary: >
+      Locals and VLAs (already banned) that sum over a configurable threshold
+      (default 512 bytes per function) belong in static storage or a caller-owned
+      buffer. MCU stacks are small and ISRs share them.
+  - id: ss.mem.sizeof-array-param
+    title: Do not take sizeof of a parameter that decayed to a pointer
+    severity: error
+    languages: [c]
+    check: types
+    default: "on"
+    summary: >
+      sizeof(buf) inside a function whose parameter is T buf[] or T * is the
+      size of a pointer. Pass the length explicitly.
+  - id: ss.mem.string-room-for-nul
+    title: A string write leaves room for the terminator
+    severity: error
+    languages: [c, cpp]
+    check: dataflow
+    default: "on"
+    summary: >
+      Copies and snprintf-like writes into a char array account for the extra
+      byte. The destination size is a named bound, not a guess.

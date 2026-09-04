@@ -1,0 +1,57 @@
+rules:
+  - id: ss.ptr.max-indirection
+    title: At most two levels of pointer indirection
+    severity: warning
+    languages: [c, cpp]
+    check: types
+    default: "on"
+    summary: Declarations nest at most two pointer levels (T ** is the maximum).
+    notes: A stricter project can cap this at one level in config.
+  - id: ss.ptr.no-fn-pointer
+    title: Function pointers are discouraged
+    severity: advisory
+    languages: [c, cpp]
+    check: types
+    default: "advisory"
+    summary: >
+      Function pointers hide the call graph (recursion, stack). Allowed in
+      driver tables and RTOS hooks with a comment.
+  - id: ss.ptr.no-ptr-arith
+    title: Do not do pointer arithmetic other than array indexing
+    severity: warning
+    languages: [c, cpp]
+    check: types
+    default: "on"
+    summary: No p+n, p-n, p++, p-- on pointers except as array indexing on an actual array object.
+  - id: ss.ptr.same-array
+    title: Pointer subtraction and relational compare only within one array
+    severity: error
+    languages: [c, cpp]
+    check: dataflow
+    default: "on"
+    summary: "Pointer subtraction and relational compare only when both address the same array object (or one-past)."
+  - id: ss.ptr.array-arg
+    title: Array parameters shall be passed with a matching length
+    severity: warning
+    languages: [c]
+    check: types
+    default: "on"
+    summary: A function parameter declared as T a[N] shall be called with at least N elements. Prefer T * and an explicit size argument.
+  - id: ss.ptr.no-void-arith
+    title: Do not do arithmetic on void pointers
+    severity: warning
+    languages: [c]
+    check: types
+    default: "on"
+    summary: >
+      GNU C lets you add to void *. ISO C does not. Cast to uint8_t * in the HAL
+      if you are walking bytes, and nowhere else.
+  - id: ss.ptr.no-deref-one-past
+    title: Do not dereference a one-past-the-end pointer
+    severity: error
+    languages: [c, cpp]
+    check: dataflow
+    default: "on"
+    summary: >
+      A pointer one past the last element may be compared, not starred. The
+      same applies to a loop that writes *end.

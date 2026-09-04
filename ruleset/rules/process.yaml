@@ -1,0 +1,23 @@
+rules:
+  - id: ss.proc.all-warnings
+    title: Compile with pedantic warnings and zero tolerated diagnostics
+    severity: error
+    languages: [c, cpp]
+    check: process
+    default: "on"
+    summary: >
+      Build with the toolchain's strict warning set and do not merge diagnostics.
+      If a warning is a false positive, change the code until the compiler is
+      quiet — do not sprinkle pragmas to hide it.
+    rationale: >
+      On MCU compilers a "harmless" warning is often a real conversion,
+      an uninitialized read, or a missing prototype.
+  - id: ss.proc.static-analysis
+    title: Run at least one static analyzer cleanly
+    severity: error
+    languages: [c, cpp]
+    check: process
+    default: "on"
+    summary: >
+      Every translation unit that ships must pass this analyzer (and preferably
+      a second one) with zero un-suppressed findings.

@@ -1,0 +1,125 @@
+rules:
+  - id: ss.expr.uninit
+    title: Do not read an uninitialized object
+    severity: error
+    languages: [c, cpp]
+    check: dataflow
+    default: "on"
+    summary: Automatic objects shall be initialized before any read.
+  - id: ss.expr.no-octal
+    title: Do not use octal constants (other than 0)
+    severity: warning
+    languages: [c, cpp]
+    check: syntax
+    default: "on"
+    summary: Integer literals shall not start with 0 unless they are 0, 0x…, or 0b….
+  - id: ss.expr.literal-suffix-case
+    title: Literal suffixes shall be uppercase
+    severity: style
+    languages: [c, cpp]
+    check: syntax
+    default: "off"
+    summary: Write 1U, 1L, 1.0F rather than 1u / 1l / 1.0f. Off in the default profile (style only).
+  - id: ss.expr.string-const
+    title: String literals shall only bind to const char *
+    severity: warning
+    languages: [c, cpp]
+    check: types
+    default: "on"
+    summary: Do not assign a string literal to char *.
+  - id: ss.expr.no-comma
+    title: Do not use the comma operator
+    severity: warning
+    languages: [c, cpp]
+    check: syntax
+    default: "on"
+    summary: The comma operator is forbidden (function argument lists are not the comma operator).
+  - id: ss.expr.no-unseq
+    title: Do not rely on unsequenced side effects
+    severity: error
+    languages: [c, cpp]
+    check: dataflow
+    default: "on"
+    summary: An expression shall have the same value under every permitted evaluation order.
+  - id: ss.expr.no-inc-in-expr
+    title: ++ / -- shall be a standalone statement
+    severity: warning
+    languages: [c, cpp]
+    check: syntax
+    default: "on"
+    summary: An expression that increments or decrements shall have no other side effects.
+  - id: ss.expr.no-sizeof-side-effect
+    title: Operand of sizeof / _Alignof / _Generic shall be side-effect free
+    severity: warning
+    languages: [c, cpp]
+    check: syntax
+    default: "on"
+    summary: Do not increment, call, or assign inside sizeof.
+  - id: ss.expr.no-logical-rhs-side-effect
+    title: Right-hand side of && / || shall not have persistent side effects
+    severity: warning
+    languages: [c, cpp]
+    check: syntax
+    default: "on"
+    summary: Do not call or assign on the RHS of a short-circuit operator.
+  - id: ss.expr.parens
+    title: Do not rely on operator precedence
+    severity: advisory
+    languages: [c, cpp]
+    check: syntax
+    default: "advisory"
+    summary: Mixed-precedence expressions shall use parentheses. Operands of && and || that are not a single identifier shall be parenthesized.
+  - id: ss.expr.aggregate-init
+    title: Aggregates shall be initialized completely and with braces
+    severity: warning
+    languages: [c, cpp]
+    check: types
+    default: "on"
+    summary: No partial array init; designated init shall state the size; nested braces match the layout.
+  - id: ss.expr.named-constants
+    title: Replace magic numbers with named constants
+    severity: advisory
+    languages: [c, cpp]
+    check: syntax
+    default: "advisory"
+    summary: >
+      A numeric literal that is not 0, 1, or -1 in a condition, delay, buffer
+      size, or protocol field is a named constant. 0x40021000-style MMIO
+      addresses live in the HAL header.
+  - id: ss.expr.init-side-effect-free
+    title: Initializers do not hide persistent side effects
+    severity: warning
+    languages: [c, cpp]
+    check: syntax
+    default: "on"
+    summary: >
+      An initializer list does not increment, call, or write objects other than
+      the object being initialized. Evaluation order of list elements is not
+      a place to sneak I/O.
+  - id: ss.expr.fp-must-be-finite
+    title: A floating result is checked finite before use
+    severity: warning
+    languages: [c, cpp]
+    check: dataflow
+    default: "on"
+    summary: >
+      After a floating operation that can produce Inf/NaN, test isfinite (or
+      the project's equivalent) before the value is stored, compared, or sent
+      to an actuator.
+    notes: Pair with ss.type.no-fp-unless-needed; if the module has no FP, this is quiet.
+  - id: ss.expr.no-trigraphs
+    title: Do not use trigraphs or digraphs
+    severity: warning
+    languages: [c, cpp]
+    check: syntax
+    default: "on"
+    summary: Sequences like ??= are a historical footgun and are not used.
+  - id: ss.expr.float-literal-suffix
+    title: A float literal that is meant to be float is suffixed
+    severity: advisory
+    languages: [c, cpp]
+    check: types
+    default: "advisory"
+    summary: >
+      3.14 is a double and may pull a double lib. Write 3.14f when the type is
+      float, especially on cores without a double FPU.

@@ -76,6 +76,11 @@ test-octal: build
     {{bin}} --target arm-none-eabi tests/lit/checks/ss.expr.no-octal/ok.c
     ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.expr.no-octal/bad.c
 
+# ss.mem.no-vla fixtures
+test-vla: build
+    {{bin}} --target arm-none-eabi tests/lit/checks/ss.mem.no-vla/ok.c
+    ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.mem.no-vla/bad.c
+
 fmt:
     clang-format -i include/siliscope/*.h src/driver/*.cpp src/diag/*.cpp src/checks/*.cpp
 

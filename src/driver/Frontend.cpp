@@ -8,6 +8,7 @@
 #include "siliscope/NoSetjmp.h"
 #include "siliscope/NoStdio.h"
 #include "siliscope/NoUnboundedString.h"
+#include "siliscope/NoVLA.h"
 #include "siliscope/Report.h"
 
 #include "clang/AST/ASTConsumer.h"
@@ -105,7 +106,8 @@ public:
         no_stdio(reporter),
         braces(reporter),
         no_assign(reporter),
-        no_octal(reporter) {
+        no_octal(reporter),
+        no_vla(reporter) {
     no_goto.registerMatchers(finder);
     no_setjmp.registerMatchers(finder);
     no_heap.registerMatchers(finder);
@@ -114,6 +116,7 @@ public:
     braces.registerMatchers(finder);
     no_assign.registerMatchers(finder);
     no_octal.registerMatchers(finder);
+    no_vla.registerMatchers(finder);
   }
 
   std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &, llvm::StringRef) override {
@@ -136,6 +139,7 @@ private:
   BracesCheck braces;
   NoAssignInCondCheck no_assign;
   NoOctalCheck no_octal;
+  NoVLACheck no_vla;
 };
 
 class AnalyzeFactory : public FrontendActionFactory {

@@ -66,6 +66,11 @@ test-stdio: build
     {{bin}} --target arm-none-eabi tests/lit/checks/ss.libc.no-stdio/ok.c
     ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.libc.no-stdio/bad.c
 
+# ss.ctrl.no-assignment-in-condition fixtures
+test-assign-cond: build
+    {{bin}} --target arm-none-eabi tests/lit/checks/ss.ctrl.no-assignment-in-condition/ok.c
+    ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.ctrl.no-assignment-in-condition/bad.c
+
 fmt:
     clang-format -i include/siliscope/*.h src/driver/*.cpp src/diag/*.cpp src/checks/*.cpp
 

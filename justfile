@@ -86,6 +86,11 @@ test-stdarg: build
     {{bin}} --target arm-none-eabi tests/lit/checks/ss.fn.no-stdarg/ok.c
     ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.fn.no-stdarg/bad.c
 
+# ss.libc.no-signal fixtures
+test-signal: build
+    {{bin}} --target arm-none-eabi tests/lit/checks/ss.libc.no-signal/ok.c
+    ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.libc.no-signal/bad.c
+
 fmt:
     clang-format -i include/siliscope/*.h src/driver/*.cpp src/diag/*.cpp src/checks/*.cpp
 

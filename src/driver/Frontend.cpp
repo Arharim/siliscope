@@ -4,6 +4,7 @@
 #include "siliscope/NoGoto.h"
 #include "siliscope/NoHeap.h"
 #include "siliscope/NoSetjmp.h"
+#include "siliscope/NoStdio.h"
 #include "siliscope/NoUnboundedString.h"
 #include "siliscope/Report.h"
 
@@ -99,11 +100,13 @@ public:
         no_setjmp(reporter),
         no_heap(reporter),
         no_unbounded(reporter),
+        no_stdio(reporter),
         braces(reporter) {
     no_goto.registerMatchers(finder);
     no_setjmp.registerMatchers(finder);
     no_heap.registerMatchers(finder);
     no_unbounded.registerMatchers(finder);
+    no_stdio.registerMatchers(finder);
     braces.registerMatchers(finder);
   }
 
@@ -123,6 +126,7 @@ private:
   NoSetjmpCheck no_setjmp;
   NoHeapCheck no_heap;
   NoUnboundedStringCheck no_unbounded;
+  NoStdioCheck no_stdio;
   BracesCheck braces;
 };
 

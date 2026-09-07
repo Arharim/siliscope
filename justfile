@@ -61,6 +61,11 @@ test-braces: build
     {{bin}} --target arm-none-eabi tests/lit/checks/ss.ctrl.braces/ok.c
     ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.ctrl.braces/bad.c
 
+# ss.libc.no-stdio fixtures
+test-stdio: build
+    {{bin}} --target arm-none-eabi tests/lit/checks/ss.libc.no-stdio/ok.c
+    ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.libc.no-stdio/bad.c
+
 fmt:
     clang-format -i include/siliscope/*.h src/driver/*.cpp src/diag/*.cpp src/checks/*.cpp
 

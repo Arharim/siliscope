@@ -32,6 +32,7 @@ if(SILISCOPE_ENABLE_CLANG)
     src/checks/Braces.cpp
     src/checks/NoStdio.cpp
     src/checks/NoAssignInCond.cpp
+    src/checks/NoOctal.cpp
   )
   target_compile_definitions(siliscope PRIVATE SILISCOPE_WITH_CLANG)
   target_include_directories(siliscope PRIVATE

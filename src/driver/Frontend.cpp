@@ -4,6 +4,7 @@
 #include "siliscope/NoAssignInCond.h"
 #include "siliscope/NoGoto.h"
 #include "siliscope/NoHeap.h"
+#include "siliscope/NoOctal.h"
 #include "siliscope/NoSetjmp.h"
 #include "siliscope/NoStdio.h"
 #include "siliscope/NoUnboundedString.h"
@@ -103,7 +104,8 @@ public:
         no_unbounded(reporter),
         no_stdio(reporter),
         braces(reporter),
-        no_assign(reporter) {
+        no_assign(reporter),
+        no_octal(reporter) {
     no_goto.registerMatchers(finder);
     no_setjmp.registerMatchers(finder);
     no_heap.registerMatchers(finder);
@@ -111,6 +113,7 @@ public:
     no_stdio.registerMatchers(finder);
     braces.registerMatchers(finder);
     no_assign.registerMatchers(finder);
+    no_octal.registerMatchers(finder);
   }
 
   std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &, llvm::StringRef) override {
@@ -132,6 +135,7 @@ private:
   NoStdioCheck no_stdio;
   BracesCheck braces;
   NoAssignInCondCheck no_assign;
+  NoOctalCheck no_octal;
 };
 
 class AnalyzeFactory : public FrontendActionFactory {

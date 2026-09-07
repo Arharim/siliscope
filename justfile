@@ -71,6 +71,11 @@ test-assign-cond: build
     {{bin}} --target arm-none-eabi tests/lit/checks/ss.ctrl.no-assignment-in-condition/ok.c
     ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.ctrl.no-assignment-in-condition/bad.c
 
+# ss.expr.no-octal fixtures
+test-octal: build
+    {{bin}} --target arm-none-eabi tests/lit/checks/ss.expr.no-octal/ok.c
+    ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.expr.no-octal/bad.c
+
 fmt:
     clang-format -i include/siliscope/*.h src/driver/*.cpp src/diag/*.cpp src/checks/*.cpp
 

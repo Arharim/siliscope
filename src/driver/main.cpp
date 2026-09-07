@@ -1,8 +1,10 @@
+#include "siliscope/Frontend.h"
 #include "siliscope/Version.h"
 
 #include <cstdio>
 #include <cstring>
 #include <string>
+#include <vector>
 
 namespace {
 
@@ -31,6 +33,7 @@ int main(int argc, char **argv) {
   std::string ruleset_dir = "ruleset";
   bool want_help = false;
   bool want_version = false;
+  FrontendOptions fe;
 
   for (int i = 1; i < argc; ++i) {
     const char *a = argv[i];
@@ -42,13 +45,17 @@ int main(int argc, char **argv) {
       profile = argv[++i];
     } else if (std::strcmp(a, "--ruleset-dir") == 0 && i + 1 < argc) {
       ruleset_dir = argv[++i];
+    } else if (std::strcmp(a, "-p") == 0 && i + 1 < argc) {
+      fe.compile_commands_dir = argv[++i];
+    } else if (std::strcmp(a, "--target") == 0 && i + 1 < argc) {
+      fe.target = argv[++i];
+    } else if (std::strcmp(a, "-extra-arg") == 0 && i + 1 < argc) {
+      fe.extra_args.emplace_back(argv[++i]);
     } else if (a[0] == '-') {
-      // Flags implemented in later phases are accepted so scripts do not break.
-      if ((std::strcmp(a, "-p") == 0 || std::strcmp(a, "--target") == 0 ||
-           std::strcmp(a, "-extra-arg") == 0) &&
-          i + 1 < argc) {
-        ++i;
-      }
+      std::fprintf(stderr, "error: unknown option %s\n", a);
+      return 2;
+    } else {
+      fe.sources.emplace_back(a);
     }
   }
 
@@ -69,7 +76,19 @@ int main(int argc, char **argv) {
     return 0;
   }
 
-  print_usage(stderr);
-  std::fputs("\nerror: analysis is not wired yet (phase 0 skeleton)\n", stderr);
+  (void)profile;
+  (void)ruleset_dir;
+
+  if (fe.sources.empty()) {
+    print_usage(stderr);
+    std::fputs("\nerror: no source files\n", stderr);
+    return 2;
+  }
+
+#ifdef SILISCOPE_WITH_CLANG
+  return runFrontend(fe);
+#else
+  std::fputs("error: rebuild with -DSILISCOPE_ENABLE_CLANG=ON\n", stderr);
   return 2;
+#endif
 }

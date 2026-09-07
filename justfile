@@ -31,6 +31,10 @@ build-clang llvm_dir clang_dir:
 run *args: build
     {{bin}} {{args}}
 
+# Parse the GNU interrupt/packed fixture (arm-none-eabi)
+probe: build
+    {{bin}} --target arm-none-eabi tests/lit/frontend/isr_attr.c
+
 fmt:
     clang-format -i include/siliscope/Version.h src/driver/main.cpp
 

@@ -2,7 +2,7 @@
 
 Static checker for C/C++ firmware (bare-metal / small RTOS). Parse with Clang LibTooling. Rule catalog: [`ruleset/`](ruleset/).
 
-**Status:** phase 0. Stub binary only. Analysis is not implemented (`siliscope <file>` exits 2).
+**Status:** phase 1. LibTooling parses sources (`just probe`). Checkers not implemented yet.
 
 ## Tree
 
@@ -43,10 +43,12 @@ cmake -S llvm -B llvm-build -G Ninja \
   -DLLVM_TARGETS_TO_BUILD=X86;ARM;AArch64
 ```
 
-## Usage (not wired)
+## Usage
 
 ```text
-siliscope --profile embedded-c -p <builddir> --target arm-none-eabi file.c
+just probe
+siliscope --target arm-none-eabi tests/lit/frontend/isr_attr.c
+siliscope -p <compile_commands_dir> file.c
 ```
 
 Profiles: `embedded-c`, `embedded-cpp`, `strict`, `style`. See [`ruleset/README.md`](ruleset/README.md), [`ruleset/coverage.md`](ruleset/coverage.md).

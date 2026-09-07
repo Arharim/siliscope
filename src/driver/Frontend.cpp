@@ -1,0 +1,147 @@
+#include "siliscope/Frontend.h"
+
+#include "clang/AST/ASTConsumer.h"
+#include "clang/AST/Attr.h"
+#include "clang/AST/RecursiveASTVisitor.h"
+#include "clang/Frontend/FrontendAction.h"
+#include "clang/Tooling/CompilationDatabase.h"
+#include "clang/Tooling/JSONCompilationDatabase.h"
+#include "clang/Tooling/Tooling.h"
+#include "llvm/Support/raw_ostream.h"
+
+using clang::ASTConsumer;
+using clang::ASTContext;
+using clang::ASTFrontendAction;
+using clang::CompilerInstance;
+using clang::FrontendAction;
+using clang::FunctionDecl;
+using clang::PackedAttr;
+using clang::RecordDecl;
+using clang::tooling::ClangTool;
+using clang::tooling::CompilationDatabase;
+using clang::tooling::FixedCompilationDatabase;
+using clang::tooling::FrontendActionFactory;
+using clang::tooling::JSONCompilationDatabase;
+
+namespace {
+
+struct Probe {
+  unsigned functions = 0;
+  unsigned interrupt = 0;
+  unsigned packed = 0;
+};
+
+class ProbeVisitor : public clang::RecursiveASTVisitor<ProbeVisitor> {
+public:
+  explicit ProbeVisitor(Probe &p) : p(p) {}
+
+  bool VisitFunctionDecl(FunctionDecl *d) {
+    if (!d || !d->isThisDeclarationADefinition() || d->isImplicit()) {
+      return true;
+    }
+    ++p.functions;
+    if (d->hasAttrs()) {
+      for (const auto *a : d->attrs()) {
+        if (!a) {
+          continue;
+        }
+        llvm::StringRef sp = a->getSpelling();
+        if (sp.contains_insensitive("interrupt")) {
+          ++p.interrupt;
+        }
+      }
+    }
+    return true;
+  }
+
+  bool VisitRecordDecl(RecordDecl *d) {
+    if (!d || !d->isCompleteDefinition() || d->isImplicit()) {
+      return true;
+    }
+    if (d->hasAttr<PackedAttr>()) {
+      ++p.packed;
+    }
+    return true;
+  }
+
+private:
+  Probe &p;
+};
+
+class ProbeConsumer : public ASTConsumer {
+public:
+  explicit ProbeConsumer(Probe &p) : p(p) {}
+
+  void HandleTranslationUnit(ASTContext &ctx) override {
+    ProbeVisitor v(p);
+    v.TraverseDecl(ctx.getTranslationUnitDecl());
+  }
+
+private:
+  Probe &p;
+};
+
+class ProbeAction : public ASTFrontendAction {
+public:
+  explicit ProbeAction(Probe &p) : p(p) {}
+
+  std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &, llvm::StringRef) override {
+    return std::make_unique<ProbeConsumer>(p);
+  }
+
+private:
+  Probe &p;
+};
+
+class ProbeFactory : public FrontendActionFactory {
+public:
+  explicit ProbeFactory(Probe &p) : p(p) {}
+
+  std::unique_ptr<FrontendAction> create() override { return std::make_unique<ProbeAction>(p); }
+
+private:
+  Probe &p;
+};
+
+std::unique_ptr<CompilationDatabase> loadCompilations(const FrontendOptions &opt,
+                                                      std::string &err) {
+  if (!opt.compile_commands_dir.empty()) {
+    auto db = JSONCompilationDatabase::loadFromDirectory(opt.compile_commands_dir, err);
+    if (db) {
+      return db;
+    }
+    err = "compile_commands.json: " + err;
+    return nullptr;
+  }
+
+  std::vector<std::string> cmd = {
+      "-fsyntax-only",
+      "-fgnuc-version=12.0.0",
+      "--target=" + opt.target,
+  };
+  cmd.insert(cmd.end(), opt.extra_args.begin(), opt.extra_args.end());
+  return std::make_unique<FixedCompilationDatabase>(".", cmd);
+}
+
+} // namespace
+
+int runFrontend(const FrontendOptions &opt) {
+  std::string err;
+  auto db = loadCompilations(opt, err);
+  if (!db) {
+    llvm::errs() << "error: " << err << "\n";
+    return 1;
+  }
+
+  Probe probe;
+  ClangTool tool(*db, opt.sources);
+  ProbeFactory factory(probe);
+  const int rc = tool.run(&factory);
+
+  llvm::outs() << "target: " << opt.target << "\n"
+               << "files: " << opt.sources.size() << "\n"
+               << "functions: " << probe.functions << "\n"
+               << "interrupt: " << probe.interrupt << "\n"
+               << "packed: " << probe.packed << "\n";
+  return rc;
+}

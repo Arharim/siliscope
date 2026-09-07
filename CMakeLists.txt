@@ -22,8 +22,12 @@ if(SILISCOPE_ENABLE_CLANG)
 
   llvm_map_components_to_libnames(SILISCOPE_LLVM_LIBS support)
 
+  target_sources(siliscope PRIVATE src/driver/Frontend.cpp)
   target_compile_definitions(siliscope PRIVATE SILISCOPE_WITH_CLANG)
   target_include_directories(siliscope PRIVATE ${LLVM_INCLUDE_DIRS} ${CLANG_INCLUDE_DIRS})
+  if(NOT LLVM_ENABLE_RTTI)
+    target_compile_options(siliscope PRIVATE -fno-rtti)
+  endif()
   target_link_libraries(siliscope PRIVATE
     clangTooling
     clangASTMatchers

@@ -14,17 +14,16 @@ Static checker for C/C++ firmware (bare-metal / small RTOS). Parse with Clang Li
 | `src/catalog/` | YAML load (empty) |
 | `tests/lit/` | source fixtures |
 | `tools/` | catalog index / validate (python) |
+| `justfile` | `just build`, `just run`, `just fmt`, `just rules`, `just build-clang` |
 | `docs/` | local PDFs only; gitignored, do not commit |
 
 ## Build (stub)
 
-Needs a C++17 compiler. The LLVM Windows installer does not provide clangTooling. On this host:
+Needs a C++17 compiler and [just](https://github.com/casey/just). The LLVM Windows installer does not provide clangTooling. On this host MSYS g++ is the default in the justfile:
 
 ```text
-cmake -S . -B build -G Ninja \
-  -DCMAKE_CXX_COMPILER=C:/msys64/ucrt64/bin/g++.exe
-cmake --build build
-build/siliscope --version
+just build
+just run --version
 ```
 
 ## Build (LibTooling)
@@ -32,11 +31,7 @@ build/siliscope --version
 Pin LLVM/Clang 19 *dev* (`LLVMConfig.cmake` + `ClangConfig.cmake`). Build LLVM out of tree, then:
 
 ```text
-cmake -S . -B build -G Ninja \
-  -DSILISCOPE_ENABLE_CLANG=ON \
-  -DLLVM_DIR=<llvm-build>/lib/cmake/llvm \
-  -DClang_DIR=<llvm-build>/lib/cmake/clang
-cmake --build build
+just build-clang <llvm-build>/lib/cmake/llvm <llvm-build>/lib/cmake/clang
 ```
 
 Typical LLVM configure:
@@ -57,8 +52,8 @@ siliscope --profile embedded-c -p <builddir> --target arm-none-eabi file.c
 Profiles: `embedded-c`, `embedded-cpp`, `strict`, `style`. See [`ruleset/README.md`](ruleset/README.md), [`ruleset/coverage.md`](ruleset/coverage.md).
 
 ```text
-python tools/validate_ruleset.py
-python tools/generate_ruleset_index.py
+just rules
+just fmt
 ```
 
-Format C++ with [`.clang-format`](.clang-format) (LLVM-based). clangd reads [`.clangd`](.clangd).
+[`.clang-format`](.clang-format) is LLVM-based. clangd reads [`.clangd`](.clangd).

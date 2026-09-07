@@ -2,9 +2,9 @@
 
 build_dir := "build"
 cxx := if os() == "windows" {
-  env_var_or_default("CXX", "C:/msys64/ucrt64/bin/g++.exe")
+  env("CXX", "C:/msys64/ucrt64/bin/g++.exe")
 } else {
-  env_var_or_default("CXX", "")
+  env("CXX", "")
 }
 cxx_flag := if cxx != "" { "-DCMAKE_CXX_COMPILER=" + cxx } else { "" }
 bin := if os() == "windows" {
@@ -55,6 +55,11 @@ test-heap: build
 test-unbounded: build
     {{bin}} --target arm-none-eabi tests/lit/checks/ss.libc.no-unbounded-string/ok.c
     ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.libc.no-unbounded-string/bad.c
+
+# ss.ctrl.braces fixtures
+test-braces: build
+    {{bin}} --target arm-none-eabi tests/lit/checks/ss.ctrl.braces/ok.c
+    ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.ctrl.braces/bad.c
 
 fmt:
     clang-format -i include/siliscope/*.h src/driver/*.cpp src/diag/*.cpp src/checks/*.cpp

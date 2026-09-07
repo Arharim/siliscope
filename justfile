@@ -51,6 +51,11 @@ test-heap: build
     ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.mem.no-heap-after-init/bad.c
     ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.mem.no-heap-after-init/bad.cpp
 
+# ss.libc.no-unbounded-string fixtures
+test-unbounded: build
+    {{bin}} --target arm-none-eabi tests/lit/checks/ss.libc.no-unbounded-string/ok.c
+    ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.libc.no-unbounded-string/bad.c
+
 fmt:
     clang-format -i include/siliscope/*.h src/driver/*.cpp src/diag/*.cpp src/checks/*.cpp
 

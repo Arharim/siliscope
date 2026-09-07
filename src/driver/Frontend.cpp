@@ -1,5 +1,6 @@
 #include "siliscope/Frontend.h"
 
+#include "siliscope/Braces.h"
 #include "siliscope/NoGoto.h"
 #include "siliscope/NoHeap.h"
 #include "siliscope/NoSetjmp.h"
@@ -97,11 +98,13 @@ public:
         no_goto(reporter),
         no_setjmp(reporter),
         no_heap(reporter),
-        no_unbounded(reporter) {
+        no_unbounded(reporter),
+        braces(reporter) {
     no_goto.registerMatchers(finder);
     no_setjmp.registerMatchers(finder);
     no_heap.registerMatchers(finder);
     no_unbounded.registerMatchers(finder);
+    braces.registerMatchers(finder);
   }
 
   std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &, llvm::StringRef) override {
@@ -120,6 +123,7 @@ private:
   NoSetjmpCheck no_setjmp;
   NoHeapCheck no_heap;
   NoUnboundedStringCheck no_unbounded;
+  BracesCheck braces;
 };
 
 class AnalyzeFactory : public FrontendActionFactory {

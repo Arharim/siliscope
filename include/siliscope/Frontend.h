@@ -8,6 +8,7 @@ struct FrontendOptions {
   std::string compile_commands_dir;
   std::vector<std::string> extra_args;
   std::vector<std::string> sources;
+  bool probe = false;
 };
 
 #ifdef SILISCOPE_WITH_CLANG

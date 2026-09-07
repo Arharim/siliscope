@@ -21,6 +21,7 @@ void print_usage(std::FILE *out) {
              "  -p <dir>               compilation database directory\n"
              "  --target <triple>      e.g. arm-none-eabi (used without a database)\n"
              "  -extra-arg <arg>       extra Clang frontend argument (repeatable)\n"
+             "  --probe                print AST probe (functions, interrupt, packed)\n"
              "  --version              print version and frontend status\n"
              "  -h, --help             this help\n",
              out);
@@ -51,6 +52,8 @@ int main(int argc, char **argv) {
       fe.target = argv[++i];
     } else if (std::strcmp(a, "-extra-arg") == 0 && i + 1 < argc) {
       fe.extra_args.emplace_back(argv[++i]);
+    } else if (std::strcmp(a, "--probe") == 0) {
+      fe.probe = true;
     } else if (a[0] == '-') {
       std::fprintf(stderr, "error: unknown option %s\n", a);
       return 2;

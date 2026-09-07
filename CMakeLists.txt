@@ -7,7 +7,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(SILISCOPE_ENABLE_CLANG
-       "Link Clang LibTooling (needs an LLVM/Clang *dev* install, not just the compiler)"
+       "Link Clang LibTooling (needs an LLVM/Clang dev install)"
        OFF)
 
 add_executable(siliscope src/driver/main.cpp)
@@ -22,11 +22,22 @@ if(SILISCOPE_ENABLE_CLANG)
 
   llvm_map_components_to_libnames(SILISCOPE_LLVM_LIBS support)
 
-  target_sources(siliscope PRIVATE src/driver/Frontend.cpp)
+  target_sources(siliscope PRIVATE
+    src/driver/Frontend.cpp
+    src/diag/Report.cpp
+    src/checks/NoGoto.cpp
+  )
   target_compile_definitions(siliscope PRIVATE SILISCOPE_WITH_CLANG)
-  target_include_directories(siliscope PRIVATE ${LLVM_INCLUDE_DIRS} ${CLANG_INCLUDE_DIRS})
+  target_include_directories(siliscope PRIVATE
+    ${LLVM_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
+  )
   if(NOT LLVM_ENABLE_RTTI)
     target_compile_options(siliscope PRIVATE -fno-rtti)
+  endif()
+  if(MINGW)
+    # GNU ld often dies (exit 5) on the static Clang archive set.
+    target_link_options(siliscope PRIVATE -fuse-ld=lld)
   endif()
   target_link_libraries(siliscope PRIVATE
     clangTooling

@@ -1,9 +1,14 @@
 #include "siliscope/Frontend.h"
 
+#include "siliscope/NoGoto.h"
+#include "siliscope/Report.h"
+
 #include "clang/AST/ASTConsumer.h"
 #include "clang/AST/Attr.h"
 #include "clang/AST/RecursiveASTVisitor.h"
+#include "clang/ASTMatchers/ASTMatchFinder.h"
 #include "clang/Frontend/FrontendAction.h"
+#include "clang/Frontend/MultiplexConsumer.h"
 #include "clang/Tooling/CompilationDatabase.h"
 #include "clang/Tooling/JSONCompilationDatabase.h"
 #include "clang/Tooling/Tooling.h"
@@ -17,6 +22,7 @@ using clang::FrontendAction;
 using clang::FunctionDecl;
 using clang::PackedAttr;
 using clang::RecordDecl;
+using clang::ast_matchers::MatchFinder;
 using clang::tooling::ClangTool;
 using clang::tooling::CompilationDatabase;
 using clang::tooling::FixedCompilationDatabase;
@@ -81,26 +87,38 @@ private:
   Probe &p;
 };
 
-class ProbeAction : public ASTFrontendAction {
+class AnalyzeAction : public ASTFrontendAction {
 public:
-  explicit ProbeAction(Probe &p) : p(p) {}
+  AnalyzeAction(Reporter &reporter, Probe *probe) : probe(probe), no_goto(reporter) {
+    no_goto.registerMatchers(finder);
+  }
 
   std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &, llvm::StringRef) override {
-    return std::make_unique<ProbeConsumer>(p);
+    std::vector<std::unique_ptr<ASTConsumer>> cs;
+    cs.push_back(finder.newASTConsumer());
+    if (probe) {
+      cs.push_back(std::make_unique<ProbeConsumer>(*probe));
+    }
+    return std::make_unique<clang::MultiplexConsumer>(std::move(cs));
   }
 
 private:
-  Probe &p;
+  Probe *probe;
+  MatchFinder finder;
+  NoGotoCheck no_goto;
 };
 
-class ProbeFactory : public FrontendActionFactory {
+class AnalyzeFactory : public FrontendActionFactory {
 public:
-  explicit ProbeFactory(Probe &p) : p(p) {}
+  AnalyzeFactory(Reporter &reporter, Probe *probe) : reporter(reporter), probe(probe) {}
 
-  std::unique_ptr<FrontendAction> create() override { return std::make_unique<ProbeAction>(p); }
+  std::unique_ptr<FrontendAction> create() override {
+    return std::make_unique<AnalyzeAction>(reporter, probe);
+  }
 
 private:
-  Probe &p;
+  Reporter &reporter;
+  Probe *probe;
 };
 
 std::unique_ptr<CompilationDatabase> loadCompilations(const FrontendOptions &opt,
@@ -134,14 +152,22 @@ int runFrontend(const FrontendOptions &opt) {
   }
 
   Probe probe;
+  Reporter reporter;
   ClangTool tool(*db, opt.sources);
-  ProbeFactory factory(probe);
-  const int rc = tool.run(&factory);
+  AnalyzeFactory factory(reporter, opt.probe ? &probe : nullptr);
+  const int parse_rc = tool.run(&factory);
 
-  llvm::outs() << "target: " << opt.target << "\n"
-               << "files: " << opt.sources.size() << "\n"
-               << "functions: " << probe.functions << "\n"
-               << "interrupt: " << probe.interrupt << "\n"
-               << "packed: " << probe.packed << "\n";
-  return rc;
+  if (opt.probe) {
+    llvm::outs() << "target: " << opt.target << "\n"
+                 << "files: " << opt.sources.size() << "\n"
+                 << "functions: " << probe.functions << "\n"
+                 << "interrupt: " << probe.interrupt << "\n"
+                 << "packed: " << probe.packed << "\n";
+  }
+  reporter.printSummary();
+
+  if (parse_rc != 0) {
+    return parse_rc;
+  }
+  return reporter.count() ? 1 : 0;
 }

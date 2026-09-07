@@ -47,6 +47,7 @@ cmake -S llvm -B llvm-build -G Ninja \
 
 ```text
 just probe
+just test-goto
 siliscope --target arm-none-eabi tests/lit/frontend/isr_attr.c
 siliscope -p <compile_commands_dir> file.c
 ```

@@ -33,10 +33,15 @@ run *args: build
 
 # Parse the GNU interrupt/packed fixture (arm-none-eabi)
 probe: build
-    {{bin}} --target arm-none-eabi tests/lit/frontend/isr_attr.c
+    {{bin}} --probe --target arm-none-eabi tests/lit/frontend/isr_attr.c
+
+# ss.ctrl.no-goto fixtures
+test-goto: build
+    {{bin}} --target arm-none-eabi tests/lit/checks/ss.ctrl.no-goto/ok.c
+    ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.ctrl.no-goto/bad.c
 
 fmt:
-    clang-format -i include/siliscope/Version.h src/driver/main.cpp
+    clang-format -i include/siliscope/*.h src/driver/*.cpp src/diag/*.cpp src/checks/*.cpp
 
 rules:
     python tools/validate_ruleset.py

@@ -10,7 +10,6 @@ CompileFlags:
   BuiltinHeaders: Clangd
   Add:
     - --target=x86_64-w64-windows-gnu
-    - -std=c++17
     - -Iinclude
     - -ferror-limit=0
     - -Wall
@@ -30,6 +29,13 @@ CompileFlags:
 
 ---
 If:
-  PathMatch: tests/lit/.*\.(c|h)
+  PathMatch: .*\.(cpp|hpp|h)
 CompileFlags:
+  Add: [-std=c++17]
+
+---
+If:
+  PathMatch: .*\.c
+CompileFlags:
+  Remove: [-std=c++17]
   Add: [-std=c11, -Wno-unknown-attributes]

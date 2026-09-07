@@ -26,6 +26,7 @@ if(SILISCOPE_ENABLE_CLANG)
     src/driver/Frontend.cpp
     src/diag/Report.cpp
     src/checks/NoGoto.cpp
+    src/checks/NoSetjmp.cpp
   )
   target_compile_definitions(siliscope PRIVATE SILISCOPE_WITH_CLANG)
   target_include_directories(siliscope PRIVATE

@@ -1,6 +1,7 @@
 #include "siliscope/Frontend.h"
 
 #include "siliscope/NoGoto.h"
+#include "siliscope/NoSetjmp.h"
 #include "siliscope/Report.h"
 
 #include "clang/AST/ASTConsumer.h"
@@ -89,8 +90,10 @@ private:
 
 class AnalyzeAction : public ASTFrontendAction {
 public:
-  AnalyzeAction(Reporter &reporter, Probe *probe) : probe(probe), no_goto(reporter) {
+  AnalyzeAction(Reporter &reporter, Probe *probe)
+      : probe(probe), no_goto(reporter), no_setjmp(reporter) {
     no_goto.registerMatchers(finder);
+    no_setjmp.registerMatchers(finder);
   }
 
   std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &, llvm::StringRef) override {
@@ -106,6 +109,7 @@ private:
   Probe *probe;
   MatchFinder finder;
   NoGotoCheck no_goto;
+  NoSetjmpCheck no_setjmp;
 };
 
 class AnalyzeFactory : public FrontendActionFactory {

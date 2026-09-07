@@ -40,6 +40,11 @@ test-goto: build
     {{bin}} --target arm-none-eabi tests/lit/checks/ss.ctrl.no-goto/ok.c
     ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.ctrl.no-goto/bad.c
 
+# ss.ctrl.no-setjmp fixtures
+test-setjmp: build
+    {{bin}} --target arm-none-eabi tests/lit/checks/ss.ctrl.no-setjmp/ok.c
+    ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.ctrl.no-setjmp/bad.c
+
 fmt:
     clang-format -i include/siliscope/*.h src/driver/*.cpp src/diag/*.cpp src/checks/*.cpp
 

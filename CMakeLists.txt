@@ -42,6 +42,7 @@ if(SILISCOPE_ENABLE_CLANG)
     src/checks/NoQsort.cpp
     src/checks/NoRand.cpp
     src/checks/NoSetlocale.cpp
+    src/checks/NoComma.cpp
   )
   target_compile_definitions(siliscope PRIVATE SILISCOPE_WITH_CLANG)
   target_include_directories(siliscope PRIVATE

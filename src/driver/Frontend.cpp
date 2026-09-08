@@ -5,6 +5,7 @@
 #include "siliscope/NoAbortSystem.h"
 #include "siliscope/NoAssignInCond.h"
 #include "siliscope/NoAtoi.h"
+#include "siliscope/NoComma.h"
 #include "siliscope/NoGoto.h"
 #include "siliscope/NoHeap.h"
 #include "siliscope/NoOctal.h"
@@ -123,7 +124,8 @@ public:
         no_abort(reporter),
         no_qsort(reporter),
         no_rand(reporter),
-        no_setlocale(reporter) {
+        no_setlocale(reporter),
+        no_comma(reporter) {
     Check *const all[] = {&no_goto,
                           &no_setjmp,
                           &no_heap,
@@ -139,7 +141,8 @@ public:
                           &no_abort,
                           &no_qsort,
                           &no_rand,
-                          &no_setlocale};
+                          &no_setlocale,
+                          &no_comma};
     const char *const ids[] = {"ss.ctrl.no-goto",
                                "ss.ctrl.no-setjmp",
                                "ss.mem.no-heap-after-init",
@@ -155,7 +158,8 @@ public:
                                "ss.libc.no-abort-system",
                                "ss.libc.no-qsort-bsearch",
                                "ss.libc.no-rand",
-                               "ss.libc.no-setlocale"};
+                               "ss.libc.no-setlocale",
+                               "ss.expr.no-comma"};
     static_assert(sizeof(all) / sizeof(all[0]) == sizeof(ids) / sizeof(ids[0]));
     for (unsigned i = 0; i < sizeof(ids) / sizeof(ids[0]); ++i) {
       if (profile.isEnabled(ids[i])) {
@@ -192,6 +196,7 @@ private:
   NoQsortCheck no_qsort;
   NoRandCheck no_rand;
   NoSetlocaleCheck no_setlocale;
+  NoCommaCheck no_comma;
 };
 
 class AnalyzeFactory : public FrontendActionFactory {

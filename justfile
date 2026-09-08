@@ -116,6 +116,11 @@ test-setlocale: build
     {{bin}} --target arm-none-eabi tests/lit/checks/ss.libc.no-setlocale/ok.c
     ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.libc.no-setlocale/bad.c
 
+# ss.expr.no-comma fixtures
+test-comma: build
+    {{bin}} --target arm-none-eabi tests/lit/checks/ss.expr.no-comma/ok.c
+    ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.expr.no-comma/bad.c
+
 # YAML profile load (default embedded-c still used by the fixtures above)
 test-profile: build
     {{bin}} --profile style --target arm-none-eabi tests/lit/checks/ss.ctrl.no-goto/bad.c

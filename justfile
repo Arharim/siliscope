@@ -227,6 +227,11 @@ test-check-return: build
     {{bin}} --target arm-none-eabi tests/lit/checks/ss.fn.check-return/ok.c
     ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.fn.check-return/bad.c
 
+# ss.decl.no-shadow fixtures
+test-shadow: build
+    {{bin}} --target arm-none-eabi tests/lit/checks/ss.decl.no-shadow/ok.c
+    ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.decl.no-shadow/bad.c
+
 # YAML profile load (default embedded-c still used by the fixtures above)
 test-profile: build
     {{bin}} --profile style --target arm-none-eabi tests/lit/checks/ss.ctrl.no-goto/bad.c

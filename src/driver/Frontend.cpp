@@ -27,6 +27,7 @@
 #include "siliscope/NoRecursion.h"
 #include "siliscope/NoSetjmp.h"
 #include "siliscope/NoSetlocale.h"
+#include "siliscope/NoShadow.h"
 #include "siliscope/NoSignal.h"
 #include "siliscope/NoSizeofSideEffect.h"
 #include "siliscope/NoStdarg.h"
@@ -168,7 +169,8 @@ public:
         cs_balanced(reporter),
         irq_mask_balanced(reporter),
         isr_no_fp(reporter),
-        check_return(reporter) {
+        check_return(reporter),
+        no_shadow(reporter) {
     Check *const all[] = {&no_goto,           &no_setjmp,     &no_heap,
                           &no_unbounded,      &no_stdio,      &braces,
                           &no_assign,         &no_octal,      &no_vla,
@@ -180,7 +182,8 @@ public:
                           &no_logical_rhs,    &prototype,     &return_all_paths,
                           &unreachable,       &noreturn_fn,   &no_recursion,
                           &isr_not_called,    &no_log_in_isr, &cs_balanced,
-                          &irq_mask_balanced, &isr_no_fp,     &check_return};
+                          &irq_mask_balanced, &isr_no_fp,     &check_return,
+                          &no_shadow};
     const char *const ids[] = {"ss.ctrl.no-goto",
                                "ss.ctrl.no-setjmp",
                                "ss.mem.no-heap-after-init",
@@ -216,7 +219,8 @@ public:
                                "ss.emb.cs-balanced",
                                "ss.emb.irq-mask-balanced",
                                "ss.emb.isr-no-fp",
-                               "ss.fn.check-return"};
+                               "ss.fn.check-return",
+                               "ss.decl.no-shadow"};
     static_assert(sizeof(all) / sizeof(all[0]) == sizeof(ids) / sizeof(ids[0]));
     for (unsigned i = 0; i < sizeof(ids) / sizeof(ids[0]); ++i) {
       if (profile.isEnabled(ids[i])) {
@@ -273,6 +277,7 @@ private:
   IrqMaskBalancedCheck irq_mask_balanced;
   IsrNoFpCheck isr_no_fp;
   CheckReturnCheck check_return;
+  NoShadowCheck no_shadow;
 };
 
 class AnalyzeFactory : public FrontendActionFactory {

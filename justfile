@@ -192,6 +192,11 @@ test-noreturn: build
     {{bin}} --target arm-none-eabi tests/lit/checks/ss.fn.noreturn-does-not-return/ok.c
     ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.fn.noreturn-does-not-return/bad.c
 
+# ss.ctrl.no-recursion fixtures
+test-recursion: build
+    {{bin}} --target arm-none-eabi tests/lit/checks/ss.ctrl.no-recursion/ok.c
+    ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.ctrl.no-recursion/bad.c
+
 # YAML profile load (default embedded-c still used by the fixtures above)
 test-profile: build
     {{bin}} --profile style --target arm-none-eabi tests/lit/checks/ss.ctrl.no-goto/bad.c

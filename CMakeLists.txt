@@ -55,6 +55,7 @@ if(SILISCOPE_ENABLE_CLANG)
     src/checks/ReturnAllPaths.cpp
     src/checks/Unreachable.cpp
     src/checks/Noreturn.cpp
+    src/checks/NoRecursion.cpp
   )
   target_compile_definitions(siliscope PRIVATE SILISCOPE_WITH_CLANG)
   target_include_directories(siliscope PRIVATE

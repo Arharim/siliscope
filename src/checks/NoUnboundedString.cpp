@@ -32,7 +32,6 @@ void NoUnboundedStringCheck::run(const clang::ast_matchers::MatchFinder::MatchRe
   }
   reporter.emit(*result.SourceManager,
                 c->getBeginLoc(),
-                "error",
                 "ss.libc.no-unbounded-string",
                 "do not use unbounded string functions");
 }

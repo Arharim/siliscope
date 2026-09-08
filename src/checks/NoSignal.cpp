@@ -22,9 +22,6 @@ void NoSignalCheck::run(const clang::ast_matchers::MatchFinder::MatchResult &res
   if (!c) {
     return;
   }
-  reporter.emit(*result.SourceManager,
-                c->getBeginLoc(),
-                "error",
-                "ss.libc.no-signal",
-                "do not use signal.h APIs");
+  reporter.emit(
+      *result.SourceManager, c->getBeginLoc(), "ss.libc.no-signal", "do not use signal.h APIs");
 }

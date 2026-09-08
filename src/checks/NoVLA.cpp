@@ -24,6 +24,5 @@ void NoVLACheck::run(const clang::ast_matchers::MatchFinder::MatchResult &result
   if (at.isInvalid()) {
     at = tl->getBeginLoc();
   }
-  reporter.emit(
-      *result.SourceManager, at, "error", "ss.mem.no-vla", "do not use variable-length arrays");
+  reporter.emit(*result.SourceManager, at, "ss.mem.no-vla", "do not use variable-length arrays");
 }

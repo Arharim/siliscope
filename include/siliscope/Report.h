@@ -5,11 +5,14 @@ class SourceLocation;
 class SourceManager;
 } // namespace clang
 
+class Profile;
+
 class Reporter {
 public:
+  explicit Reporter(const Profile &profile);
+
   void emit(const clang::SourceManager &sm,
             clang::SourceLocation loc,
-            const char *severity,
             const char *id,
             const char *msg);
 
@@ -17,5 +20,6 @@ public:
   void printSummary() const;
 
 private:
+  const Profile *profile;
   unsigned findings = 0;
 };

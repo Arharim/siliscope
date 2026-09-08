@@ -52,6 +52,5 @@ void BracesCheck::run(const clang::ast_matchers::MatchFinder::MatchResult &resul
   } else {
     return;
   }
-  reporter.emit(
-      *result.SourceManager, loc, "warning", "ss.ctrl.braces", "brace the body of this statement");
+  reporter.emit(*result.SourceManager, loc, "ss.ctrl.braces", "brace the body of this statement");
 }

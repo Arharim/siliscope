@@ -37,6 +37,5 @@ void NoHeapCheck::run(const clang::ast_matchers::MatchFinder::MatchResult &resul
   } else {
     return;
   }
-  reporter.emit(
-      *result.SourceManager, loc, "error", "ss.mem.no-heap-after-init", "do not use the heap");
+  reporter.emit(*result.SourceManager, loc, "ss.mem.no-heap-after-init", "do not use the heap");
 }

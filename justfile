@@ -91,8 +91,15 @@ test-signal: build
     {{bin}} --target arm-none-eabi tests/lit/checks/ss.libc.no-signal/ok.c
     ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.libc.no-signal/bad.c
 
+# YAML profile load (default embedded-c still used by the fixtures above)
+test-profile: build
+    {{bin}} --profile style --target arm-none-eabi tests/lit/checks/ss.ctrl.no-goto/bad.c
+    {{bin}} --profile embedded-cpp --target arm-none-eabi tests/lit/checks/ss.mem.no-vla/bad.c
+    ! {{bin}} --profile strict --target arm-none-eabi tests/lit/checks/ss.ctrl.no-goto/bad.c
+    ! {{bin}} --profile nosuch --target arm-none-eabi tests/lit/checks/ss.ctrl.no-goto/ok.c
+
 fmt:
-    clang-format -i include/siliscope/*.h src/driver/*.cpp src/diag/*.cpp src/checks/*.cpp
+    clang-format -i include/siliscope/*.h src/driver/*.cpp src/diag/*.cpp src/checks/*.cpp src/catalog/*.cpp
 
 rules:
     python tools/validate_ruleset.py

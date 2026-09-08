@@ -5,6 +5,8 @@
 
 struct FrontendOptions {
   std::string target = "arm-none-eabi";
+  std::string profile = "embedded-c";
+  std::string ruleset_dir = "ruleset";
   std::string compile_commands_dir;
   std::vector<std::string> extra_args;
   std::vector<std::string> sources;

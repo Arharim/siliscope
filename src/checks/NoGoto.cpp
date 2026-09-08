@@ -16,6 +16,5 @@ void NoGotoCheck::run(const clang::ast_matchers::MatchFinder::MatchResult &resul
   if (!g) {
     return;
   }
-  reporter.emit(*result.SourceManager, g->getGotoLoc(), "warning", "ss.ctrl.no-goto",
-                "do not use goto");
+  reporter.emit(*result.SourceManager, g->getGotoLoc(), "ss.ctrl.no-goto", "do not use goto");
 }

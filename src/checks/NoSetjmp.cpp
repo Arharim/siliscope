@@ -30,9 +30,6 @@ void NoSetjmpCheck::run(const clang::ast_matchers::MatchFinder::MatchResult &res
   if (!c) {
     return;
   }
-  reporter.emit(*result.SourceManager,
-                c->getBeginLoc(),
-                "error",
-                "ss.ctrl.no-setjmp",
-                "do not use setjmp/longjmp");
+  reporter.emit(
+      *result.SourceManager, c->getBeginLoc(), "ss.ctrl.no-setjmp", "do not use setjmp/longjmp");
 }

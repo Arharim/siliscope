@@ -30,8 +30,6 @@ void print_usage(std::FILE *out) {
 } // namespace
 
 int main(int argc, char **argv) {
-  std::string profile = "embedded-c";
-  std::string ruleset_dir = "ruleset";
   bool want_help = false;
   bool want_version = false;
   FrontendOptions fe;
@@ -43,9 +41,9 @@ int main(int argc, char **argv) {
     } else if (std::strcmp(a, "--version") == 0) {
       want_version = true;
     } else if (std::strcmp(a, "--profile") == 0 && i + 1 < argc) {
-      profile = argv[++i];
+      fe.profile = argv[++i];
     } else if (std::strcmp(a, "--ruleset-dir") == 0 && i + 1 < argc) {
-      ruleset_dir = argv[++i];
+      fe.ruleset_dir = argv[++i];
     } else if (std::strcmp(a, "-p") == 0 && i + 1 < argc) {
       fe.compile_commands_dir = argv[++i];
     } else if (std::strcmp(a, "--target") == 0 && i + 1 < argc) {
@@ -74,13 +72,10 @@ int main(int argc, char **argv) {
 #else
     std::puts("frontend: stub (rebuild with -DSILISCOPE_ENABLE_CLANG=ON)");
 #endif
-    std::printf("default profile: %s\n", profile.c_str());
-    std::printf("ruleset-dir: %s\n", ruleset_dir.c_str());
+    std::printf("default profile: %s\n", fe.profile.c_str());
+    std::printf("ruleset-dir: %s\n", fe.ruleset_dir.c_str());
     return 0;
   }
-
-  (void)profile;
-  (void)ruleset_dir;
 
   if (fe.sources.empty()) {
     print_usage(stderr);

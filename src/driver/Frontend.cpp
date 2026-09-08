@@ -1,6 +1,7 @@
 #include "siliscope/Frontend.h"
 
 #include "siliscope/Braces.h"
+#include "siliscope/Check.h"
 #include "siliscope/NoAssignInCond.h"
 #include "siliscope/NoGoto.h"
 #include "siliscope/NoHeap.h"
@@ -11,6 +12,7 @@
 #include "siliscope/NoStdio.h"
 #include "siliscope/NoUnboundedString.h"
 #include "siliscope/NoVLA.h"
+#include "siliscope/Profile.h"
 #include "siliscope/Report.h"
 
 #include "clang/AST/ASTConsumer.h"
@@ -99,7 +101,7 @@ private:
 
 class AnalyzeAction : public ASTFrontendAction {
 public:
-  AnalyzeAction(Reporter &reporter, Probe *probe)
+  AnalyzeAction(Reporter &reporter, Probe *probe, const Profile &profile)
       : probe(probe),
         no_goto(reporter),
         no_setjmp(reporter),
@@ -112,17 +114,34 @@ public:
         no_vla(reporter),
         no_stdarg(reporter),
         no_signal(reporter) {
-    no_goto.registerMatchers(finder);
-    no_setjmp.registerMatchers(finder);
-    no_heap.registerMatchers(finder);
-    no_unbounded.registerMatchers(finder);
-    no_stdio.registerMatchers(finder);
-    braces.registerMatchers(finder);
-    no_assign.registerMatchers(finder);
-    no_octal.registerMatchers(finder);
-    no_vla.registerMatchers(finder);
-    no_stdarg.registerMatchers(finder);
-    no_signal.registerMatchers(finder);
+    Check *const all[] = {&no_goto,
+                          &no_setjmp,
+                          &no_heap,
+                          &no_unbounded,
+                          &no_stdio,
+                          &braces,
+                          &no_assign,
+                          &no_octal,
+                          &no_vla,
+                          &no_stdarg,
+                          &no_signal};
+    const char *const ids[] = {"ss.ctrl.no-goto",
+                               "ss.ctrl.no-setjmp",
+                               "ss.mem.no-heap-after-init",
+                               "ss.libc.no-unbounded-string",
+                               "ss.libc.no-stdio",
+                               "ss.ctrl.braces",
+                               "ss.ctrl.no-assignment-in-condition",
+                               "ss.expr.no-octal",
+                               "ss.mem.no-vla",
+                               "ss.fn.no-stdarg",
+                               "ss.libc.no-signal"};
+    static_assert(sizeof(all) / sizeof(all[0]) == sizeof(ids) / sizeof(ids[0]));
+    for (unsigned i = 0; i < sizeof(ids) / sizeof(ids[0]); ++i) {
+      if (profile.isEnabled(ids[i])) {
+        all[i]->registerMatchers(finder);
+      }
+    }
   }
 
   std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &, llvm::StringRef) override {
@@ -152,15 +171,17 @@ private:
 
 class AnalyzeFactory : public FrontendActionFactory {
 public:
-  AnalyzeFactory(Reporter &reporter, Probe *probe) : reporter(reporter), probe(probe) {}
+  AnalyzeFactory(Reporter &reporter, Probe *probe, const Profile &profile)
+      : reporter(reporter), probe(probe), profile(profile) {}
 
   std::unique_ptr<FrontendAction> create() override {
-    return std::make_unique<AnalyzeAction>(reporter, probe);
+    return std::make_unique<AnalyzeAction>(reporter, probe, profile);
   }
 
 private:
   Reporter &reporter;
   Probe *probe;
+  const Profile &profile;
 };
 
 std::unique_ptr<CompilationDatabase> loadCompilations(const FrontendOptions &opt,
@@ -187,6 +208,12 @@ std::unique_ptr<CompilationDatabase> loadCompilations(const FrontendOptions &opt
 
 int runFrontend(const FrontendOptions &opt) {
   std::string err;
+  Profile profile;
+  if (!loadProfile(opt.ruleset_dir, opt.profile, profile, err)) {
+    llvm::errs() << "error: " << err << "\n";
+    return 1;
+  }
+
   auto db = loadCompilations(opt, err);
   if (!db) {
     llvm::errs() << "error: " << err << "\n";
@@ -194,9 +221,9 @@ int runFrontend(const FrontendOptions &opt) {
   }
 
   Probe probe;
-  Reporter reporter;
+  Reporter reporter(profile);
   ClangTool tool(*db, opt.sources);
-  AnalyzeFactory factory(reporter, opt.probe ? &probe : nullptr);
+  AnalyzeFactory factory(reporter, opt.probe ? &probe : nullptr, profile);
   const int parse_rc = tool.run(&factory);
 
   if (opt.probe) {

@@ -39,9 +39,6 @@ void NoStdioCheck::run(const clang::ast_matchers::MatchFinder::MatchResult &resu
   if (!c) {
     return;
   }
-  reporter.emit(*result.SourceManager,
-                c->getBeginLoc(),
-                "warning",
-                "ss.libc.no-stdio",
-                "do not use stdio in firmware");
+  reporter.emit(
+      *result.SourceManager, c->getBeginLoc(), "ss.libc.no-stdio", "do not use stdio in firmware");
 }

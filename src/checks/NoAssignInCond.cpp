@@ -36,7 +36,6 @@ void NoAssignInCondCheck::run(const clang::ast_matchers::MatchFinder::MatchResul
   }
   reporter.emit(*result.SourceManager,
                 op->getOperatorLoc(),
-                "warning",
                 "ss.ctrl.no-assignment-in-condition",
                 "do not assign in a controlling expression");
 }

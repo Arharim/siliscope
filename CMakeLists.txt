@@ -25,6 +25,7 @@ if(SILISCOPE_ENABLE_CLANG)
   target_sources(siliscope PRIVATE
     src/driver/Frontend.cpp
     src/diag/Report.cpp
+    src/catalog/Profile.cpp
     src/checks/NoGoto.cpp
     src/checks/NoSetjmp.cpp
     src/checks/NoHeap.cpp

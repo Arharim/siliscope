@@ -50,7 +50,6 @@ void NoOctalCheck::run(const clang::ast_matchers::MatchFinder::MatchResult &resu
   }
   reporter.emit(*result.SourceManager,
                 lit->getLocation(),
-                "warning",
                 "ss.expr.no-octal",
                 "do not use octal integer literals");
 }

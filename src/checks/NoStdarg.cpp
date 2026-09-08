@@ -69,9 +69,6 @@ void NoStdargCheck::run(const clang::ast_matchers::MatchFinder::MatchResult &res
   } else {
     return;
   }
-  reporter.emit(*result.SourceManager,
-                at,
-                "warning",
-                "ss.fn.no-stdarg",
-                "do not use va_list or variadic functions");
+  reporter.emit(
+      *result.SourceManager, at, "ss.fn.no-stdarg", "do not use va_list or variadic functions");
 }

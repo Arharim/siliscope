@@ -1,14 +1,21 @@
 #include "siliscope/Report.h"
 
+#include "siliscope/Profile.h"
+
 #include "clang/Basic/SourceLocation.h"
 #include "clang/Basic/SourceManager.h"
 #include "llvm/Support/raw_ostream.h"
 
+Reporter::Reporter(const Profile &profile) : profile(&profile) {}
+
 void Reporter::emit(const clang::SourceManager &sm,
                     clang::SourceLocation loc,
-                    const char *severity,
                     const char *id,
                     const char *msg) {
+  const char *severity = profile->severityOf(id);
+  if (!severity) {
+    return;
+  }
   if (loc.isInvalid()) {
     return;
   }

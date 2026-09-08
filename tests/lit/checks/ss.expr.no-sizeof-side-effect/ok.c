@@ -1,4 +1,4 @@
-void f(int x) {
+static void f(int x) {
   unsigned n;
   n = sizeof(x);
   n = sizeof(int);

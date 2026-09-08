@@ -1,4 +1,4 @@
-void f(int x) {
+static void f(int x) {
   if (x == 1) {
     x = 2;
   }

@@ -1,6 +1,6 @@
-int g;
+static int g;
 
-void f(int a) {
+static void f(int a) {
   const int b = a;
   {
     const int c = b;
@@ -12,7 +12,7 @@ void f(int a) {
   }
 }
 
-void h(int a) {
+static void h(int a) {
   const int b = a;
   (void)b;
 }
@@ -21,7 +21,7 @@ struct s {
   int x;
 };
 
-void uses_member(void) {
+static void uses_member(void) {
   const int x = 0;
   (void)x;
 }

@@ -1,10 +1,10 @@
-void f(int x) {
+static void f(int x) {
   if (x) {
     return;
   }
   x = 1;
 }
 
-void g(void) {
+static void g(void) {
   __builtin_unreachable();
 }

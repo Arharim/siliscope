@@ -1,6 +1,6 @@
 int g(void);
 
-void f(int x) {
+static void f(int x) {
   int a;
   a = g() && x;
   a = x && x;

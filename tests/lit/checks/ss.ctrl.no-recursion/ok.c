@@ -1,8 +1,8 @@
-void g(void);
+static void g(void);
 
-void f(void) {
+static void f(void) {
   g();
 }
 
-void g(void) {
+static void g(void) {
 }

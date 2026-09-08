@@ -1,10 +1,10 @@
 #define NULL ((void *)0)
 
-int g;
-int *file_scope;
+static int g;
+static int *file_scope;
 static int *file_static;
 
-void f(const int *param) {
+static void f(const int *param) {
   int *const p = NULL;
   int *const q = &g;
   void (*const fp)(void) = NULL;

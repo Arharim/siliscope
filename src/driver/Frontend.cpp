@@ -42,6 +42,7 @@
 #include "siliscope/PtrNull.h"
 #include "siliscope/Report.h"
 #include "siliscope/ReturnAllPaths.h"
+#include "siliscope/StaticInternal.h"
 #include "siliscope/StringConst.h"
 #include "siliscope/Unreachable.h"
 
@@ -178,7 +179,8 @@ public:
         string_const(reporter),
         ptr_null(reporter),
         distinct(reporter),
-        decl_const(reporter) {
+        decl_const(reporter),
+        static_internal(reporter) {
     Check *const all[] = {&no_goto,           &no_setjmp,     &no_heap,
                           &no_unbounded,      &no_stdio,      &braces,
                           &no_assign,         &no_octal,      &no_vla,
@@ -192,7 +194,7 @@ public:
                           &isr_not_called,    &no_log_in_isr, &cs_balanced,
                           &irq_mask_balanced, &isr_no_fp,     &check_return,
                           &no_shadow,         &string_const,  &ptr_null,
-                          &distinct,          &decl_const};
+                          &distinct,          &decl_const,    &static_internal};
     const char *const ids[] = {"ss.ctrl.no-goto",
                                "ss.ctrl.no-setjmp",
                                "ss.mem.no-heap-after-init",
@@ -233,7 +235,8 @@ public:
                                "ss.expr.string-const",
                                "ss.decl.ptr-null",
                                "ss.decl.distinct",
-                               "ss.decl.const"};
+                               "ss.decl.const",
+                               "ss.fn.static-internal"};
     static_assert(sizeof(all) / sizeof(all[0]) == sizeof(ids) / sizeof(ids[0]));
     for (unsigned i = 0; i < sizeof(ids) / sizeof(ids[0]); ++i) {
       if (profile.isEnabled(ids[i])) {
@@ -295,6 +298,7 @@ private:
   PtrNullCheck ptr_null;
   DistinctCheck distinct;
   DeclConstCheck decl_const;
+  StaticInternalCheck static_internal;
 };
 
 class AnalyzeFactory : public FrontendActionFactory {

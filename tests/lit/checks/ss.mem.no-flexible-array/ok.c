@@ -5,6 +5,6 @@ struct S {
 
 extern int table[];
 
-void f(const int a[]) {
+static void f(const int a[]) {
   (void)a;
 }

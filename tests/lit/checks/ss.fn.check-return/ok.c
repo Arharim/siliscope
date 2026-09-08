@@ -1,7 +1,7 @@
 int work(void);
 void silent(void);
 
-void ok(void) {
+static void ok(void) {
   const int x = work();
   (void)x;
   (void)work();
@@ -10,6 +10,6 @@ void ok(void) {
   }
 }
 
-int ret(void) {
+static int ret(void) {
   return work();
 }

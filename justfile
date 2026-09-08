@@ -252,6 +252,11 @@ test-const: build
     {{bin}} --target arm-none-eabi tests/lit/checks/ss.decl.const/ok.c
     ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.decl.const/bad.c
 
+# ss.fn.static-internal fixtures
+test-static-internal: build
+    {{bin}} --target arm-none-eabi tests/lit/checks/ss.fn.static-internal/ok.c
+    ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.fn.static-internal/bad.c
+
 # YAML profile load (default embedded-c still used by the fixtures above)
 test-profile: build
     {{bin}} --profile style --target arm-none-eabi tests/lit/checks/ss.ctrl.no-goto/bad.c

@@ -1,8 +1,8 @@
-int g(int a, int b) {
+static int g(int a, int b) {
   return a + b;
 }
 
-void f(void) {
+static void f(void) {
   int x, y;
   x = 1;
   y = 2;

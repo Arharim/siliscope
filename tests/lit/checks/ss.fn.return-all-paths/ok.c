@@ -1,18 +1,18 @@
-int f(void) {
+static int f(void) {
   return 1;
 }
 
-int g(int x) {
+static int g(int x) {
   if (x) {
     return 1;
   }
   return 0;
 }
 
-void h(void) {
+static void h(void) {
 }
 
-int loop(void) {
+static int loop(void) {
   for (;;) {
   }
 }

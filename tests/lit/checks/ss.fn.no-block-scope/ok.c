@@ -1,9 +1,9 @@
-int g(int x);
+static int g(int x);
 
-void f(void) {
+static void f(void) {
   (void)g(1);
 }
 
-int g(int x) {
+static int g(int x) {
   return x;
 }

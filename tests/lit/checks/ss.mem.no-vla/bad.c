@@ -1,10 +1,10 @@
-void f(int n) {
+static void f(int n) {
   int a[n];
   int b[n + 1];
-  (void)a;
-  (void)b;
+  a[0] = 0;
+  b[0] = 0;
 }
 
-void g(int n, int a[n]) {
-  (void)a;
+static void g(int n, int a[n]) {
+  a[0] = 0;
 }

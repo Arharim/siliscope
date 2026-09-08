@@ -27,6 +27,7 @@ struct ProfileAst {
   std::vector<std::string> extra;
   std::vector<std::string> exclude;
   std::vector<std::pair<std::string, std::string>> overrides;
+  std::vector<std::pair<std::string, std::string>> allow;
 };
 
 using Catalog = std::unordered_map<std::string, RuleMeta>;
@@ -184,8 +185,9 @@ static bool loadProfileAst(const std::string &path, ProfileAst &ast, std::string
   if (!readFile(path, text, err)) {
     return false;
   }
-  enum class Sec { Top, Include, Extra, Exclude, Overrides, Skip };
+  enum class Sec { Top, Include, Extra, Exclude, Overrides, Allow, Skip };
   Sec sec = Sec::Top;
+  std::string allow_rule;
   llvm::StringRef rest(text);
   while (!rest.empty()) {
     llvm::StringRef raw;
@@ -212,6 +214,9 @@ static bool loadProfileAst(const std::string &path, ProfileAst &ast, std::string
         }
       } else if (key == "severity_overrides") {
         sec = Sec::Overrides;
+      } else if (key == "allow") {
+        sec = Sec::Allow;
+        allow_rule.clear();
       } else {
         sec = (key == "name" || key == "languages") ? Sec::Top : Sec::Skip;
       }
@@ -241,6 +246,19 @@ static bool loadProfileAst(const std::string &path, ProfileAst &ast, std::string
     }
     if (sec == Sec::Overrides && splitKey(line.trim(), key, val)) {
       ast.overrides.emplace_back(key.str(), unquote(val));
+      continue;
+    }
+    if (sec == Sec::Allow) {
+      if (ind == 2 && splitKey(line.trim(), key, val)) {
+        allow_rule = key.str();
+        continue;
+      }
+      if (!allow_rule.empty()) {
+        std::string item = dashItem(line);
+        if (!item.empty()) {
+          ast.allow.emplace_back(allow_rule, std::move(item));
+        }
+      }
     }
   }
   return true;
@@ -327,6 +345,12 @@ static bool resolve(const std::string &ruleset_dir,
     if (it != out.enabled.end()) {
       it->second = ov.second;
     }
+  }
+  for (const auto &al : ast.allow) {
+    if (!knownRule(cat, al.first, err)) {
+      return false;
+    }
+    out.addAllow(al.first, al.second);
   }
   return true;
 }

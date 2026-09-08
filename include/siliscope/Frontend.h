@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <utility>
 #include <vector>
 
 struct FrontendOptions {
@@ -10,6 +11,8 @@ struct FrontendOptions {
   std::string compile_commands_dir;
   std::vector<std::string> extra_args;
   std::vector<std::string> sources;
+  // --allow rule:name (e.g. ss.fn.no-stdarg:log_printf)
+  std::vector<std::pair<std::string, std::string>> allow;
   bool probe = false;
 };
 

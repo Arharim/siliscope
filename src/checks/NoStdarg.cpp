@@ -39,6 +39,44 @@ static bool isVaListType(QualType t, const clang::ASTContext &ctx) {
   return false;
 }
 
+static bool stdargAllowed(const Reporter &r, const FunctionDecl *fn) {
+  if (!fn || !fn->getIdentifier()) {
+    return false;
+  }
+  const std::string name = fn->getName().str();
+  return r.allows("ss.fn.no-stdarg", name.c_str());
+}
+
+static const FunctionDecl *enclosingFunction(const clang::Decl *d) {
+  const clang::DeclContext *dc = d->getDeclContext();
+  while (dc) {
+    if (const auto *fn = llvm::dyn_cast<FunctionDecl>(dc)) {
+      return fn;
+    }
+    dc = dc->getParent();
+  }
+  return nullptr;
+}
+
+static const FunctionDecl *enclosingFunction(const clang::Stmt *s, clang::ASTContext &ctx) {
+  const clang::Stmt *cur = s;
+  for (int i = 0; i < 64; ++i) {
+    const auto parents = ctx.getParents(*cur);
+    if (parents.empty()) {
+      return nullptr;
+    }
+    if (const auto *fn = parents[0].get<FunctionDecl>()) {
+      return fn;
+    }
+    const auto *next = parents[0].get<clang::Stmt>();
+    if (!next) {
+      return nullptr;
+    }
+    cur = next;
+  }
+  return nullptr;
+}
+
 void NoStdargCheck::registerMatchers(clang::ast_matchers::MatchFinder &finder) {
   finder.addMatcher(functionDecl(isVariadic(), unless(isImplicit())).bind("fn"), this);
   finder.addMatcher(callExpr(callee(functionDecl(hasAnyName("__builtin_va_start",
@@ -58,11 +96,20 @@ void NoStdargCheck::run(const clang::ast_matchers::MatchFinder::MatchResult &res
     if (fn->getBuiltinID() != 0 || !fn->isFirstDecl()) {
       return;
     }
+    if (stdargAllowed(reporter, fn)) {
+      return;
+    }
     at = fn->getLocation();
   } else if (const auto *c = result.Nodes.getNodeAs<CallExpr>("call")) {
+    if (result.Context && stdargAllowed(reporter, enclosingFunction(c, *result.Context))) {
+      return;
+    }
     at = c->getBeginLoc();
   } else if (const auto *vd = result.Nodes.getNodeAs<VarDecl>("var")) {
     if (!result.Context || !isVaListType(vd->getType(), *result.Context)) {
+      return;
+    }
+    if (stdargAllowed(reporter, enclosingFunction(vd))) {
       return;
     }
     at = vd->getLocation();

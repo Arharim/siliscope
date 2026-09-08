@@ -21,6 +21,7 @@ void print_usage(std::FILE *out) {
              "  -p <dir>               compilation database directory\n"
              "  --target <triple>      e.g. arm-none-eabi (also injected into -p jobs)\n"
              "  -extra-arg <arg>       extra Clang frontend argument (repeatable)\n"
+             "  --allow <rule>:<name>  do not flag this identifier (repeatable)\n"
              "  --probe                print AST probe (functions, interrupt, packed)\n"
              "  --version              print version and frontend status\n"
              "  -h, --help             this help\n",
@@ -50,6 +51,14 @@ int main(int argc, char **argv) {
       fe.target = argv[++i];
     } else if (std::strcmp(a, "-extra-arg") == 0 && i + 1 < argc) {
       fe.extra_args.emplace_back(argv[++i]);
+    } else if (std::strcmp(a, "--allow") == 0 && i + 1 < argc) {
+      const std::string spec = argv[++i];
+      const auto colon = spec.find(':');
+      if (colon == std::string::npos || colon == 0 || colon + 1 == spec.size()) {
+        std::fprintf(stderr, "error: --allow wants rule:name (got %s)\n", spec.c_str());
+        return 2;
+      }
+      fe.allow.emplace_back(spec.substr(0, colon), spec.substr(colon + 1));
     } else if (std::strcmp(a, "--probe") == 0) {
       fe.probe = true;
     } else if (a[0] == '-') {

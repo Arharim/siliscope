@@ -35,3 +35,7 @@ void Reporter::emit(const clang::SourceManager &sm,
 void Reporter::printSummary() const {
   llvm::outs() << "findings: " << findings << "\n";
 }
+
+bool Reporter::allows(const char *id, const char *name) const {
+  return profile->allows(id, name);
+}

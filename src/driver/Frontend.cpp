@@ -306,6 +306,9 @@ int runFrontend(const FrontendOptions &opt) {
     llvm::errs() << "error: " << err << "\n";
     return 1;
   }
+  for (const auto &a : opt.allow) {
+    profile.addAllow(a.first, a.second);
+  }
 
   auto db = loadCompilations(opt, err);
   if (!db) {

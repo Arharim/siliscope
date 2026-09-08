@@ -18,6 +18,7 @@ public:
 
   unsigned count() const { return findings; }
   void printSummary() const;
+  bool allows(const char *id, const char *name) const;
 
 private:
   const Profile *profile;

@@ -90,6 +90,8 @@ test-vla: build
 test-stdarg: build
     {{bin}} --target arm-none-eabi tests/lit/checks/ss.fn.no-stdarg/ok.c
     ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.fn.no-stdarg/bad.c
+    ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.fn.no-stdarg/allow.c
+    {{bin}} --allow ss.fn.no-stdarg:log_printf --target arm-none-eabi tests/lit/checks/ss.fn.no-stdarg/allow.c
 
 # ss.libc.no-signal fixtures
 test-signal: build

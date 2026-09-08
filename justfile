@@ -165,6 +165,11 @@ test-logical-rhs: build
     {{bin}} --target arm-none-eabi tests/lit/checks/ss.expr.no-logical-rhs-side-effect/ok.c
     ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.expr.no-logical-rhs-side-effect/bad.c
 
+# ss.fn.prototype fixtures
+test-prototype: build
+    {{bin}} --target arm-none-eabi tests/lit/checks/ss.fn.prototype/ok.c
+    ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.fn.prototype/bad.c
+
 # YAML profile load (default embedded-c still used by the fixtures above)
 test-profile: build
     {{bin}} --profile style --target arm-none-eabi tests/lit/checks/ss.ctrl.no-goto/bad.c

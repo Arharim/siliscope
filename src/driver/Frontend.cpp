@@ -27,6 +27,7 @@
 #include "siliscope/NoUnboundedString.h"
 #include "siliscope/NoVLA.h"
 #include "siliscope/Profile.h"
+#include "siliscope/Prototype.h"
 #include "siliscope/Report.h"
 
 #include "clang/AST/ASTConsumer.h"
@@ -141,13 +142,15 @@ public:
         no_nested_ternary(reporter),
         no_inc(reporter),
         no_sizeof_se(reporter),
-        no_logical_rhs(reporter) {
+        no_logical_rhs(reporter),
+        prototype(reporter) {
     Check *const all[] = {
         &no_goto,      &no_setjmp,         &no_heap,      &no_unbounded,  &no_stdio,
         &braces,       &no_assign,         &no_octal,     &no_vla,        &no_stdarg,
         &no_signal,    &no_atoi,           &no_abort,     &no_qsort,      &no_rand,
         &no_setlocale, &no_comma,          &no_flexarray, &no_blockscope, &if_else_final,
-        &no_continue,  &no_nested_ternary, &no_inc,       &no_sizeof_se,  &no_logical_rhs};
+        &no_continue,  &no_nested_ternary, &no_inc,       &no_sizeof_se,  &no_logical_rhs,
+        &prototype};
     const char *const ids[] = {"ss.ctrl.no-goto",
                                "ss.ctrl.no-setjmp",
                                "ss.mem.no-heap-after-init",
@@ -172,7 +175,8 @@ public:
                                "ss.ctrl.no-nested-ternary",
                                "ss.expr.no-inc-in-expr",
                                "ss.expr.no-sizeof-side-effect",
-                               "ss.expr.no-logical-rhs-side-effect"};
+                               "ss.expr.no-logical-rhs-side-effect",
+                               "ss.fn.prototype"};
     static_assert(sizeof(all) / sizeof(all[0]) == sizeof(ids) / sizeof(ids[0]));
     for (unsigned i = 0; i < sizeof(ids) / sizeof(ids[0]); ++i) {
       if (profile.isEnabled(ids[i])) {
@@ -218,6 +222,7 @@ private:
   NoIncInExprCheck no_inc;
   NoSizeofSideEffectCheck no_sizeof_se;
   NoLogicalRhsCheck no_logical_rhs;
+  PrototypeCheck prototype;
 };
 
 class AnalyzeFactory : public FrontendActionFactory {

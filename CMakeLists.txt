@@ -51,6 +51,7 @@ if(SILISCOPE_ENABLE_CLANG)
     src/checks/NoIncInExpr.cpp
     src/checks/NoSizeofSideEffect.cpp
     src/checks/NoLogicalRhs.cpp
+    src/checks/Prototype.cpp
   )
   target_compile_definitions(siliscope PRIVATE SILISCOPE_WITH_CLANG)
   target_include_directories(siliscope PRIVATE

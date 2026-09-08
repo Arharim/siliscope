@@ -187,6 +187,11 @@ test-unreachable: build
     {{bin}} --target arm-none-eabi tests/lit/checks/ss.ctrl.unreachable/ok.c
     ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.ctrl.unreachable/bad.c
 
+# ss.fn.noreturn-does-not-return fixtures
+test-noreturn: build
+    {{bin}} --target arm-none-eabi tests/lit/checks/ss.fn.noreturn-does-not-return/ok.c
+    ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.fn.noreturn-does-not-return/bad.c
+
 # YAML profile load (default embedded-c still used by the fixtures above)
 test-profile: build
     {{bin}} --profile style --target arm-none-eabi tests/lit/checks/ss.ctrl.no-goto/bad.c

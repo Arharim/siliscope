@@ -52,6 +52,7 @@ if(SILISCOPE_ENABLE_CLANG)
     src/checks/NoSizeofSideEffect.cpp
     src/checks/NoLogicalRhs.cpp
     src/checks/Prototype.cpp
+    src/checks/ReturnAllPaths.cpp
   )
   target_compile_definitions(siliscope PRIVATE SILISCOPE_WITH_CLANG)
   target_include_directories(siliscope PRIVATE
@@ -73,6 +74,7 @@ if(SILISCOPE_ENABLE_CLANG)
     clangSerialization
     clangParse
     clangSema
+    clangAnalysis
     clangAST
     clangLex
     clangBasic

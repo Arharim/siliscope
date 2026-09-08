@@ -19,7 +19,7 @@ void print_usage(std::FILE *out) {
              "  --profile <name>       embedded-c | embedded-cpp | strict | style\n"
              "  --ruleset-dir <path>   catalog directory (default: ./ruleset)\n"
              "  -p <dir>               compilation database directory\n"
-             "  --target <triple>      e.g. arm-none-eabi (used without a database)\n"
+             "  --target <triple>      e.g. arm-none-eabi (also injected into -p jobs)\n"
              "  -extra-arg <arg>       extra Clang frontend argument (repeatable)\n"
              "  --probe                print AST probe (functions, interrupt, packed)\n"
              "  --version              print version and frontend status\n"

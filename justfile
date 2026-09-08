@@ -22,7 +22,7 @@ build:
     cmake --build {{build_dir}}
 
 # Link Clang LibTooling (positional paths to *Config.cmake dirs):
-#   just build-clang C:/dev/llvm-build/lib/cmake/llvm C:/dev/llvm-build/lib/cmake/clang
+#   just build-clang <llvm-build>/lib/cmake/llvm <llvm-build>/lib/cmake/clang
 build-clang llvm_dir clang_dir:
     cmake -S . -B {{build_dir}} -G Ninja {{cxx_flag}} -DSILISCOPE_ENABLE_CLANG=ON "-DLLVM_DIR={{llvm_dir}}" "-DClang_DIR={{clang_dir}}"
     cmake --build {{build_dir}}
@@ -30,6 +30,11 @@ build-clang llvm_dir clang_dir:
 # Run the binary (default: --help)
 run *args: build
     {{bin}} {{args}}
+
+# Firmware via compile_commands.json (dir with the json, then sources):
+#   just fw path/to/firmware path/to/firmware/src/foo.c
+fw dir *files: build
+    {{bin}} --ruleset-dir ruleset -p {{dir}} {{files}}
 
 # Parse the GNU interrupt/packed fixture (arm-none-eabi)
 probe: build

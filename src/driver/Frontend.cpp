@@ -39,6 +39,10 @@
 #include "clang/Tooling/CompilationDatabase.h"
 #include "clang/Tooling/JSONCompilationDatabase.h"
 #include "clang/Tooling/Tooling.h"
+#include "llvm/ADT/SmallString.h"
+#include "llvm/ADT/StringRef.h"
+#include "llvm/Support/FileSystem.h"
+#include "llvm/Support/Path.h"
 #include "llvm/Support/raw_ostream.h"
 
 using clang::ASTConsumer;
@@ -51,6 +55,7 @@ using clang::PackedAttr;
 using clang::RecordDecl;
 using clang::ast_matchers::MatchFinder;
 using clang::tooling::ClangTool;
+using clang::tooling::CommandLineArguments;
 using clang::tooling::CompilationDatabase;
 using clang::tooling::FixedCompilationDatabase;
 using clang::tooling::FrontendActionFactory;
@@ -260,6 +265,38 @@ std::unique_ptr<CompilationDatabase> loadCompilations(const FrontendOptions &opt
   return std::make_unique<FixedCompilationDatabase>(".", cmd);
 }
 
+// GNU arm-none-eabi-gcc lives in <prefix>/bin; headers are <prefix>/arm-none-eabi.
+static llvm::SmallString<256> gnuArmPrefix(llvm::StringRef compiler) {
+  llvm::SmallString<256> path(compiler);
+  llvm::sys::path::remove_filename(path);
+  llvm::sys::path::remove_filename(path);
+  return path;
+}
+
+static std::string gnuArmSysroot(llvm::StringRef compiler) {
+  llvm::SmallString<256> path = gnuArmPrefix(compiler);
+  llvm::sys::path::append(path, "arm-none-eabi");
+  if (llvm::sys::fs::is_directory(path)) {
+    return std::string(path);
+  }
+  return {};
+}
+
+// lib/gcc/arm-none-eabi/<ver>/include holds stddef.h / stdarg.h for the cross gcc.
+static std::string gnuArmGccInclude(llvm::StringRef compiler) {
+  llvm::SmallString<256> dir = gnuArmPrefix(compiler);
+  llvm::sys::path::append(dir, "lib", "gcc", "arm-none-eabi");
+  std::error_code ec;
+  for (llvm::sys::fs::directory_iterator it(dir, ec), e; it != e && !ec; it.increment(ec)) {
+    llvm::SmallString<256> inc(it->path());
+    llvm::sys::path::append(inc, "include");
+    if (llvm::sys::fs::is_directory(inc)) {
+      return std::string(inc);
+    }
+  }
+  return {};
+}
+
 } // namespace
 
 int runFrontend(const FrontendOptions &opt) {
@@ -279,6 +316,35 @@ int runFrontend(const FrontendOptions &opt) {
   Probe probe;
   Reporter reporter(profile);
   ClangTool tool(*db, opt.sources);
+  if (!opt.compile_commands_dir.empty()) {
+    const std::string tgt = "--target=" + opt.target;
+    const std::vector<std::string> extras = opt.extra_args;
+    tool.appendArgumentsAdjuster([tgt, extras](const CommandLineArguments &args, llvm::StringRef) {
+      CommandLineArguments out;
+      if (!args.empty()) {
+        out.push_back(args.front());
+        const llvm::StringRef compiler = args.front();
+        if (compiler.contains_insensitive("arm-none-eabi-gcc") ||
+            compiler.contains_insensitive("arm-none-eabi-g++")) {
+          out.push_back(tgt);
+          const std::string sys = gnuArmSysroot(compiler);
+          if (!sys.empty()) {
+            out.push_back("--sysroot=" + sys);
+          }
+          const std::string gccinc = gnuArmGccInclude(compiler);
+          if (!gccinc.empty()) {
+            out.push_back("-isystem");
+            out.push_back(gccinc);
+          }
+        }
+      }
+      if (args.size() > 1) {
+        out.insert(out.end(), args.begin() + 1, args.end());
+      }
+      out.insert(out.end(), extras.begin(), extras.end());
+      return out;
+    });
+  }
   AnalyzeFactory factory(reporter, opt.probe ? &probe : nullptr, profile);
   const int parse_rc = tool.run(&factory);
 

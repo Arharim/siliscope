@@ -155,6 +155,11 @@ test-inc: build
     {{bin}} --target arm-none-eabi tests/lit/checks/ss.expr.no-inc-in-expr/ok.c
     ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.expr.no-inc-in-expr/bad.c
 
+# ss.expr.no-sizeof-side-effect fixtures
+test-sizeof: build
+    {{bin}} --target arm-none-eabi tests/lit/checks/ss.expr.no-sizeof-side-effect/ok.c
+    ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.expr.no-sizeof-side-effect/bad.c
+
 # YAML profile load (default embedded-c still used by the fixtures above)
 test-profile: build
     {{bin}} --profile style --target arm-none-eabi tests/lit/checks/ss.ctrl.no-goto/bad.c

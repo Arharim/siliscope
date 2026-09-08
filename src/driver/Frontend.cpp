@@ -20,6 +20,7 @@
 #include "siliscope/NoSetjmp.h"
 #include "siliscope/NoSetlocale.h"
 #include "siliscope/NoSignal.h"
+#include "siliscope/NoSizeofSideEffect.h"
 #include "siliscope/NoStdarg.h"
 #include "siliscope/NoStdio.h"
 #include "siliscope/NoUnboundedString.h"
@@ -137,12 +138,14 @@ public:
         if_else_final(reporter),
         no_continue(reporter),
         no_nested_ternary(reporter),
-        no_inc(reporter) {
+        no_inc(reporter),
+        no_sizeof_se(reporter) {
     Check *const all[] = {
-        &no_goto,       &no_setjmp,     &no_heap,     &no_unbounded,      &no_stdio,  &braces,
-        &no_assign,     &no_octal,      &no_vla,      &no_stdarg,         &no_signal, &no_atoi,
-        &no_abort,      &no_qsort,      &no_rand,     &no_setlocale,      &no_comma,  &no_flexarray,
-        &no_blockscope, &if_else_final, &no_continue, &no_nested_ternary, &no_inc};
+        &no_goto,      &no_setjmp,         &no_heap,      &no_unbounded,  &no_stdio,
+        &braces,       &no_assign,         &no_octal,     &no_vla,        &no_stdarg,
+        &no_signal,    &no_atoi,           &no_abort,     &no_qsort,      &no_rand,
+        &no_setlocale, &no_comma,          &no_flexarray, &no_blockscope, &if_else_final,
+        &no_continue,  &no_nested_ternary, &no_inc,       &no_sizeof_se};
     const char *const ids[] = {"ss.ctrl.no-goto",
                                "ss.ctrl.no-setjmp",
                                "ss.mem.no-heap-after-init",
@@ -165,7 +168,8 @@ public:
                                "ss.ctrl.if-else-final",
                                "ss.ctrl.no-continue",
                                "ss.ctrl.no-nested-ternary",
-                               "ss.expr.no-inc-in-expr"};
+                               "ss.expr.no-inc-in-expr",
+                               "ss.expr.no-sizeof-side-effect"};
     static_assert(sizeof(all) / sizeof(all[0]) == sizeof(ids) / sizeof(ids[0]));
     for (unsigned i = 0; i < sizeof(ids) / sizeof(ids[0]); ++i) {
       if (profile.isEnabled(ids[i])) {
@@ -209,6 +213,7 @@ private:
   NoContinueCheck no_continue;
   NoNestedTernaryCheck no_nested_ternary;
   NoIncInExprCheck no_inc;
+  NoSizeofSideEffectCheck no_sizeof_se;
 };
 
 class AnalyzeFactory : public FrontendActionFactory {

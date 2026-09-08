@@ -341,8 +341,11 @@ int runFrontend(const FrontendOptions &opt) {
           }
         }
       }
-      if (args.size() > 1) {
-        out.insert(out.end(), args.begin() + 1, args.end());
+      for (size_t i = 1; i < args.size(); ++i) {
+        if (llvm::StringRef(args[i]).starts_with("--specs=")) {
+          continue;
+        }
+        out.push_back(args[i]);
       }
       out.insert(out.end(), extras.begin(), extras.end());
       return out;

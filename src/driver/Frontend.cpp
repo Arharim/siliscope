@@ -12,6 +12,7 @@
 #include "siliscope/NoFlexibleArray.h"
 #include "siliscope/NoGoto.h"
 #include "siliscope/NoHeap.h"
+#include "siliscope/NoIncInExpr.h"
 #include "siliscope/NoNestedTernary.h"
 #include "siliscope/NoOctal.h"
 #include "siliscope/NoQsort.h"
@@ -135,12 +136,13 @@ public:
         no_blockscope(reporter),
         if_else_final(reporter),
         no_continue(reporter),
-        no_nested_ternary(reporter) {
+        no_nested_ternary(reporter),
+        no_inc(reporter) {
     Check *const all[] = {
-        &no_goto,       &no_setjmp,     &no_heap,     &no_unbounded,     &no_stdio,  &braces,
-        &no_assign,     &no_octal,      &no_vla,      &no_stdarg,        &no_signal, &no_atoi,
-        &no_abort,      &no_qsort,      &no_rand,     &no_setlocale,     &no_comma,  &no_flexarray,
-        &no_blockscope, &if_else_final, &no_continue, &no_nested_ternary};
+        &no_goto,       &no_setjmp,     &no_heap,     &no_unbounded,      &no_stdio,  &braces,
+        &no_assign,     &no_octal,      &no_vla,      &no_stdarg,         &no_signal, &no_atoi,
+        &no_abort,      &no_qsort,      &no_rand,     &no_setlocale,      &no_comma,  &no_flexarray,
+        &no_blockscope, &if_else_final, &no_continue, &no_nested_ternary, &no_inc};
     const char *const ids[] = {"ss.ctrl.no-goto",
                                "ss.ctrl.no-setjmp",
                                "ss.mem.no-heap-after-init",
@@ -162,7 +164,8 @@ public:
                                "ss.fn.no-block-scope",
                                "ss.ctrl.if-else-final",
                                "ss.ctrl.no-continue",
-                               "ss.ctrl.no-nested-ternary"};
+                               "ss.ctrl.no-nested-ternary",
+                               "ss.expr.no-inc-in-expr"};
     static_assert(sizeof(all) / sizeof(all[0]) == sizeof(ids) / sizeof(ids[0]));
     for (unsigned i = 0; i < sizeof(ids) / sizeof(ids[0]); ++i) {
       if (profile.isEnabled(ids[i])) {
@@ -205,6 +208,7 @@ private:
   IfElseFinalCheck if_else_final;
   NoContinueCheck no_continue;
   NoNestedTernaryCheck no_nested_ternary;
+  NoIncInExprCheck no_inc;
 };
 
 class AnalyzeFactory : public FrontendActionFactory {

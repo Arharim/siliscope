@@ -8,6 +8,7 @@
 #include "siliscope/NoAtoi.h"
 #include "siliscope/NoBlockScope.h"
 #include "siliscope/NoComma.h"
+#include "siliscope/NoContinue.h"
 #include "siliscope/NoFlexibleArray.h"
 #include "siliscope/NoGoto.h"
 #include "siliscope/NoHeap.h"
@@ -131,11 +132,13 @@ public:
         no_comma(reporter),
         no_flexarray(reporter),
         no_blockscope(reporter),
-        if_else_final(reporter) {
+        if_else_final(reporter),
+        no_continue(reporter) {
     Check *const all[] = {&no_goto,      &no_setjmp, &no_heap,      &no_unbounded,  &no_stdio,
                           &braces,       &no_assign, &no_octal,     &no_vla,        &no_stdarg,
                           &no_signal,    &no_atoi,   &no_abort,     &no_qsort,      &no_rand,
-                          &no_setlocale, &no_comma,  &no_flexarray, &no_blockscope, &if_else_final};
+                          &no_setlocale, &no_comma,  &no_flexarray, &no_blockscope, &if_else_final,
+                          &no_continue};
     const char *const ids[] = {"ss.ctrl.no-goto",
                                "ss.ctrl.no-setjmp",
                                "ss.mem.no-heap-after-init",
@@ -155,7 +158,8 @@ public:
                                "ss.expr.no-comma",
                                "ss.mem.no-flexible-array",
                                "ss.fn.no-block-scope",
-                               "ss.ctrl.if-else-final"};
+                               "ss.ctrl.if-else-final",
+                               "ss.ctrl.no-continue"};
     static_assert(sizeof(all) / sizeof(all[0]) == sizeof(ids) / sizeof(ids[0]));
     for (unsigned i = 0; i < sizeof(ids) / sizeof(ids[0]); ++i) {
       if (profile.isEnabled(ids[i])) {
@@ -196,6 +200,7 @@ private:
   NoFlexibleArrayCheck no_flexarray;
   NoBlockScopeCheck no_blockscope;
   IfElseFinalCheck if_else_final;
+  NoContinueCheck no_continue;
 };
 
 class AnalyzeFactory : public FrontendActionFactory {

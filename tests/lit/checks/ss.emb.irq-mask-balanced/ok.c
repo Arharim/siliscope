@@ -5,13 +5,13 @@ unsigned __get_BASEPRI(void);
 void __set_BASEPRI(unsigned m);
 
 void primask_save(void) {
-  unsigned m = __get_PRIMASK();
+  const unsigned m = __get_PRIMASK();
   __disable_irq();
   __set_PRIMASK(m);
 }
 
 void primask_both_returns(int x) {
-  unsigned m = __get_PRIMASK();
+  const unsigned m = __get_PRIMASK();
   __disable_irq();
   if (x) {
     __set_PRIMASK(m);
@@ -21,7 +21,7 @@ void primask_both_returns(int x) {
 }
 
 void basepri_save(void) {
-  unsigned b = __get_BASEPRI();
+  const unsigned b = __get_BASEPRI();
   __set_BASEPRI(0x40u);
   __set_BASEPRI(b);
 }

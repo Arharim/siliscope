@@ -4,11 +4,11 @@ int g;
 int *file_scope;
 static int *file_static;
 
-void f(int *param) {
-  int *p = NULL;
-  int *q = &g;
-  void (*fp)(void) = NULL;
-  static int *local_static;
+void f(const int *param) {
+  int *const p = NULL;
+  int *const q = &g;
+  void (*const fp)(void) = NULL;
+  static int *const local_static = NULL;
   (void)param;
   (void)p;
   (void)q;

@@ -19,7 +19,7 @@ void both_returns(int x) {
 }
 
 void irq_pair(void) {
-  unsigned m = __get_PRIMASK();
+  const unsigned m = __get_PRIMASK();
   __disable_irq();
   __set_PRIMASK(m);
 }

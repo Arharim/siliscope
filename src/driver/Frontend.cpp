@@ -2,6 +2,7 @@
 
 #include "siliscope/Braces.h"
 #include "siliscope/Check.h"
+#include "siliscope/CheckReturn.h"
 #include "siliscope/CsBalanced.h"
 #include "siliscope/IfElseFinal.h"
 #include "siliscope/IrqMaskBalanced.h"
@@ -166,7 +167,8 @@ public:
         no_log_in_isr(reporter),
         cs_balanced(reporter),
         irq_mask_balanced(reporter),
-        isr_no_fp(reporter) {
+        isr_no_fp(reporter),
+        check_return(reporter) {
     Check *const all[] = {&no_goto,           &no_setjmp,     &no_heap,
                           &no_unbounded,      &no_stdio,      &braces,
                           &no_assign,         &no_octal,      &no_vla,
@@ -178,7 +180,7 @@ public:
                           &no_logical_rhs,    &prototype,     &return_all_paths,
                           &unreachable,       &noreturn_fn,   &no_recursion,
                           &isr_not_called,    &no_log_in_isr, &cs_balanced,
-                          &irq_mask_balanced, &isr_no_fp};
+                          &irq_mask_balanced, &isr_no_fp,     &check_return};
     const char *const ids[] = {"ss.ctrl.no-goto",
                                "ss.ctrl.no-setjmp",
                                "ss.mem.no-heap-after-init",
@@ -213,7 +215,8 @@ public:
                                "ss.emb.no-log-in-isr",
                                "ss.emb.cs-balanced",
                                "ss.emb.irq-mask-balanced",
-                               "ss.emb.isr-no-fp"};
+                               "ss.emb.isr-no-fp",
+                               "ss.fn.check-return"};
     static_assert(sizeof(all) / sizeof(all[0]) == sizeof(ids) / sizeof(ids[0]));
     for (unsigned i = 0; i < sizeof(ids) / sizeof(ids[0]); ++i) {
       if (profile.isEnabled(ids[i])) {
@@ -269,6 +272,7 @@ private:
   CsBalancedCheck cs_balanced;
   IrqMaskBalancedCheck irq_mask_balanced;
   IsrNoFpCheck isr_no_fp;
+  CheckReturnCheck check_return;
 };
 
 class AnalyzeFactory : public FrontendActionFactory {

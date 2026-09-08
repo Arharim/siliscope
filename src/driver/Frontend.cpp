@@ -2,6 +2,7 @@
 
 #include "siliscope/Braces.h"
 #include "siliscope/Check.h"
+#include "siliscope/CsBalanced.h"
 #include "siliscope/IfElseFinal.h"
 #include "siliscope/IsrNotCalled.h"
 #include "siliscope/NoAbortSystem.h"
@@ -160,7 +161,8 @@ public:
         noreturn_fn(reporter),
         no_recursion(reporter),
         isr_not_called(reporter),
-        no_log_in_isr(reporter) {
+        no_log_in_isr(reporter),
+        cs_balanced(reporter) {
     Check *const all[] = {
         &no_goto,        &no_setjmp,         &no_heap,      &no_unbounded,  &no_stdio,
         &braces,         &no_assign,         &no_octal,     &no_vla,        &no_stdarg,
@@ -168,7 +170,7 @@ public:
         &no_setlocale,   &no_comma,          &no_flexarray, &no_blockscope, &if_else_final,
         &no_continue,    &no_nested_ternary, &no_inc,       &no_sizeof_se,  &no_logical_rhs,
         &prototype,      &return_all_paths,  &unreachable,  &noreturn_fn,   &no_recursion,
-        &isr_not_called, &no_log_in_isr};
+        &isr_not_called, &no_log_in_isr,     &cs_balanced};
     const char *const ids[] = {"ss.ctrl.no-goto",
                                "ss.ctrl.no-setjmp",
                                "ss.mem.no-heap-after-init",
@@ -200,7 +202,8 @@ public:
                                "ss.fn.noreturn-does-not-return",
                                "ss.ctrl.no-recursion",
                                "ss.emb.isr-not-called",
-                               "ss.emb.no-log-in-isr"};
+                               "ss.emb.no-log-in-isr",
+                               "ss.emb.cs-balanced"};
     static_assert(sizeof(all) / sizeof(all[0]) == sizeof(ids) / sizeof(ids[0]));
     for (unsigned i = 0; i < sizeof(ids) / sizeof(ids[0]); ++i) {
       if (profile.isEnabled(ids[i])) {
@@ -253,6 +256,7 @@ private:
   NoRecursionCheck no_recursion;
   IsrNotCalledCheck isr_not_called;
   NoLogInIsrCheck no_log_in_isr;
+  CsBalancedCheck cs_balanced;
 };
 
 class AnalyzeFactory : public FrontendActionFactory {

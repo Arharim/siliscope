@@ -207,6 +207,11 @@ test-log-in-isr: build
     {{bin}} --target arm-none-eabi tests/lit/checks/ss.emb.no-log-in-isr/ok.c
     ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.emb.no-log-in-isr/bad.c
 
+# ss.emb.cs-balanced fixtures
+test-cs: build
+    {{bin}} --target arm-none-eabi tests/lit/checks/ss.emb.cs-balanced/ok.c
+    ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.emb.cs-balanced/bad.c
+
 # YAML profile load (default embedded-c still used by the fixtures above)
 test-profile: build
     {{bin}} --profile style --target arm-none-eabi tests/lit/checks/ss.ctrl.no-goto/bad.c

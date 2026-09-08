@@ -121,6 +121,11 @@ test-comma: build
     {{bin}} --target arm-none-eabi tests/lit/checks/ss.expr.no-comma/ok.c
     ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.expr.no-comma/bad.c
 
+# ss.mem.no-flexible-array fixtures
+test-flexarray: build
+    {{bin}} --target arm-none-eabi tests/lit/checks/ss.mem.no-flexible-array/ok.c
+    ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.mem.no-flexible-array/bad.c
+
 # YAML profile load (default embedded-c still used by the fixtures above)
 test-profile: build
     {{bin}} --profile style --target arm-none-eabi tests/lit/checks/ss.ctrl.no-goto/bad.c

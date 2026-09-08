@@ -35,6 +35,7 @@
 #include "siliscope/NoStdarg.h"
 #include "siliscope/NoStdio.h"
 #include "siliscope/NoUnboundedString.h"
+#include "siliscope/NoUnusedParams.h"
 #include "siliscope/NoVLA.h"
 #include "siliscope/Noreturn.h"
 #include "siliscope/Profile.h"
@@ -180,7 +181,8 @@ public:
         ptr_null(reporter),
         distinct(reporter),
         decl_const(reporter),
-        static_internal(reporter) {
+        static_internal(reporter),
+        no_unused_params(reporter) {
     Check *const all[] = {&no_goto,           &no_setjmp,     &no_heap,
                           &no_unbounded,      &no_stdio,      &braces,
                           &no_assign,         &no_octal,      &no_vla,
@@ -194,7 +196,8 @@ public:
                           &isr_not_called,    &no_log_in_isr, &cs_balanced,
                           &irq_mask_balanced, &isr_no_fp,     &check_return,
                           &no_shadow,         &string_const,  &ptr_null,
-                          &distinct,          &decl_const,    &static_internal};
+                          &distinct,          &decl_const,    &static_internal,
+                          &no_unused_params};
     const char *const ids[] = {"ss.ctrl.no-goto",
                                "ss.ctrl.no-setjmp",
                                "ss.mem.no-heap-after-init",
@@ -236,7 +239,8 @@ public:
                                "ss.decl.ptr-null",
                                "ss.decl.distinct",
                                "ss.decl.const",
-                               "ss.fn.static-internal"};
+                               "ss.fn.static-internal",
+                               "ss.fn.no-unused-params"};
     static_assert(sizeof(all) / sizeof(all[0]) == sizeof(ids) / sizeof(ids[0]));
     for (unsigned i = 0; i < sizeof(ids) / sizeof(ids[0]); ++i) {
       if (profile.isEnabled(ids[i])) {
@@ -299,6 +303,7 @@ private:
   DistinctCheck distinct;
   DeclConstCheck decl_const;
   StaticInternalCheck static_internal;
+  NoUnusedParamsCheck no_unused_params;
 };
 
 class AnalyzeFactory : public FrontendActionFactory {

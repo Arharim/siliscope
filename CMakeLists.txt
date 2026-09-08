@@ -68,6 +68,7 @@ if(SILISCOPE_ENABLE_CLANG)
     src/checks/Distinct.cpp
     src/checks/DeclConst.cpp
     src/checks/StaticInternal.cpp
+    src/checks/NoUnusedParams.cpp
   )
   target_compile_definitions(siliscope PRIVATE SILISCOPE_WITH_CLANG)
   target_include_directories(siliscope PRIVATE

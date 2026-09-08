@@ -81,7 +81,8 @@ host-local (this machine's MSYS/LLVM paths).
 Live checkers (see `src/driver/Frontend.cpp` and `just test-*`):
 
 - Control / style-adjacent AST: goto, setjmp, braces, assignment-in-condition,
-  if-else-final, continue, nested ternary, no-block-scope, prototype
+  if-else-final, continue, nested ternary, no-block-scope, prototype,
+  unused params
 - Memory / libc: no heap after init, VLA, flexible array, unbounded string,
   stdio, stdarg (+ `--allow`), signal, atoi, abort/system, rand, qsort,
   setlocale

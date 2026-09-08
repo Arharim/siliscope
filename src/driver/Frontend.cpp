@@ -2,6 +2,7 @@
 
 #include "siliscope/Braces.h"
 #include "siliscope/Check.h"
+#include "siliscope/IfElseFinal.h"
 #include "siliscope/NoAbortSystem.h"
 #include "siliscope/NoAssignInCond.h"
 #include "siliscope/NoAtoi.h"
@@ -129,26 +130,12 @@ public:
         no_setlocale(reporter),
         no_comma(reporter),
         no_flexarray(reporter),
-        no_blockscope(reporter) {
-    Check *const all[] = {&no_goto,
-                          &no_setjmp,
-                          &no_heap,
-                          &no_unbounded,
-                          &no_stdio,
-                          &braces,
-                          &no_assign,
-                          &no_octal,
-                          &no_vla,
-                          &no_stdarg,
-                          &no_signal,
-                          &no_atoi,
-                          &no_abort,
-                          &no_qsort,
-                          &no_rand,
-                          &no_setlocale,
-                          &no_comma,
-                          &no_flexarray,
-                          &no_blockscope};
+        no_blockscope(reporter),
+        if_else_final(reporter) {
+    Check *const all[] = {&no_goto,      &no_setjmp, &no_heap,      &no_unbounded,  &no_stdio,
+                          &braces,       &no_assign, &no_octal,     &no_vla,        &no_stdarg,
+                          &no_signal,    &no_atoi,   &no_abort,     &no_qsort,      &no_rand,
+                          &no_setlocale, &no_comma,  &no_flexarray, &no_blockscope, &if_else_final};
     const char *const ids[] = {"ss.ctrl.no-goto",
                                "ss.ctrl.no-setjmp",
                                "ss.mem.no-heap-after-init",
@@ -167,7 +154,8 @@ public:
                                "ss.libc.no-setlocale",
                                "ss.expr.no-comma",
                                "ss.mem.no-flexible-array",
-                               "ss.fn.no-block-scope"};
+                               "ss.fn.no-block-scope",
+                               "ss.ctrl.if-else-final"};
     static_assert(sizeof(all) / sizeof(all[0]) == sizeof(ids) / sizeof(ids[0]));
     for (unsigned i = 0; i < sizeof(ids) / sizeof(ids[0]); ++i) {
       if (profile.isEnabled(ids[i])) {
@@ -207,6 +195,7 @@ private:
   NoCommaCheck no_comma;
   NoFlexibleArrayCheck no_flexarray;
   NoBlockScopeCheck no_blockscope;
+  IfElseFinalCheck if_else_final;
 };
 
 class AnalyzeFactory : public FrontendActionFactory {

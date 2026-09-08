@@ -37,6 +37,11 @@ if(SILISCOPE_ENABLE_CLANG)
     src/checks/NoVLA.cpp
     src/checks/NoStdarg.cpp
     src/checks/NoSignal.cpp
+    src/checks/NoAtoi.cpp
+    src/checks/NoAbortSystem.cpp
+    src/checks/NoQsort.cpp
+    src/checks/NoRand.cpp
+    src/checks/NoSetlocale.cpp
   )
   target_compile_definitions(siliscope PRIVATE SILISCOPE_WITH_CLANG)
   target_include_directories(siliscope PRIVATE

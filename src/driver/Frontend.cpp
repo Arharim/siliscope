@@ -2,11 +2,16 @@
 
 #include "siliscope/Braces.h"
 #include "siliscope/Check.h"
+#include "siliscope/NoAbortSystem.h"
 #include "siliscope/NoAssignInCond.h"
+#include "siliscope/NoAtoi.h"
 #include "siliscope/NoGoto.h"
 #include "siliscope/NoHeap.h"
 #include "siliscope/NoOctal.h"
+#include "siliscope/NoQsort.h"
+#include "siliscope/NoRand.h"
 #include "siliscope/NoSetjmp.h"
+#include "siliscope/NoSetlocale.h"
 #include "siliscope/NoSignal.h"
 #include "siliscope/NoStdarg.h"
 #include "siliscope/NoStdio.h"
@@ -113,7 +118,12 @@ public:
         no_octal(reporter),
         no_vla(reporter),
         no_stdarg(reporter),
-        no_signal(reporter) {
+        no_signal(reporter),
+        no_atoi(reporter),
+        no_abort(reporter),
+        no_qsort(reporter),
+        no_rand(reporter),
+        no_setlocale(reporter) {
     Check *const all[] = {&no_goto,
                           &no_setjmp,
                           &no_heap,
@@ -124,7 +134,12 @@ public:
                           &no_octal,
                           &no_vla,
                           &no_stdarg,
-                          &no_signal};
+                          &no_signal,
+                          &no_atoi,
+                          &no_abort,
+                          &no_qsort,
+                          &no_rand,
+                          &no_setlocale};
     const char *const ids[] = {"ss.ctrl.no-goto",
                                "ss.ctrl.no-setjmp",
                                "ss.mem.no-heap-after-init",
@@ -135,7 +150,12 @@ public:
                                "ss.expr.no-octal",
                                "ss.mem.no-vla",
                                "ss.fn.no-stdarg",
-                               "ss.libc.no-signal"};
+                               "ss.libc.no-signal",
+                               "ss.libc.no-atoi",
+                               "ss.libc.no-abort-system",
+                               "ss.libc.no-qsort-bsearch",
+                               "ss.libc.no-rand",
+                               "ss.libc.no-setlocale"};
     static_assert(sizeof(all) / sizeof(all[0]) == sizeof(ids) / sizeof(ids[0]));
     for (unsigned i = 0; i < sizeof(ids) / sizeof(ids[0]); ++i) {
       if (profile.isEnabled(ids[i])) {
@@ -167,6 +187,11 @@ private:
   NoVLACheck no_vla;
   NoStdargCheck no_stdarg;
   NoSignalCheck no_signal;
+  NoAtoiCheck no_atoi;
+  NoAbortSystemCheck no_abort;
+  NoQsortCheck no_qsort;
+  NoRandCheck no_rand;
+  NoSetlocaleCheck no_setlocale;
 };
 
 class AnalyzeFactory : public FrontendActionFactory {

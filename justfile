@@ -91,6 +91,31 @@ test-signal: build
     {{bin}} --target arm-none-eabi tests/lit/checks/ss.libc.no-signal/ok.c
     ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.libc.no-signal/bad.c
 
+# ss.libc.no-atoi fixtures
+test-atoi: build
+    {{bin}} --target arm-none-eabi tests/lit/checks/ss.libc.no-atoi/ok.c
+    ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.libc.no-atoi/bad.c
+
+# ss.libc.no-abort-system fixtures
+test-abort: build
+    {{bin}} --target arm-none-eabi tests/lit/checks/ss.libc.no-abort-system/ok.c
+    ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.libc.no-abort-system/bad.c
+
+# ss.libc.no-rand fixtures
+test-rand: build
+    {{bin}} --target arm-none-eabi tests/lit/checks/ss.libc.no-rand/ok.c
+    ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.libc.no-rand/bad.c
+
+# ss.libc.no-qsort-bsearch fixtures
+test-qsort: build
+    {{bin}} --target arm-none-eabi tests/lit/checks/ss.libc.no-qsort-bsearch/ok.c
+    ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.libc.no-qsort-bsearch/bad.c
+
+# ss.libc.no-setlocale fixtures
+test-setlocale: build
+    {{bin}} --target arm-none-eabi tests/lit/checks/ss.libc.no-setlocale/ok.c
+    ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.libc.no-setlocale/bad.c
+
 # YAML profile load (default embedded-c still used by the fixtures above)
 test-profile: build
     {{bin}} --profile style --target arm-none-eabi tests/lit/checks/ss.ctrl.no-goto/bad.c

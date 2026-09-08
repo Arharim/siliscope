@@ -197,6 +197,11 @@ test-recursion: build
     {{bin}} --target arm-none-eabi tests/lit/checks/ss.ctrl.no-recursion/ok.c
     ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.ctrl.no-recursion/bad.c
 
+# ss.emb.isr-not-called fixtures
+test-isr-call: build
+    {{bin}} --target arm-none-eabi tests/lit/checks/ss.emb.isr-not-called/ok.c
+    ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.emb.isr-not-called/bad.c
+
 # YAML profile load (default embedded-c still used by the fixtures above)
 test-profile: build
     {{bin}} --profile style --target arm-none-eabi tests/lit/checks/ss.ctrl.no-goto/bad.c

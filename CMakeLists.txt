@@ -64,6 +64,7 @@ if(SILISCOPE_ENABLE_CLANG)
     src/checks/CheckReturn.cpp
     src/checks/NoShadow.cpp
     src/checks/StringConst.cpp
+    src/checks/PtrNull.cpp
   )
   target_compile_definitions(siliscope PRIVATE SILISCOPE_WITH_CLANG)
   target_include_directories(siliscope PRIVATE

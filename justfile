@@ -242,6 +242,11 @@ test-ptr-null: build
     {{bin}} --target arm-none-eabi tests/lit/checks/ss.decl.ptr-null/ok.c
     ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.decl.ptr-null/bad.c
 
+# ss.decl.distinct fixtures
+test-distinct: build
+    {{bin}} --target arm-none-eabi tests/lit/checks/ss.decl.distinct/ok.c
+    ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.decl.distinct/bad.c
+
 # YAML profile load (default embedded-c still used by the fixtures above)
 test-profile: build
     {{bin}} --profile style --target arm-none-eabi tests/lit/checks/ss.ctrl.no-goto/bad.c

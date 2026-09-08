@@ -4,6 +4,7 @@
 #include "siliscope/Check.h"
 #include "siliscope/CheckReturn.h"
 #include "siliscope/CsBalanced.h"
+#include "siliscope/Distinct.h"
 #include "siliscope/IfElseFinal.h"
 #include "siliscope/IrqMaskBalanced.h"
 #include "siliscope/IsrNoFp.h"
@@ -174,7 +175,8 @@ public:
         check_return(reporter),
         no_shadow(reporter),
         string_const(reporter),
-        ptr_null(reporter) {
+        ptr_null(reporter),
+        distinct(reporter) {
     Check *const all[] = {&no_goto,           &no_setjmp,     &no_heap,
                           &no_unbounded,      &no_stdio,      &braces,
                           &no_assign,         &no_octal,      &no_vla,
@@ -187,7 +189,8 @@ public:
                           &unreachable,       &noreturn_fn,   &no_recursion,
                           &isr_not_called,    &no_log_in_isr, &cs_balanced,
                           &irq_mask_balanced, &isr_no_fp,     &check_return,
-                          &no_shadow,         &string_const,  &ptr_null};
+                          &no_shadow,         &string_const,  &ptr_null,
+                          &distinct};
     const char *const ids[] = {"ss.ctrl.no-goto",
                                "ss.ctrl.no-setjmp",
                                "ss.mem.no-heap-after-init",
@@ -226,7 +229,8 @@ public:
                                "ss.fn.check-return",
                                "ss.decl.no-shadow",
                                "ss.expr.string-const",
-                               "ss.decl.ptr-null"};
+                               "ss.decl.ptr-null",
+                               "ss.decl.distinct"};
     static_assert(sizeof(all) / sizeof(all[0]) == sizeof(ids) / sizeof(ids[0]));
     for (unsigned i = 0; i < sizeof(ids) / sizeof(ids[0]); ++i) {
       if (profile.isEnabled(ids[i])) {
@@ -286,6 +290,7 @@ private:
   NoShadowCheck no_shadow;
   StringConstCheck string_const;
   PtrNullCheck ptr_null;
+  DistinctCheck distinct;
 };
 
 class AnalyzeFactory : public FrontendActionFactory {

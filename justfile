@@ -143,6 +143,13 @@ test-continue: build
     {{bin}} --profile strict --target arm-none-eabi tests/lit/checks/ss.ctrl.no-continue/ok.c
     ! {{bin}} --profile strict --target arm-none-eabi tests/lit/checks/ss.ctrl.no-continue/bad.c
 
+# ss.ctrl.no-nested-ternary: advisory extra in strict only
+test-nested-ternary: build
+    {{bin}} --target arm-none-eabi tests/lit/checks/ss.ctrl.no-nested-ternary/ok.c
+    {{bin}} --target arm-none-eabi tests/lit/checks/ss.ctrl.no-nested-ternary/bad.c
+    {{bin}} --profile strict --target arm-none-eabi tests/lit/checks/ss.ctrl.no-nested-ternary/ok.c
+    ! {{bin}} --profile strict --target arm-none-eabi tests/lit/checks/ss.ctrl.no-nested-ternary/bad.c
+
 # YAML profile load (default embedded-c still used by the fixtures above)
 test-profile: build
     {{bin}} --profile style --target arm-none-eabi tests/lit/checks/ss.ctrl.no-goto/bad.c

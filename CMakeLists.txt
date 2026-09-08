@@ -47,6 +47,7 @@ if(SILISCOPE_ENABLE_CLANG)
     src/checks/NoBlockScope.cpp
     src/checks/IfElseFinal.cpp
     src/checks/NoContinue.cpp
+    src/checks/NoNestedTernary.cpp
   )
   target_compile_definitions(siliscope PRIVATE SILISCOPE_WITH_CLANG)
   target_include_directories(siliscope PRIVATE

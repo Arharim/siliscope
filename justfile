@@ -182,6 +182,11 @@ test-return-paths: build
     {{bin}} --target arm-none-eabi tests/lit/checks/ss.fn.return-all-paths/ok.c
     ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.fn.return-all-paths/bad.c
 
+# ss.ctrl.unreachable fixtures
+test-unreachable: build
+    {{bin}} --target arm-none-eabi tests/lit/checks/ss.ctrl.unreachable/ok.c
+    ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.ctrl.unreachable/bad.c
+
 # YAML profile load (default embedded-c still used by the fixtures above)
 test-profile: build
     {{bin}} --profile style --target arm-none-eabi tests/lit/checks/ss.ctrl.no-goto/bad.c

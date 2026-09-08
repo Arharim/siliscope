@@ -5,6 +5,7 @@
 #include "siliscope/NoAbortSystem.h"
 #include "siliscope/NoAssignInCond.h"
 #include "siliscope/NoAtoi.h"
+#include "siliscope/NoBlockScope.h"
 #include "siliscope/NoComma.h"
 #include "siliscope/NoFlexibleArray.h"
 #include "siliscope/NoGoto.h"
@@ -127,7 +128,8 @@ public:
         no_rand(reporter),
         no_setlocale(reporter),
         no_comma(reporter),
-        no_flexarray(reporter) {
+        no_flexarray(reporter),
+        no_blockscope(reporter) {
     Check *const all[] = {&no_goto,
                           &no_setjmp,
                           &no_heap,
@@ -145,7 +147,8 @@ public:
                           &no_rand,
                           &no_setlocale,
                           &no_comma,
-                          &no_flexarray};
+                          &no_flexarray,
+                          &no_blockscope};
     const char *const ids[] = {"ss.ctrl.no-goto",
                                "ss.ctrl.no-setjmp",
                                "ss.mem.no-heap-after-init",
@@ -163,7 +166,8 @@ public:
                                "ss.libc.no-rand",
                                "ss.libc.no-setlocale",
                                "ss.expr.no-comma",
-                               "ss.mem.no-flexible-array"};
+                               "ss.mem.no-flexible-array",
+                               "ss.fn.no-block-scope"};
     static_assert(sizeof(all) / sizeof(all[0]) == sizeof(ids) / sizeof(ids[0]));
     for (unsigned i = 0; i < sizeof(ids) / sizeof(ids[0]); ++i) {
       if (profile.isEnabled(ids[i])) {
@@ -202,6 +206,7 @@ private:
   NoSetlocaleCheck no_setlocale;
   NoCommaCheck no_comma;
   NoFlexibleArrayCheck no_flexarray;
+  NoBlockScopeCheck no_blockscope;
 };
 
 class AnalyzeFactory : public FrontendActionFactory {

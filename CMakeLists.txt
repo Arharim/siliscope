@@ -44,6 +44,7 @@ if(SILISCOPE_ENABLE_CLANG)
     src/checks/NoSetlocale.cpp
     src/checks/NoComma.cpp
     src/checks/NoFlexibleArray.cpp
+    src/checks/NoBlockScope.cpp
   )
   target_compile_definitions(siliscope PRIVATE SILISCOPE_WITH_CLANG)
   target_include_directories(siliscope PRIVATE

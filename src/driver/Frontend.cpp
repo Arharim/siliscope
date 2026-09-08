@@ -14,6 +14,7 @@
 #include "siliscope/NoGoto.h"
 #include "siliscope/NoHeap.h"
 #include "siliscope/NoIncInExpr.h"
+#include "siliscope/NoLogInIsr.h"
 #include "siliscope/NoLogicalRhs.h"
 #include "siliscope/NoNestedTernary.h"
 #include "siliscope/NoOctal.h"
@@ -158,15 +159,16 @@ public:
         unreachable(reporter),
         noreturn_fn(reporter),
         no_recursion(reporter),
-        isr_not_called(reporter) {
+        isr_not_called(reporter),
+        no_log_in_isr(reporter) {
     Check *const all[] = {
-        &no_goto,       &no_setjmp,         &no_heap,      &no_unbounded,  &no_stdio,
-        &braces,        &no_assign,         &no_octal,     &no_vla,        &no_stdarg,
-        &no_signal,     &no_atoi,           &no_abort,     &no_qsort,      &no_rand,
-        &no_setlocale,  &no_comma,          &no_flexarray, &no_blockscope, &if_else_final,
-        &no_continue,   &no_nested_ternary, &no_inc,       &no_sizeof_se,  &no_logical_rhs,
-        &prototype,     &return_all_paths,  &unreachable,  &noreturn_fn,   &no_recursion,
-        &isr_not_called};
+        &no_goto,        &no_setjmp,         &no_heap,      &no_unbounded,  &no_stdio,
+        &braces,         &no_assign,         &no_octal,     &no_vla,        &no_stdarg,
+        &no_signal,      &no_atoi,           &no_abort,     &no_qsort,      &no_rand,
+        &no_setlocale,   &no_comma,          &no_flexarray, &no_blockscope, &if_else_final,
+        &no_continue,    &no_nested_ternary, &no_inc,       &no_sizeof_se,  &no_logical_rhs,
+        &prototype,      &return_all_paths,  &unreachable,  &noreturn_fn,   &no_recursion,
+        &isr_not_called, &no_log_in_isr};
     const char *const ids[] = {"ss.ctrl.no-goto",
                                "ss.ctrl.no-setjmp",
                                "ss.mem.no-heap-after-init",
@@ -197,7 +199,8 @@ public:
                                "ss.ctrl.unreachable",
                                "ss.fn.noreturn-does-not-return",
                                "ss.ctrl.no-recursion",
-                               "ss.emb.isr-not-called"};
+                               "ss.emb.isr-not-called",
+                               "ss.emb.no-log-in-isr"};
     static_assert(sizeof(all) / sizeof(all[0]) == sizeof(ids) / sizeof(ids[0]));
     for (unsigned i = 0; i < sizeof(ids) / sizeof(ids[0]); ++i) {
       if (profile.isEnabled(ids[i])) {
@@ -249,6 +252,7 @@ private:
   NoreturnCheck noreturn_fn;
   NoRecursionCheck no_recursion;
   IsrNotCalledCheck isr_not_called;
+  NoLogInIsrCheck no_log_in_isr;
 };
 
 class AnalyzeFactory : public FrontendActionFactory {

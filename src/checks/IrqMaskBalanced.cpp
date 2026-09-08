@@ -1,4 +1,4 @@
-#include "siliscope/CsBalanced.h"
+#include "siliscope/IrqMaskBalanced.h"
 
 #include "siliscope/Report.h"
 
@@ -25,23 +25,54 @@ using clang::ast_matchers::unless;
 
 namespace {
 
-enum CSOp { None, Enter, Leave, Restore };
+enum IrqOp {
+  None,
+  BlindEnable,
+  DisableIrq,
+  RestorePrimask,
+  DisableFault,
+  RestoreFault,
+  RaiseBasepri,
+  SetBasepri
+};
 
-static CSOp classify(const FunctionDecl *fn) {
+struct Depth {
+  int irq = 0;
+  int fault = 0;
+  int basepri = 0;
+
+  bool operator==(const Depth &o) const {
+    return irq == o.irq && fault == o.fault && basepri == o.basepri;
+  }
+  bool operator!=(const Depth &o) const { return !(*this == o); }
+  bool held() const { return irq > 0 || fault > 0 || basepri > 0; }
+};
+
+static IrqOp classify(const FunctionDecl *fn) {
   if (!fn || !fn->getIdentifier()) {
     return None;
   }
   const llvm::StringRef n = fn->getName();
-  if (n.contains("ENTER_CRITICAL") || n.contains("EnterCritical") || n.ends_with("disable_irq") ||
-      n == "__disable_fault_irq" || n == "irq_lock") {
-    return Enter;
+  if (n.ends_with("enable_irq") || n == "__enable_fault_irq" || n == "cpsie") {
+    return BlindEnable;
   }
-  if (n.contains("EXIT_CRITICAL") || n.contains("ExitCritical") || n.ends_with("enable_irq") ||
-      n == "__enable_fault_irq" || n == "irq_unlock") {
-    return Leave;
+  if (n.ends_with("disable_irq") || n == "cpsid") {
+    return DisableIrq;
   }
-  if (n == "__set_PRIMASK" || n == "__set_FAULTMASK") {
-    return Restore;
+  if (n == "__disable_fault_irq") {
+    return DisableFault;
+  }
+  if (n == "__set_PRIMASK") {
+    return RestorePrimask;
+  }
+  if (n == "__set_FAULTMASK") {
+    return RestoreFault;
+  }
+  if (n == "__set_BASEPRI_MAX") {
+    return RaiseBasepri;
+  }
+  if (n == "__set_BASEPRI") {
+    return SetBasepri;
   }
   return None;
 }
@@ -91,11 +122,11 @@ static clang::SourceLocation exitLoc(const CFGBlock &b, const FunctionDecl &fn) 
 
 } // namespace
 
-void CsBalancedCheck::registerMatchers(clang::ast_matchers::MatchFinder &finder) {
+void IrqMaskBalancedCheck::registerMatchers(clang::ast_matchers::MatchFinder &finder) {
   finder.addMatcher(functionDecl(isDefinition(), unless(isImplicit())).bind("fn"), this);
 }
 
-void CsBalancedCheck::run(const clang::ast_matchers::MatchFinder::MatchResult &result) {
+void IrqMaskBalancedCheck::run(const clang::ast_matchers::MatchFinder::MatchResult &result) {
   const auto *fn = result.Nodes.getNodeAs<FunctionDecl>("fn");
   if (!fn || !result.Context || !fn->getBody() || !result.SourceManager) {
     return;
@@ -106,37 +137,57 @@ void CsBalancedCheck::run(const clang::ast_matchers::MatchFinder::MatchResult &r
   }
 
   const unsigned n = cfg->getNumBlockIDs();
-  std::vector<int> in_depth(n, -1);
+  std::vector<char> seen(n, 0);
+  std::vector<Depth> in_depth(n);
   std::vector<char> join_reported(n, 0);
   std::vector<const CFGBlock *> work;
 
   const CFGBlock &entry = cfg->getEntry();
-  in_depth[entry.getBlockID()] = 0;
+  seen[entry.getBlockID()] = 1;
   work.push_back(&entry);
 
   const CFGBlock *exit = &cfg->getExit();
-  auto apply = [&](int d, const CFGBlock &b) -> int {
+  auto apply = [&](Depth d, const CFGBlock &b) -> Depth {
     for (const auto &el : b) {
       if (std::optional<CFGStmt> cs = el.getAs<CFGStmt>()) {
         std::vector<const CallExpr *> calls;
         collectCalls(cs->getStmt(), calls);
         for (const CallExpr *c : calls) {
-          const CSOp op = classify(c->getDirectCallee());
-          if (op == Enter) {
-            ++d;
-          } else if (op == Leave) {
-            if (d == 0) {
-              reporter.emit(*result.SourceManager,
-                            c->getBeginLoc(),
-                            "ss.emb.cs-balanced",
-                            "critical section leave without a matching enter");
+          switch (classify(c->getDirectCallee())) {
+          case BlindEnable:
+            reporter.emit(*result.SourceManager,
+                          c->getBeginLoc(),
+                          "ss.emb.irq-mask-balanced",
+                          "do not blindly re-enable interrupts; restore the saved mask");
+            break;
+          case DisableIrq:
+            ++d.irq;
+            break;
+          case RestorePrimask:
+            if (d.irq > 0) {
+              --d.irq;
+            }
+            break;
+          case DisableFault:
+            ++d.fault;
+            break;
+          case RestoreFault:
+            if (d.fault > 0) {
+              --d.fault;
+            }
+            break;
+          case RaiseBasepri:
+            ++d.basepri;
+            break;
+          case SetBasepri:
+            if (d.basepri > 0) {
+              --d.basepri;
             } else {
-              --d;
+              ++d.basepri;
             }
-          } else if (op == Restore) {
-            if (d > 0) {
-              --d;
-            }
+            break;
+          case None:
+            break;
           }
         }
       }
@@ -147,7 +198,7 @@ void CsBalancedCheck::run(const clang::ast_matchers::MatchFinder::MatchResult &r
   while (!work.empty()) {
     const CFGBlock *b = work.back();
     work.pop_back();
-    int d = apply(in_depth[b->getBlockID()], *b);
+    const Depth d = apply(in_depth[b->getBlockID()], *b);
     if (b->hasNoReturnElement()) {
       continue;
     }
@@ -156,24 +207,25 @@ void CsBalancedCheck::run(const clang::ast_matchers::MatchFinder::MatchResult &r
         continue;
       }
       if (succ == exit) {
-        if (d > 0) {
+        if (d.held()) {
           reporter.emit(*result.SourceManager,
                         exitLoc(*b, *fn),
-                        "ss.emb.cs-balanced",
-                        "critical section is not left on this path");
+                        "ss.emb.irq-mask-balanced",
+                        "interrupt mask is not restored on this path");
         }
         continue;
       }
       const unsigned id = succ->getBlockID();
-      if (in_depth[id] < 0) {
+      if (!seen[id]) {
+        seen[id] = 1;
         in_depth[id] = d;
         work.push_back(succ);
       } else if (in_depth[id] != d && !join_reported[id]) {
         join_reported[id] = 1;
         reporter.emit(*result.SourceManager,
                       firstLoc(*succ, *fn),
-                      "ss.emb.cs-balanced",
-                      "critical section state differs across paths");
+                      "ss.emb.irq-mask-balanced",
+                      "interrupt mask state differs across paths");
       }
     }
   }

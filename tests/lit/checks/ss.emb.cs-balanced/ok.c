@@ -1,7 +1,8 @@
 void taskENTER_CRITICAL(void);
 void taskEXIT_CRITICAL(void);
 void __disable_irq(void);
-void __enable_irq(void);
+unsigned __get_PRIMASK(void);
+void __set_PRIMASK(unsigned m);
 
 void balanced(void) {
   taskENTER_CRITICAL();
@@ -18,8 +19,9 @@ void both_returns(int x) {
 }
 
 void irq_pair(void) {
+  unsigned m = __get_PRIMASK();
   __disable_irq();
-  __enable_irq();
+  __set_PRIMASK(m);
 }
 
 void nested(void) {

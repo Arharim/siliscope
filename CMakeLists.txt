@@ -59,6 +59,7 @@ if(SILISCOPE_ENABLE_CLANG)
     src/checks/IsrNotCalled.cpp
     src/checks/NoLogInIsr.cpp
     src/checks/CsBalanced.cpp
+    src/checks/IrqMaskBalanced.cpp
   )
   target_compile_definitions(siliscope PRIVATE SILISCOPE_WITH_CLANG)
   target_include_directories(siliscope PRIVATE

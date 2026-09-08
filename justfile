@@ -212,6 +212,11 @@ test-cs: build
     {{bin}} --target arm-none-eabi tests/lit/checks/ss.emb.cs-balanced/ok.c
     ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.emb.cs-balanced/bad.c
 
+# ss.emb.irq-mask-balanced fixtures
+test-irq-mask: build
+    {{bin}} --target arm-none-eabi tests/lit/checks/ss.emb.irq-mask-balanced/ok.c
+    ! {{bin}} --target arm-none-eabi tests/lit/checks/ss.emb.irq-mask-balanced/bad.c
+
 # YAML profile load (default embedded-c still used by the fixtures above)
 test-profile: build
     {{bin}} --profile style --target arm-none-eabi tests/lit/checks/ss.ctrl.no-goto/bad.c

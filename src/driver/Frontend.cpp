@@ -4,6 +4,7 @@
 #include "siliscope/Check.h"
 #include "siliscope/CsBalanced.h"
 #include "siliscope/IfElseFinal.h"
+#include "siliscope/IrqMaskBalanced.h"
 #include "siliscope/IsrNotCalled.h"
 #include "siliscope/NoAbortSystem.h"
 #include "siliscope/NoAssignInCond.h"
@@ -162,15 +163,16 @@ public:
         no_recursion(reporter),
         isr_not_called(reporter),
         no_log_in_isr(reporter),
-        cs_balanced(reporter) {
+        cs_balanced(reporter),
+        irq_mask_balanced(reporter) {
     Check *const all[] = {
-        &no_goto,        &no_setjmp,         &no_heap,      &no_unbounded,  &no_stdio,
-        &braces,         &no_assign,         &no_octal,     &no_vla,        &no_stdarg,
-        &no_signal,      &no_atoi,           &no_abort,     &no_qsort,      &no_rand,
-        &no_setlocale,   &no_comma,          &no_flexarray, &no_blockscope, &if_else_final,
-        &no_continue,    &no_nested_ternary, &no_inc,       &no_sizeof_se,  &no_logical_rhs,
-        &prototype,      &return_all_paths,  &unreachable,  &noreturn_fn,   &no_recursion,
-        &isr_not_called, &no_log_in_isr,     &cs_balanced};
+        &no_goto,        &no_setjmp,         &no_heap,      &no_unbounded,     &no_stdio,
+        &braces,         &no_assign,         &no_octal,     &no_vla,           &no_stdarg,
+        &no_signal,      &no_atoi,           &no_abort,     &no_qsort,         &no_rand,
+        &no_setlocale,   &no_comma,          &no_flexarray, &no_blockscope,    &if_else_final,
+        &no_continue,    &no_nested_ternary, &no_inc,       &no_sizeof_se,     &no_logical_rhs,
+        &prototype,      &return_all_paths,  &unreachable,  &noreturn_fn,      &no_recursion,
+        &isr_not_called, &no_log_in_isr,     &cs_balanced,  &irq_mask_balanced};
     const char *const ids[] = {"ss.ctrl.no-goto",
                                "ss.ctrl.no-setjmp",
                                "ss.mem.no-heap-after-init",
@@ -203,7 +205,8 @@ public:
                                "ss.ctrl.no-recursion",
                                "ss.emb.isr-not-called",
                                "ss.emb.no-log-in-isr",
-                               "ss.emb.cs-balanced"};
+                               "ss.emb.cs-balanced",
+                               "ss.emb.irq-mask-balanced"};
     static_assert(sizeof(all) / sizeof(all[0]) == sizeof(ids) / sizeof(ids[0]));
     for (unsigned i = 0; i < sizeof(ids) / sizeof(ids[0]); ++i) {
       if (profile.isEnabled(ids[i])) {
@@ -257,6 +260,7 @@ private:
   IsrNotCalledCheck isr_not_called;
   NoLogInIsrCheck no_log_in_isr;
   CsBalancedCheck cs_balanced;
+  IrqMaskBalancedCheck irq_mask_balanced;
 };
 
 class AnalyzeFactory : public FrontendActionFactory {

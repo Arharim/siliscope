@@ -13,7 +13,6 @@ using clang::CFGBlock;
 using clang::CFGStmt;
 using clang::FunctionDecl;
 using clang::ReturnStmt;
-using clang::Stmt;
 using clang::ast_matchers::functionDecl;
 using clang::ast_matchers::isDefinition;
 using clang::ast_matchers::isImplicit;

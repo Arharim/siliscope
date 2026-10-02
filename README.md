@@ -107,6 +107,8 @@ Live checkers (see `src/catalog/Registry.cpp` and `just test`):
   irq-mask restore (not a blind enable)
 - Types / decls: ISR no FP, check-return, no-shadow, ptr-null, distinct
   names, const, file-local `static`
+- Conversions: signed bitwise, shift amount, `U` suffix, stripping
+  const/volatile, pointer/integer casts, floating equality, implicit narrowing
 
 Not in this release: dataflow (uninit, bounds, dangling), `ss.ctrl.loop-bound`,
-most `ss.cpp.*` / `ss.pre.*` / `ss.conv.*`, review-only catalog rows.
+most `ss.cpp.*` / `ss.pre.*`, the rest of `ss.conv.*`, review-only catalog rows.

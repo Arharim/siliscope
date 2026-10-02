@@ -72,6 +72,13 @@ if(SILISCOPE_ENABLE_CLANG)
     src/checks/DeclConst.cpp
     src/checks/StaticInternal.cpp
     src/checks/NoUnusedParams.cpp
+    src/checks/NoSignedBitwise.cpp
+    src/checks/ShiftRange.cpp
+    src/checks/USuffix.cpp
+    src/checks/NoCvAway.cpp
+    src/checks/NoPtrInt.cpp
+    src/checks/NoFpEq.cpp
+    src/checks/NoSilentNarrow.cpp
   )
   target_compile_definitions(siliscope PRIVATE SILISCOPE_WITH_CLANG)
   target_include_directories(siliscope PRIVATE

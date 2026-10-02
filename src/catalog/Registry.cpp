@@ -16,7 +16,9 @@
 #include "siliscope/NoBlockScope.h"
 #include "siliscope/NoComma.h"
 #include "siliscope/NoContinue.h"
+#include "siliscope/NoCvAway.h"
 #include "siliscope/NoFlexibleArray.h"
+#include "siliscope/NoFpEq.h"
 #include "siliscope/NoGoto.h"
 #include "siliscope/NoHeap.h"
 #include "siliscope/NoIncInExpr.h"
@@ -24,6 +26,7 @@
 #include "siliscope/NoLogicalRhs.h"
 #include "siliscope/NoNestedTernary.h"
 #include "siliscope/NoOctal.h"
+#include "siliscope/NoPtrInt.h"
 #include "siliscope/NoQsort.h"
 #include "siliscope/NoRand.h"
 #include "siliscope/NoRecursion.h"
@@ -31,6 +34,8 @@
 #include "siliscope/NoSetlocale.h"
 #include "siliscope/NoShadow.h"
 #include "siliscope/NoSignal.h"
+#include "siliscope/NoSignedBitwise.h"
+#include "siliscope/NoSilentNarrow.h"
 #include "siliscope/NoSizeofSideEffect.h"
 #include "siliscope/NoStdarg.h"
 #include "siliscope/NoStdio.h"
@@ -41,8 +46,10 @@
 #include "siliscope/Prototype.h"
 #include "siliscope/PtrNull.h"
 #include "siliscope/ReturnAllPaths.h"
+#include "siliscope/ShiftRange.h"
 #include "siliscope/StaticInternal.h"
 #include "siliscope/StringConst.h"
+#include "siliscope/USuffix.h"
 #include "siliscope/Unreachable.h"
 
 #include <cstring>
@@ -53,6 +60,13 @@ static std::unique_ptr<Check> makeCheck(Reporter &reporter) {
 }
 
 static const CheckSpec kSpecs[] = {
+    {"ss.conv.no-cv-away", makeCheck<NoCvAwayCheck>},
+    {"ss.conv.no-fp-eq", makeCheck<NoFpEqCheck>},
+    {"ss.conv.no-ptr-int", makeCheck<NoPtrIntCheck>},
+    {"ss.conv.no-signed-bitwise", makeCheck<NoSignedBitwiseCheck>},
+    {"ss.conv.no-silent-narrow", makeCheck<NoSilentNarrowCheck>},
+    {"ss.conv.shift-range", makeCheck<ShiftRangeCheck>},
+    {"ss.conv.u-suffix", makeCheck<USuffixCheck>},
     {"ss.ctrl.braces", makeCheck<BracesCheck>},
     {"ss.ctrl.if-else-final", makeCheck<IfElseFinalCheck>},
     {"ss.ctrl.no-assignment-in-condition", makeCheck<NoAssignInCondCheck>},

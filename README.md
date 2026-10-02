@@ -86,8 +86,9 @@ just rules
 just fmt
 ```
 
-[`.clang-format`](.clang-format) is LLVM-based. [`.clangd`](.clangd) is
-host-local (this machine's MSYS/LLVM paths).
+[`.clang-format`](.clang-format) is LLVM-based. [`.clangd`](.clangd) is shared:
+the include path and `-xc` for `.c` files. The compiler and system includes
+belong in the user clangd config.
 
 ## What 0.2.0 actually runs
 

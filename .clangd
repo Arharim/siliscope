@@ -1,31 +1,17 @@
-# Valid clangd config: one fragment = If? + sibling blocks.
-# Separate conditions with ---. See https://clangd.llvm.org/config.html
+# Shared by every OS. One fragment is an optional If plus sibling blocks.
+# Separate fragments with ---. https://clangd.llvm.org/config.html
 #
-# QueryDriver is a *CLI* flag (--query-driver), not a YAML key.
-# CompilationDatabase lives under CompileFlags.
+# Compiler path and system includes stay out of this file. clangd 22 has no
+# OS condition. On Linux the host libstdc++ is found automatically. The MSYS2
+# compiler and -isystem paths belong in %LocalAppData%\clangd\config.yaml.
 
 CompileFlags:
   CompilationDatabase: build
-  Compiler: C:/msys64/ucrt64/bin/g++.exe
-  BuiltinHeaders: Clangd
   Add:
-    - --target=x86_64-w64-windows-gnu
     - -Iinclude
     - -ferror-limit=0
     - -Wall
     - -Wextra
-    - -isystem
-    - C:/msys64/ucrt64/include/c++/15.2.0
-    - -isystem
-    - C:/msys64/ucrt64/include/c++/15.2.0/x86_64-w64-mingw32
-    - -isystem
-    - C:/msys64/ucrt64/include/c++/15.2.0/backward
-    - -isystem
-    - C:/msys64/ucrt64/lib/gcc/x86_64-w64-mingw32/15.2.0/include
-    - -isystem
-    - C:/msys64/ucrt64/include
-    - -isystem
-    - C:/msys64/ucrt64/lib/gcc/x86_64-w64-mingw32/15.2.0/include-fixed
 
 ---
 If:
@@ -37,5 +23,6 @@ CompileFlags:
 If:
   PathMatch: .*\.c
 CompileFlags:
+  # Nearest command is g++, so the file stays C++ until -xc.
   Remove: [-std=c++17]
-  Add: [-std=c11, -Wno-unknown-attributes]
+  Add: [-xc, -std=c11, -Wno-unknown-attributes]

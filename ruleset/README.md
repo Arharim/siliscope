@@ -27,6 +27,8 @@ Profiles
 	style		whitespace / naming only
 
 	default: "on" in a rule → on in embedded-c unless excluded.
+	The profile languages drop rules that do not list that language.
+	embedded-c is C, so ss.cpp.* stays off there. strict is C and C++.
 
 Policy
 ------
@@ -46,3 +48,12 @@ Adding a rule
 3. Enable in a profile or leave default "off".
 4. python tools/validate_ruleset.py
 5. python tools/generate_ruleset_index.py
+
+Adding a checker
+----------------
+
+1. Subclass Check. Emit the catalog id.
+2. One row in src/catalog/Registry.cpp, and the .cpp in CMakeLists.txt.
+3. tests/lit/checks/<id>/ok.c and bad.c. `just test` discovers them.
+   A case that is off in embedded-c and on in strict uses ss-run comments
+   (see tools/run_checks.py).

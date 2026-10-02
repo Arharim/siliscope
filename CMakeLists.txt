@@ -28,6 +28,7 @@ if(SILISCOPE_ENABLE_CLANG)
     src/driver/Frontend.cpp
     src/diag/Report.cpp
     src/catalog/Profile.cpp
+    src/catalog/Registry.cpp
     src/checks/NoGoto.cpp
     src/checks/NoSetjmp.cpp
     src/checks/NoHeap.cpp

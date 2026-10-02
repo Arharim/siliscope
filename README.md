@@ -17,8 +17,8 @@ not implemented yet. Not a MISRA/CERT clone and not a certified tool.
 | `src/checks/` | LibTooling checkers |
 | `src/catalog/` | profile / allowlist load |
 | `tests/lit/` | `ok.c` / `bad.c` fixtures |
-| `tools/` | catalog index / validate (python) |
-| `justfile` | build, `just fw`, per-checker `just test-*` |
+| `tools/` | catalog index, validate, `run_checks.py` |
+| `justfile` | build, `just fw`, `just test` |
 | `docs/` | local PDFs only; gitignored, do not commit |
 
 ## Build
@@ -58,18 +58,28 @@ cmake -S llvm -B llvm-build -G Ninja \
 siliscope --target arm-none-eabi file.c
 siliscope --profile strict --target arm-none-eabi file.c
 siliscope --allow ss.fn.no-stdarg:log_printf file.c
+siliscope --list
+siliscope --profile embedded-cpp --list
 just fw path/to/firmware path/to/firmware/src/foo.c
 just probe
-just test-goto
+just test
+just test ss.ctrl.no-goto
 ```
 
 `just fw DIR SRC...` uses `DIR/compile_commands.json`. For `arm-none-eabi-gcc`
 jobs the driver injects `--target` / sysroot / gcc `stddef.h` and drops
 `--specs=`. Do not put firmware tree paths in this repo.
 
-Profiles: `embedded-c` (default), `embedded-cpp`, `strict`, `style`. See
-[`ruleset/README.md`](ruleset/README.md), [`ruleset/INDEX.md`](ruleset/INDEX.md),
-[`ruleset/coverage.md`](ruleset/coverage.md).
+Profiles: `embedded-c` (default), `embedded-cpp`, `strict`, `style`. A profile's
+`languages` drop rules that do not apply, so `embedded-c` does not enable
+`ss.cpp.*`. See [`ruleset/README.md`](ruleset/README.md),
+[`ruleset/INDEX.md`](ruleset/INDEX.md), [`ruleset/coverage.md`](ruleset/coverage.md).
+
+`--list` prints every rule the profile turned on and whether a checker is
+linked. A normal run ends with `findings:` and `no-checker:`. Exit status
+follows findings and parse errors. `no-checker` is the catalog gap, not a
+defect in the source. `just test` builds once and checks that each `bad.c`
+emits its `[ss.*]` id. A file that fails to parse does not count as a hit.
 
 ```text
 just rules
@@ -81,7 +91,7 @@ host-local (this machine's MSYS/LLVM paths).
 
 ## What 0.2.0 actually runs
 
-Live checkers (see `src/driver/Frontend.cpp` and `just test-*`):
+Live checkers (see `src/catalog/Registry.cpp` and `just test`):
 
 - Control / style-adjacent AST: goto, setjmp, braces, assignment-in-condition,
   if-else-final, continue, nested ternary, no-block-scope, prototype,

@@ -4,11 +4,18 @@
 #include <unordered_map>
 #include <vector>
 
+struct EnabledRule {
+  std::string severity;
+  std::string kind; // syntax, types, cfg, dataflow, callgraph, review, process
+};
+
 class Profile {
 public:
   std::string name;
-  // Enabled rule id -> severity (error|warning|advisory|style).
-  std::unordered_map<std::string, std::string> enabled;
+  // Languages this profile applies to (c, cpp). Empty means no language filter.
+  std::vector<std::string> languages;
+  // Enabled rule id -> severity and catalog check kind.
+  std::unordered_map<std::string, EnabledRule> enabled;
   // Rule id -> allowed identifiers (e.g. log_printf for ss.fn.no-stdarg).
   std::unordered_map<std::string, std::vector<std::string>> allow;
 
@@ -16,7 +23,12 @@ public:
 
   const char *severityOf(const char *id) const {
     const auto it = enabled.find(std::string(id));
-    return it == enabled.end() ? nullptr : it->second.c_str();
+    return it == enabled.end() ? nullptr : it->second.severity.c_str();
+  }
+
+  const char *kindOf(const char *id) const {
+    const auto it = enabled.find(std::string(id));
+    return it == enabled.end() ? nullptr : it->second.kind.c_str();
   }
 
   void addAllow(const std::string &rule, const std::string &name) { allow[rule].push_back(name); }

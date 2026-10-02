@@ -14,6 +14,8 @@ struct FrontendOptions {
   // --allow rule:name (e.g. ss.fn.no-stdarg:log_printf)
   std::vector<std::pair<std::string, std::string>> allow;
   bool probe = false;
+  // Print enabled rules and whether a checker is linked. Does not parse sources.
+  bool list = false;
 };
 
 #ifdef SILISCOPE_WITH_CLANG

@@ -19,16 +19,55 @@ namespace {
 struct RuleMeta {
   std::string severity;
   std::string def; // "on" | "off" | "advisory"
+  std::string kind;
+  std::vector<std::string> languages;
 };
 
 struct ProfileAst {
   std::string extends;
+  std::vector<std::string> languages;
   bool from_default = false;
   std::vector<std::string> extra;
   std::vector<std::string> exclude;
   std::vector<std::pair<std::string, std::string>> overrides;
   std::vector<std::pair<std::string, std::string>> allow;
 };
+
+static std::vector<std::string> parseStringList(llvm::StringRef val) {
+  std::vector<std::string> out;
+  val = val.trim();
+  if (val.size() >= 2 && val.front() == '[' && val.back() == ']') {
+    val = val.drop_front().drop_back();
+  }
+  while (!val.empty()) {
+    llvm::StringRef item;
+    std::tie(item, val) = val.split(',');
+    item = item.trim();
+    if (item.size() >= 2 && item.front() == '"' && item.back() == '"') {
+      item = item.drop_front().drop_back();
+    }
+    if (!item.empty()) {
+      out.emplace_back(item.str());
+    }
+  }
+  return out;
+}
+
+// Empty rule languages apply everywhere. Empty profile languages disable the filter.
+static bool languageApplies(const std::vector<std::string> &rule,
+                            const std::vector<std::string> &profile) {
+  if (rule.empty() || profile.empty()) {
+    return true;
+  }
+  for (const std::string &r : rule) {
+    for (const std::string &p : profile) {
+      if (r == p) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
 
 using Catalog = std::unordered_map<std::string, RuleMeta>;
 
@@ -165,6 +204,10 @@ static bool loadCatalog(const std::string &ruleset_dir, Catalog &cat, std::strin
         meta.severity = unquote(val);
       } else if (key == "default") {
         meta.def = unquote(val);
+      } else if (key == "check") {
+        meta.kind = unquote(val);
+      } else if (key == "languages") {
+        meta.languages = parseStringList(val);
       }
     }
     flush();
@@ -204,6 +247,9 @@ static bool loadProfileAst(const std::string &path, ProfileAst &ast, std::string
     if (ind == 0 && splitKey(line, key, val)) {
       if (key == "extends") {
         ast.extends = unquote(val);
+        sec = Sec::Top;
+      } else if (key == "languages") {
+        ast.languages = parseStringList(val);
         sec = Sec::Top;
       } else if (key == "include") {
         sec = Sec::Include;
@@ -272,12 +318,27 @@ static bool knownRule(const Catalog &cat, const std::string &id, std::string &er
   return false;
 }
 
+static void filterLanguages(const Catalog &cat, Profile &out) {
+  if (out.languages.empty()) {
+    return;
+  }
+  for (auto it = out.enabled.begin(); it != out.enabled.end();) {
+    const auto meta = cat.find(it->first);
+    if (meta != cat.end() && !languageApplies(meta->second.languages, out.languages)) {
+      it = out.enabled.erase(it);
+    } else {
+      ++it;
+    }
+  }
+}
+
 static bool resolve(const std::string &ruleset_dir,
                     const std::string &name,
                     const Catalog &cat,
                     std::vector<std::string> &stack,
                     Profile &out,
-                    std::string &err) {
+                    std::string &err,
+                    bool is_root) {
   if (std::find(stack.begin(), stack.end(), name) != stack.end()) {
     err = "profile cycle involving " + name;
     return false;
@@ -312,16 +373,20 @@ static bool resolve(const std::string &ruleset_dir,
 
   stack.push_back(name);
   if (!ast.extends.empty()) {
-    if (!resolve(ruleset_dir, ast.extends, cat, stack, out, err)) {
+    if (!resolve(ruleset_dir, ast.extends, cat, stack, out, err, false)) {
       return false;
     }
   }
   stack.pop_back();
 
+  if (!ast.languages.empty()) {
+    out.languages = ast.languages;
+  }
+
   if (ast.from_default) {
     for (const auto &kv : cat) {
       if (kv.second.def == "on") {
-        out.enabled[kv.first] = kv.second.severity;
+        out.enabled[kv.first] = EnabledRule{kv.second.severity, kv.second.kind};
       }
     }
   }
@@ -329,7 +394,7 @@ static bool resolve(const std::string &ruleset_dir,
     if (!knownRule(cat, id, err)) {
       return false;
     }
-    out.enabled[id] = cat.at(id).severity;
+    out.enabled[id] = EnabledRule{cat.at(id).severity, cat.at(id).kind};
   }
   for (const std::string &id : ast.exclude) {
     if (!knownRule(cat, id, err)) {
@@ -343,8 +408,11 @@ static bool resolve(const std::string &ruleset_dir,
     }
     auto it = out.enabled.find(ov.first);
     if (it != out.enabled.end()) {
-      it->second = ov.second;
+      it->second.severity = ov.second;
     }
+  }
+  if (is_root) {
+    filterLanguages(cat, out);
   }
   for (const auto &al : ast.allow) {
     if (!knownRule(cat, al.first, err)) {
@@ -372,5 +440,5 @@ bool loadProfile(const std::string &ruleset_dir,
   out = {};
   out.name = n;
   std::vector<std::string> stack;
-  return resolve(ruleset_dir, n, cat, stack, out, err);
+  return resolve(ruleset_dir, n, cat, stack, out, err, true);
 }

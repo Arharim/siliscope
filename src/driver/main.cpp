@@ -22,6 +22,7 @@ void print_usage(std::FILE *out) {
              "  --target <triple>      e.g. arm-none-eabi (also injected into -p jobs)\n"
              "  -extra-arg <arg>       extra Clang frontend argument (repeatable)\n"
              "  --allow <rule>:<name>  do not flag this identifier (repeatable)\n"
+             "  --list                 enabled rules, and which have a checker\n"
              "  --probe                print AST probe (functions, interrupt, packed)\n"
              "  --version              print version and frontend status\n"
              "  -h, --help             this help\n",
@@ -61,6 +62,8 @@ int main(int argc, char **argv) {
       fe.allow.emplace_back(spec.substr(0, colon), spec.substr(colon + 1));
     } else if (std::strcmp(a, "--probe") == 0) {
       fe.probe = true;
+    } else if (std::strcmp(a, "--list") == 0) {
+      fe.list = true;
     } else if (a[0] == '-') {
       std::fprintf(stderr, "error: unknown option %s\n", a);
       return 2;
@@ -86,7 +89,7 @@ int main(int argc, char **argv) {
     return 0;
   }
 
-  if (fe.sources.empty()) {
+  if (fe.sources.empty() && !fe.list) {
     print_usage(stderr);
     std::fputs("\nerror: no source files\n", stderr);
     return 2;

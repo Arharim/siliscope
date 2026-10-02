@@ -34,7 +34,10 @@ just build
 just run --version
 ```
 
-LibTooling, LLVM/Clang 19 *dev* (`LLVMConfig.cmake` + `ClangConfig.cmake`):
+LibTooling, LLVM/Clang dev (`LLVMConfig.cmake` + `ClangConfig.cmake`). A
+component-library build links `clangTooling` and the rest. A distro package
+that sets `CLANG_LINK_CLANG_DYLIB` links `libclang-cpp.so` and `libLLVM.so`
+instead (for example `/usr/lib/cmake/llvm` and `/usr/lib/cmake/clang`):
 
 ```text
 just build-clang <llvm-build>/lib/cmake/llvm <llvm-build>/lib/cmake/clang

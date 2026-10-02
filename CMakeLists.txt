@@ -14,6 +14,8 @@ add_executable(siliscope src/driver/main.cpp)
 target_include_directories(siliscope PRIVATE ${CMAKE_SOURCE_DIR}/include)
 
 if(SILISCOPE_ENABLE_CLANG)
+  # LLVMConfig probes C headers (libedit). The project sources stay C++.
+  enable_language(C)
   find_package(LLVM CONFIG REQUIRED)
   find_package(Clang CONFIG REQUIRED)
 
@@ -82,20 +84,26 @@ if(SILISCOPE_ENABLE_CLANG)
     # GNU ld often dies (exit 5) on the static Clang archive set.
     target_link_options(siliscope PRIVATE -fuse-ld=lld)
   endif()
-  target_link_libraries(siliscope PRIVATE
-    clangTooling
-    clangASTMatchers
-    clangFrontend
-    clangDriver
-    clangSerialization
-    clangParse
-    clangSema
-    clangAnalysis
-    clangAST
-    clangLex
-    clangBasic
-    ${SILISCOPE_LLVM_LIBS}
-  )
+  if(CLANG_LINK_CLANG_DYLIB)
+    # Distro packages ship one libclang-cpp.so and no component archives.
+    # Our objects call LLVM directly, so libLLVM.so is on the link line too.
+    target_link_libraries(siliscope PRIVATE clang-cpp LLVM)
+  else()
+    target_link_libraries(siliscope PRIVATE
+      clangTooling
+      clangASTMatchers
+      clangFrontend
+      clangDriver
+      clangSerialization
+      clangParse
+      clangSema
+      clangAnalysis
+      clangAST
+      clangLex
+      clangBasic
+      ${SILISCOPE_LLVM_LIBS}
+    )
+  endif()
 endif()
 
 install(TARGETS siliscope RUNTIME DESTINATION bin)

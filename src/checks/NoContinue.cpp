@@ -17,5 +17,5 @@ void NoContinueCheck::run(const clang::ast_matchers::MatchFinder::MatchResult &r
     return;
   }
   reporter.emit(
-      *result.SourceManager, s->getContinueLoc(), "ss.ctrl.no-continue", "do not use continue");
+      *result.SourceManager, s->getBeginLoc(), "ss.ctrl.no-continue", "do not use continue");
 }

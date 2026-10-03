@@ -9,8 +9,10 @@
 #include "clang/AST/Attr.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
+#include "clang/Basic/Version.h"
 #include "clang/Frontend/FrontendAction.h"
 #include "clang/Frontend/MultiplexConsumer.h"
+#include "clang/Options/OptionUtils.h"
 #include "clang/Tooling/CompilationDatabase.h"
 #include "clang/Tooling/JSONCompilationDatabase.h"
 #include "clang/Tooling/Tooling.h"
@@ -18,6 +20,7 @@
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/Path.h"
+#include "llvm/Support/Program.h"
 #include "llvm/Support/raw_ostream.h"
 
 #include <algorithm>
@@ -179,7 +182,8 @@ static std::string gnuArmSysroot(llvm::StringRef compiler) {
   return {};
 }
 
-// lib/gcc/arm-none-eabi/<ver>/include holds stddef.h / stdarg.h for the cross gcc.
+// lib/gcc/arm-none-eabi/<ver>/include holds GCC's builtins. It is added with
+// -idirafter so Clang's own arm_acle.h and stddef.h stay in front.
 static std::string gnuArmGccInclude(llvm::StringRef compiler) {
   llvm::SmallString<256> dir = gnuArmPrefix(compiler);
   llvm::sys::path::append(dir, "lib", "gcc", "arm-none-eabi");
@@ -189,6 +193,60 @@ static std::string gnuArmGccInclude(llvm::StringRef compiler) {
     llvm::sys::path::append(inc, "include");
     if (llvm::sys::fs::is_directory(inc)) {
       return std::string(inc);
+    }
+  }
+  return {};
+}
+
+// GCC flags Clang 22 does not implement. Unknown arguments are errors.
+// The others are warnings, and Zephyr's -Werror promotes them.
+static bool dropGccArg(llvm::StringRef arg) {
+  return arg.starts_with("--specs=") || arg == "-fno-printf-return-value" ||
+         arg == "-fno-reorder-functions" || arg == "-fno-defer-pop" || arg == "-fsignaling-nans" ||
+         arg == "--param=min-pagesize=0" || arg.starts_with("-mfp16-format=");
+}
+
+// <prefix>/lib/gcc/arm-none-eabi/<ver>/include. CMSIS includes <arm_acle.h>,
+// and GCC's copy passes runtime arguments to __builtin_arm_*.
+static bool isGccBuiltinInclude(llvm::StringRef path) {
+  while (path.size() > 1 && (path.ends_with("/") || path.ends_with("\\"))) {
+    path = path.drop_back();
+  }
+  if (llvm::sys::path::filename(path) != "include") {
+    return false;
+  }
+  llvm::SmallString<256> dir(path);
+  llvm::sys::path::remove_filename(dir);
+  llvm::sys::path::remove_filename(dir);
+  if (llvm::sys::path::filename(dir) != "arm-none-eabi") {
+    return false;
+  }
+  llvm::sys::path::remove_filename(dir);
+  return llvm::sys::path::filename(dir) == "gcc";
+}
+
+// ClangTool derives the resource directory from siliscope's path, which has
+// no builtin headers. <arm_acle.h> then falls through to GCC's copy.
+// Zephyr also passes -nostdinc, so the resource directory is not searched
+// unless this path is added with -isystem in front of GCC's include.
+static std::string clangResourceDir() {
+  auto usable = [](llvm::StringRef dir) {
+    llvm::SmallString<256> inc(dir);
+    llvm::sys::path::append(inc, "include", "stddef.h");
+    return llvm::sys::fs::is_regular_file(inc);
+  };
+  if (llvm::ErrorOr<std::string> clang = llvm::sys::findProgramByName("clang")) {
+    const std::string dir = clang::GetResourcesPath(*clang);
+    if (usable(dir)) {
+      return dir;
+    }
+  }
+  const std::string major = CLANG_VERSION_MAJOR_STRING;
+  const char *roots[] = {"/usr/lib/clang/", "/usr/lib64/clang/"};
+  for (const char *root : roots) {
+    const std::string dir = std::string(root) + major;
+    if (usable(dir)) {
+      return dir;
     }
   }
   return {};
@@ -266,34 +324,69 @@ int runFrontend(const FrontendOptions &opt) {
   if (!opt.compile_commands_dir.empty()) {
     const std::string tgt = "--target=" + opt.target;
     const std::vector<std::string> extras = opt.extra_args;
-    tool.appendArgumentsAdjuster([tgt, extras](const CommandLineArguments &args, llvm::StringRef) {
-      CommandLineArguments out;
-      if (!args.empty()) {
-        out.push_back(args.front());
-        const llvm::StringRef compiler = args.front();
-        if (compiler.contains_insensitive("arm-none-eabi-gcc") ||
-            compiler.contains_insensitive("arm-none-eabi-g++")) {
-          out.push_back(tgt);
-          const std::string sys = gnuArmSysroot(compiler);
-          if (!sys.empty()) {
-            out.push_back("--sysroot=" + sys);
+    const std::string resourceDir = clangResourceDir();
+    tool.appendArgumentsAdjuster(
+        [tgt, extras, resourceDir](const CommandLineArguments &args, llvm::StringRef) {
+          CommandLineArguments out;
+          const bool gnuArm =
+              !args.empty() &&
+              (llvm::StringRef(args.front()).contains_insensitive("arm-none-eabi-gcc") ||
+               llvm::StringRef(args.front()).contains_insensitive("arm-none-eabi-g++"));
+          std::string gccinc;
+          if (!args.empty()) {
+            out.push_back(args.front());
+            if (gnuArm) {
+              out.push_back(tgt);
+              const std::string sys = gnuArmSysroot(args.front());
+              if (!sys.empty()) {
+                out.push_back("--sysroot=" + sys);
+              }
+              gccinc = gnuArmGccInclude(args.front());
+            }
           }
-          const std::string gccinc = gnuArmGccInclude(compiler);
-          if (!gccinc.empty()) {
-            out.push_back("-isystem");
-            out.push_back(gccinc);
+          bool sawGccInclude = false;
+          for (size_t i = 1; i < args.size(); ++i) {
+            const llvm::StringRef arg(args[i]);
+            if (gnuArm && dropGccArg(arg)) {
+              continue;
+            }
+            llvm::StringRef sysPath;
+            if (gnuArm && arg == "-isystem" && i + 1 < args.size()) {
+              sysPath = args[i + 1];
+            } else if (gnuArm && arg.starts_with("-isystem") &&
+                       arg.size() > llvm::StringRef("-isystem").size()) {
+              sysPath = arg.substr(llvm::StringRef("-isystem").size());
+            }
+            if (!sysPath.empty() && isGccBuiltinInclude(sysPath)) {
+              // -nostdinc suppresses the implicit resource include. An explicit
+              // -isystem keeps <arm_acle.h> on Clang's header, ahead of GCC's.
+              if (!sawGccInclude && !resourceDir.empty()) {
+                llvm::SmallString<256> inc(resourceDir);
+                llvm::sys::path::append(inc, "include");
+                out.push_back("-isystem");
+                out.push_back(std::string(inc));
+              }
+              out.push_back("-idirafter");
+              out.push_back(sysPath.str());
+              sawGccInclude = true;
+              if (arg == "-isystem") {
+                ++i;
+              }
+              continue;
+            }
+            out.push_back(args[i]);
           }
-        }
-      }
-      for (size_t i = 1; i < args.size(); ++i) {
-        if (llvm::StringRef(args[i]).starts_with("--specs=")) {
-          continue;
-        }
-        out.push_back(args[i]);
-      }
-      out.insert(out.end(), extras.begin(), extras.end());
-      return out;
-    });
+          if (gnuArm && !sawGccInclude && !gccinc.empty()) {
+            out.push_back("-idirafter");
+            out.push_back(std::move(gccinc));
+          }
+          if (!resourceDir.empty()) {
+            out.push_back("-resource-dir");
+            out.push_back(resourceDir);
+          }
+          out.insert(out.end(), extras.begin(), extras.end());
+          return out;
+        });
   }
   AnalyzeFactory factory(reporter, opt.probe ? &probe : nullptr, profile);
   const int parse_rc = tool.run(&factory);

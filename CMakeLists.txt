@@ -81,6 +81,7 @@ if(SILISCOPE_ENABLE_CLANG)
     src/checks/NoSilentNarrow.cpp
     src/checks/SwitchWellFormed.cpp
     src/checks/SwitchFallthroughComment.cpp
+    src/checks/EmptyLoopComment.cpp
     src/checks/NoExceptions.cpp
     src/checks/NoRtti.cpp
     src/checks/NoCStyleCast.cpp

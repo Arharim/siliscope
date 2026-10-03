@@ -9,6 +9,7 @@ static void f(int x) {
     --x;
   } while (x);
   for (x = 0; x < 3; ++x) {
+    /* comparison in the condition */
   }
   switch (x) {
   default:

@@ -13,6 +13,7 @@ static void uses_const(const int *p) {
 static void loop(int n) {
   int i;
   for (i = 0; i < n; ++i) {
+    /* i is updated by the increment */
   }
 }
 

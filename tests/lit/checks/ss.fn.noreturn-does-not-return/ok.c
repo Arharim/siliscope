@@ -1,5 +1,6 @@
 static _Noreturn void panic(void) {
   for (;;) {
+    /* does not return */
   }
 }
 

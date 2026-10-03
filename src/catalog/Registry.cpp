@@ -6,6 +6,7 @@
 #include "siliscope/CsBalanced.h"
 #include "siliscope/DeclConst.h"
 #include "siliscope/Distinct.h"
+#include "siliscope/EmptyLoopComment.h"
 #include "siliscope/IfElseFinal.h"
 #include "siliscope/IrqMaskBalanced.h"
 #include "siliscope/IsrNoFp.h"
@@ -80,6 +81,7 @@ static const CheckSpec kSpecs[] = {
     {"ss.cpp.no-rtti", makeCheck<NoRttiCheck>},
     {"ss.cpp.nullptr", makeCheck<NullptrCheck>},
     {"ss.ctrl.braces", makeCheck<BracesCheck>},
+    {"ss.ctrl.empty-loop-comment", makeCheck<EmptyLoopCommentCheck>},
     {"ss.ctrl.if-else-final", makeCheck<IfElseFinalCheck>},
     {"ss.ctrl.no-assignment-in-condition", makeCheck<NoAssignInCondCheck>},
     {"ss.ctrl.no-continue", makeCheck<NoContinueCheck>},

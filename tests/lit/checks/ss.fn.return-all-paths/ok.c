@@ -14,5 +14,6 @@ static void h(void) {
 
 static int loop(void) {
   for (;;) {
+    /* does not return */
   }
 }

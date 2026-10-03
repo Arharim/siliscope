@@ -15,14 +15,19 @@ Extra runs are comments in the fixture::
     /* ss-run: profile=strict expect=ss.ctrl.no-continue */
     /* ss-run: allow=ss.fn.no-stdarg:log_printf expect=clean */
     /* ss-run: extra=-ffreestanding expect=clean */
+    /* ss-run: extra=@arm-cxx expect=ss.cpp.no-heap-stl */
 
 ``expect=clean`` requires exit 0 and no findings. Any other expect value is
-the diagnostic id that must appear in brackets.
+the diagnostic id that must appear in brackets. ``extra=@arm-cxx`` expands to
+the ``arm-none-eabi`` libstdc++ include, its sysroot, and Clang's resource
+directory, so a fixture can include ``<vector>`` without a version pinned in
+the file.
 """
 
 from __future__ import annotations
 
 import re
+import shutil
 import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor
@@ -33,6 +38,63 @@ ROOT = Path(__file__).resolve().parents[1]
 CHECKS = ROOT / "tests" / "lit" / "checks"
 PROBE = ROOT / "tests" / "lit" / "frontend" / "isr_attr.c"
 RUN_RE = re.compile(r"ss-run:([^\n]*)")
+_arm_cxx_cache: list[str] | None = None
+_arm_cxx_lock = Lock()
+
+
+def _version_key(name: str) -> tuple[int, ...]:
+    parts: list[int] = []
+    for piece in name.split("."):
+        parts.append(int(piece) if piece.isdigit() else 0)
+    return tuple(parts)
+
+
+def discover_arm_cxx() -> list[str]:
+    """-extra-arg tokens that make <vector> resolve for --target arm-none-eabi."""
+    gxx = shutil.which("arm-none-eabi-g++")
+    if not gxx:
+        raise RuntimeError("arm-none-eabi-g++ is not on PATH")
+    prefix = Path(gxx).resolve().parents[1]
+    include = prefix / "arm-none-eabi" / "include" / "c++"
+    versions = []
+    if include.is_dir():
+        versions = [p for p in include.iterdir() if (p / "cstdint").is_file()]
+    if not versions:
+        raise RuntimeError(f"no libstdc++ cstdint under {include}")
+    root = sorted(versions, key=lambda p: _version_key(p.name))[-1]
+
+    args: list[str] = []
+    sysroot = prefix / "arm-none-eabi"
+    if sysroot.is_dir():
+        args.append(f"--sysroot={sysroot}")
+    clang = shutil.which("clang")
+    if not clang:
+        raise RuntimeError("clang is not on PATH")
+    resource = subprocess.check_output([clang, "-print-resource-dir"], text=True).strip()
+    stddef = Path(resource) / "include" / "stddef.h"
+    if not stddef.is_file():
+        raise RuntimeError(f"Clang resource dir has no stddef.h: {resource}")
+    args.append(f"-resource-dir={resource}")
+
+    def add_isystem(path: Path) -> None:
+        if path.is_dir():
+            args.append("-isystem")
+            args.append(str(path))
+
+    add_isystem(root)
+    bits = root / "arm-none-eabi"
+    if (bits / "bits" / "c++config.h").is_file():
+        add_isystem(bits)
+    add_isystem(root / "backward")
+    return args
+
+
+def arm_cxx_args() -> list[str]:
+    global _arm_cxx_cache
+    with _arm_cxx_lock:
+        if _arm_cxx_cache is None:
+            _arm_cxx_cache = discover_arm_cxx()
+        return list(_arm_cxx_cache)
 
 
 def parse_runs(path: Path, rule_id: str) -> list[dict]:
@@ -120,11 +182,20 @@ class Runner:
         args = ["--ruleset-dir", "ruleset", "--profile", run["profile"], "--target", "arm-none-eabi"]
         for spec in run["allow"]:
             args.extend(["--allow", spec])
+        label = f"{path.relative_to(ROOT)} profile={run['profile']} expect={run['expect']}"
         for arg in run.get("extra", []):
-            args.extend(["-extra-arg", arg])
+            if arg == "@arm-cxx":
+                try:
+                    expanded = arm_cxx_args()
+                except RuntimeError as exc:
+                    self.check(label, False, str(exc))
+                    return
+                for token in expanded:
+                    args.extend(["-extra-arg", token])
+            else:
+                args.extend(["-extra-arg", arg])
         args.append(str(path.relative_to(ROOT)))
         rc, out, err = self.invoke(args)
-        label = f"{path.relative_to(ROOT)} profile={run['profile']} expect={run['expect']}"
         findings = findings_of(out)
         if run["expect"] == "clean":
             good = rc == 0 and findings == 0

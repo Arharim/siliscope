@@ -9,6 +9,8 @@ public:
   explicit Check(Reporter &r) : reporter(r) {}
   virtual ~Check() = default;
   virtual void registerMatchers(clang::ast_matchers::MatchFinder &finder) = 0;
+  // Preprocessor rules share one PPCallbacks pass instead of an AST matcher.
+  virtual bool wantsPreprocessor() const { return false; }
 
 protected:
   Reporter &reporter;

@@ -124,6 +124,8 @@ Live checkers (see `src/catalog/Registry.cpp` and `just test`):
   public data outside a POD, a packed record, or a union, the rule of five,
   no `vector<bool>`, no `std::move` from a const object, and a noexcept swap
   that does not allocate when assignment is written as construct-and-swap
+- Preprocessor: no absolute `#include` path, `#if` / `#endif` closed in the
+  same file, no keyword macro, no stringify of a parameter that is then pasted
 
 Not in this release: dataflow (uninit, bounds, dangling), `ss.ctrl.loop-bound`,
-`ss.pre.*`, the rest of `ss.conv.*`, review-only catalog rows.
+the rest of `ss.pre.*`, the rest of `ss.conv.*`, review-only catalog rows.

@@ -62,6 +62,7 @@
 #include "siliscope/Noreturn.h"
 #include "siliscope/Nullptr.h"
 #include "siliscope/Override.h"
+#include "siliscope/PreprocessorCheck.h"
 #include "siliscope/PrivateData.h"
 #include "siliscope/Prototype.h"
 #include "siliscope/PtrNull.h"
@@ -158,6 +159,10 @@ static const CheckSpec kSpecs[] = {
     {"ss.mem.no-flexible-array", makeCheck<NoFlexibleArrayCheck>},
     {"ss.mem.no-heap-after-init", makeCheck<NoHeapCheck>},
     {"ss.mem.no-vla", makeCheck<NoVLACheck>},
+    {"ss.pre.ifdef-same-file", makeCheck<PreprocessorCheck>},
+    {"ss.pre.no-keyword-macro", makeCheck<PreprocessorCheck>},
+    {"ss.pre.no-path-in-include", makeCheck<PreprocessorCheck>},
+    {"ss.pre.no-stringify-then-paste", makeCheck<PreprocessorCheck>},
 };
 
 const CheckSpec *checkSpecs() {

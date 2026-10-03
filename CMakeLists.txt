@@ -103,6 +103,7 @@ if(SILISCOPE_ENABLE_CLANG)
     src/checks/NoVectorBool.cpp
     src/checks/NoMoveConst.cpp
     src/checks/NoThrowingSwap.cpp
+    src/checks/PreprocessorPass.cpp
   )
   target_compile_definitions(siliscope PRIVATE SILISCOPE_WITH_CLANG)
   target_include_directories(siliscope PRIVATE

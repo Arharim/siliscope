@@ -1,6 +1,7 @@
 #include "siliscope/Frontend.h"
 
 #include "siliscope/Check.h"
+#include "siliscope/PreprocessorCheck.h"
 #include "siliscope/Profile.h"
 #include "siliscope/Registry.h"
 #include "siliscope/Report.h"
@@ -106,7 +107,8 @@ private:
 
 class AnalyzeAction : public ASTFrontendAction {
 public:
-  AnalyzeAction(Reporter &reporter, Probe *probe, const Profile &profile) : probe(probe) {
+  AnalyzeAction(Reporter &reporter, Probe *probe, const Profile &profile)
+      : reporter(reporter), probe(probe) {
     const CheckSpec *specs = checkSpecs();
     for (unsigned i = 0; i < checkSpecCount(); ++i) {
       if (!profile.isEnabled(specs[i].id)) {
@@ -114,10 +116,16 @@ public:
       }
       checks.push_back(specs[i].make(reporter));
       checks.back()->registerMatchers(finder);
+      if (checks.back()->wantsPreprocessor()) {
+        watchPreprocessor = true;
+      }
     }
   }
 
-  std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &, llvm::StringRef) override {
+  std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &ci, llvm::StringRef) override {
+    if (watchPreprocessor) {
+      attachPreprocessorPass(ci.getPreprocessor(), reporter);
+    }
     std::vector<std::unique_ptr<ASTConsumer>> cs;
     cs.push_back(finder.newASTConsumer());
     if (probe) {
@@ -127,7 +135,9 @@ public:
   }
 
 private:
+  Reporter &reporter;
   Probe *probe;
+  bool watchPreprocessor = false;
   std::vector<std::unique_ptr<Check>> checks;
   MatchFinder finder;
 };

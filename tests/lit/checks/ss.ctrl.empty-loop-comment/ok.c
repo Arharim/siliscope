@@ -1,3 +1,4 @@
+/* ss-run: allow=ss.pre.prefer-inline:WAIT_FLAG expect=clean */
 static void poke(volatile int *flag) { *flag = 1; }
 
 static void inside(volatile int *flag) {

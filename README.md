@@ -128,7 +128,8 @@ Live checkers (see `src/catalog/Registry.cpp` and `just test`):
   same file, no keyword macro, no stringify of a parameter that is then pasted,
   an include guard or `#pragma once` on every header, parentheses around a
   function-like macro and each of its parameters, no `/*`, `//`, or trailing
-  backslash inside a comment
+  backslash inside a comment, a function-like macro that can be a static
+  inline function, and source left behind in a comment
 
 Not in this release: dataflow (uninit, bounds, dangling), `ss.ctrl.loop-bound`,
 the rest of `ss.pre.*`, the rest of `ss.conv.*`, review-only catalog rows.

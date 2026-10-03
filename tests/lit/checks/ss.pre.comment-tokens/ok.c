@@ -1,3 +1,4 @@
+/* ss-run: allow=ss.pre.prefer-inline:WAIT_FLAG expect=clean */
 #include "quiet.h"
 
 /* ordinary block */

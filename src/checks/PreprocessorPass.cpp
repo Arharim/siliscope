@@ -468,15 +468,136 @@ void scanPpNumber(llvm::StringRef buf, size_t &i) {
   }
 }
 
+bool atWord(llvm::StringRef text, llvm::StringRef word) {
+  if (!text.starts_with(word)) {
+    return false;
+  }
+  return text.size() == word.size() || !identChar(text[word.size()], false);
+}
+
+llvm::StringRef afterWord(llvm::StringRef text, llvm::StringRef word) {
+  return text.drop_front(word.size()).trim();
+}
+
+// A disabled directive or statement. A sentence that merely mentions a keyword
+// stays a comment: "if the flag is set", "return the status", "for example".
+bool codeLine(llvm::StringRef text) {
+  text = text.trim();
+  if (text.empty()) {
+    return false;
+  }
+  if (text.starts_with("#")) {
+    const llvm::StringRef dir = text.drop_front().trim();
+    return atWord(dir, "define") || atWord(dir, "include") || atWord(dir, "include_next") ||
+           atWord(dir, "if") || atWord(dir, "ifdef") || atWord(dir, "ifndef") ||
+           atWord(dir, "elif") || atWord(dir, "else") || atWord(dir, "endif") ||
+           atWord(dir, "undef") || atWord(dir, "pragma") || atWord(dir, "error") ||
+           atWord(dir, "warning") || atWord(dir, "line");
+  }
+  if (text == "{" || text == "}" || text == "};") {
+    return true;
+  }
+  if (atWord(text, "if") || atWord(text, "for") || atWord(text, "while") ||
+      atWord(text, "switch")) {
+    const llvm::StringRef word = text.starts_with("switch")  ? "switch"
+                                 : text.starts_with("while") ? "while"
+                                 : text.starts_with("for")   ? "for"
+                                                             : "if";
+    return afterWord(text, word).starts_with("(");
+  }
+  if (atWord(text, "else")) {
+    const llvm::StringRef rest = afterWord(text, "else");
+    return rest.empty() || rest.starts_with("{") || atWord(rest, "if");
+  }
+  if (atWord(text, "do")) {
+    const llvm::StringRef rest = afterWord(text, "do");
+    return rest.empty() || rest.starts_with("{");
+  }
+  if (atWord(text, "case") || atWord(text, "default")) {
+    return text.contains(':');
+  }
+  const bool semi = text.ends_with(";");
+  if (atWord(text, "return") || atWord(text, "goto") || atWord(text, "break") ||
+      atWord(text, "continue") || atWord(text, "throw") || atWord(text, "delete")) {
+    const llvm::StringRef word = text.starts_with("continue") ? "continue"
+                                 : text.starts_with("return") ? "return"
+                                 : text.starts_with("break")  ? "break"
+                                 : text.starts_with("throw")  ? "throw"
+                                 : text.starts_with("delete") ? "delete"
+                                                              : "goto";
+    const llvm::StringRef rest = afterWord(text, word);
+    return rest.empty() || semi;
+  }
+  if (atWord(text, "struct") || atWord(text, "union") || atWord(text, "enum") ||
+      atWord(text, "class") || atWord(text, "typedef") || atWord(text, "namespace")) {
+    return text.contains('{') || semi;
+  }
+  if (!semi && !text.ends_with("{")) {
+    return false;
+  }
+  if (text.front() == '(' || text.front() == '*' || text.front() == '&') {
+    return true;
+  }
+  if (!identChar(text.front(), true)) {
+    return false;
+  }
+  size_t i = 1;
+  while (i < text.size() && identChar(text[i], false)) {
+    ++i;
+  }
+  const llvm::StringRef rest = text.drop_front(i).trim();
+  return rest.starts_with("(") || rest.starts_with("=") || rest.starts_with("+") ||
+         rest.starts_with("-") || rest.starts_with("[") || rest.starts_with(".") ||
+         rest.starts_with("&") || rest.starts_with("*") || rest.starts_with("{") ||
+         (!rest.empty() && identChar(rest.front(), true));
+}
+
+// A block comment is deleted code only when every line is code. A doc block
+// that shows a snippet next to a sentence stays quiet.
+bool commentedOutCode(llvm::StringRef body, bool block) {
+  bool any = false;
+  for (size_t i = 0; i < body.size();) {
+    size_t end = i;
+    while (end < body.size() && body[end] != '\n' && body[end] != '\r') {
+      ++end;
+    }
+    llvm::StringRef line = body.substr(i, end - i).trim();
+    if (block && !line.empty() && line.front() == '*' &&
+        (line.size() == 1 || line[1] == ' ' || line[1] == '\t')) {
+      line = line.drop_front().trim();
+    }
+    if (!line.empty()) {
+      const bool code = codeLine(line);
+      if (block && !code) {
+        return false;
+      }
+      if (!block && code) {
+        return true;
+      }
+      any = code || any;
+    }
+    i = end;
+    if (i < body.size() && body[i] == '\r') {
+      ++i;
+    }
+    if (i < body.size() && body[i] == '\n') {
+      ++i;
+    }
+  }
+  return block && any;
+}
+
 // Physical source, not the lexer. Phase 2 deletes a backslash-newline before
 // comments exist, and a comment handler never sees a comment inside #if 0.
-template <typename Note>
-void scanLineComment(llvm::StringRef buf, size_t &i, Note &note) {
+template <typename Note, typename Code>
+void scanLineComment(llvm::StringRef buf, size_t &i, Note &note, Code &code) {
+  const unsigned at = static_cast<unsigned>(i);
   i += 2;
+  const size_t body = i;
   while (i < buf.size()) {
     const char c = buf[i];
     if (c == '\n' || c == '\r') {
-      return;
+      break;
     }
     if (c == '/' && i + 1 < buf.size() && (buf[i + 1] == '/' || buf[i + 1] == '*')) {
       note(static_cast<unsigned>(i),
@@ -499,13 +620,17 @@ void scanLineComment(llvm::StringRef buf, size_t &i, Note &note) {
     }
     ++i;
   }
+  code(at, buf.substr(body, i - body), false);
 }
 
-template <typename Note>
-void scanBlockComment(llvm::StringRef buf, size_t &i, Note &note) {
+template <typename Note, typename Code>
+void scanBlockComment(llvm::StringRef buf, size_t &i, Note &note, Code &code) {
+  const unsigned at = static_cast<unsigned>(i);
   i += 2;
+  const size_t body = i;
   while (i < buf.size()) {
     if (buf[i] == '*' && i + 1 < buf.size() && buf[i + 1] == '/') {
+      code(at, buf.substr(body, i - body), true);
       i += 2;
       return;
     }
@@ -523,18 +648,19 @@ void scanBlockComment(llvm::StringRef buf, size_t &i, Note &note) {
     }
     ++i;
   }
+  code(at, buf.substr(body, i - body), true);
 }
 
-template <typename Note>
-void scanCommentTokens(llvm::StringRef buf, bool cxx, Note note) {
+template <typename Note, typename Code>
+void scanCommentTokens(llvm::StringRef buf, bool cxx, Note note, Code code) {
   for (size_t i = 0; i < buf.size();) {
     const char c = buf[i];
     if (c == '/' && i + 1 < buf.size() && buf[i + 1] == '/') {
-      scanLineComment(buf, i, note);
+      scanLineComment(buf, i, note, code);
       continue;
     }
     if (c == '/' && i + 1 < buf.size() && buf[i + 1] == '*') {
-      scanBlockComment(buf, i, note);
+      scanBlockComment(buf, i, note, code);
       continue;
     }
     if (c == '"' || c == '\'') {
@@ -660,6 +786,7 @@ public:
     if (!mi || !mi->isFunctionLike()) {
       return;
     }
+    checkPreferInline(mi, MacroNameTok, sm);
     checkParens(mi, MacroNameTok, sm);
     const unsigned n = mi->getNumTokens();
     for (unsigned i = 0; i + 2 < n; ++i) {
@@ -777,10 +904,51 @@ private:
       return;
     }
     const SourceLocation start = sm.getLocForStartOfFile(file);
-    scanCommentTokens(buf, pp.getLangOpts().CPlusPlus, [&](unsigned offset, const char *msg) {
-      reporter.emit(
-          sm, start.getLocWithOffset(static_cast<int>(offset)), "ss.pre.comment-tokens", msg);
-    });
+    scanCommentTokens(
+        buf,
+        pp.getLangOpts().CPlusPlus,
+        [&](unsigned offset, const char *msg) {
+          reporter.emit(
+              sm, start.getLocWithOffset(static_cast<int>(offset)), "ss.pre.comment-tokens", msg);
+        },
+        [&](unsigned offset, llvm::StringRef body, bool block) {
+          if (!commentedOutCode(body, block)) {
+            return;
+          }
+          reporter.emit(sm,
+                        start.getLocWithOffset(static_cast<int>(offset)),
+                        "ss.pre.no-commented-code",
+                        "deleted code belongs in version control");
+        });
+  }
+
+  // A function cannot stringize or paste. #param is also how a macro names
+  // a header for #include.
+  bool mustStayMacro(const MacroInfo *mi) const {
+    const unsigned n = mi->getNumTokens();
+    for (unsigned i = 0; i < n; ++i) {
+      const Token &tok = mi->getReplacementToken(i);
+      if (tok.is(clang::tok::hash) || tok.is(clang::tok::hashhash)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  void checkPreferInline(const MacroInfo *mi, const Token &nameTok, const SourceManager &sm) {
+    if (mustStayMacro(mi)) {
+      return;
+    }
+    if (const IdentifierInfo *ii = nameTok.getIdentifierInfo()) {
+      const std::string name = ii->getName().str();
+      if (reporter.allows("ss.pre.prefer-inline", name.c_str())) {
+        return;
+      }
+    }
+    reporter.emit(sm,
+                  nameTok.getLocation(),
+                  "ss.pre.prefer-inline",
+                  "write this as a static inline function");
   }
 
   void checkParens(const MacroInfo *mi, const Token &nameTok, const SourceManager &sm) {

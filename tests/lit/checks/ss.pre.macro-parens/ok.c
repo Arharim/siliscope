@@ -1,3 +1,4 @@
+/* ss-run: allow=ss.pre.prefer-inline:SQUARE allow=ss.pre.prefer-inline:LOG allow=ss.pre.prefer-inline:WAIT expect=clean */
 #define SQUARE(x) ((x) * (x))
 #define STR(x) (#x)
 #define PASTE(a, b) (a ## b)

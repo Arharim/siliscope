@@ -159,6 +159,7 @@ static const CheckSpec kSpecs[] = {
     {"ss.mem.no-flexible-array", makeCheck<NoFlexibleArrayCheck>},
     {"ss.mem.no-heap-after-init", makeCheck<NoHeapCheck>},
     {"ss.mem.no-vla", makeCheck<NoVLACheck>},
+    {"ss.pre.comment-tokens", makeCheck<PreprocessorCheck>},
     {"ss.pre.ifdef-same-file", makeCheck<PreprocessorCheck>},
     {"ss.pre.include-guard", makeCheck<PreprocessorCheck>},
     {"ss.pre.macro-parens", makeCheck<PreprocessorCheck>},

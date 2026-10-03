@@ -1,0 +1,1 @@
+#define bump(n) (++(n))

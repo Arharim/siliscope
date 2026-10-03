@@ -8,6 +8,22 @@
 
 Reporter::Reporter(const Profile &profile) : profile(&profile) {}
 
+bool Reporter::SeenDiag::operator<(const SeenDiag &other) const {
+  if (file != other.file) {
+    return file < other.file;
+  }
+  if (line != other.line) {
+    return line < other.line;
+  }
+  if (col != other.col) {
+    return col < other.col;
+  }
+  if (id != other.id) {
+    return id < other.id;
+  }
+  return msg < other.msg;
+}
+
 void Reporter::emit(const clang::SourceManager &sm,
                     clang::SourceLocation loc,
                     const char *id,
@@ -19,12 +35,29 @@ void Reporter::emit(const clang::SourceManager &sm,
   if (loc.isInvalid()) {
     return;
   }
-  loc = sm.getExpansionLoc(loc);
-  if (sm.isInSystemHeader(loc)) {
+  // Zephyr's LOG_* macros pass their implementation through as arguments, so
+  // the expansion location of every token is the call. The spelling location
+  // is the file that wrote the token: the call for an argument, the header
+  // for the macro itself. Token paste lives in <scratch space>; step out to
+  // the macro that pasted it. Repeated expansions of one token collapse below.
+  while (loc.isMacroID() && sm.isWrittenInScratchSpace(sm.getSpellingLoc(loc))) {
+    const clang::SourceLocation parent = sm.getImmediateMacroCallerLoc(loc);
+    if (parent.isInvalid() || parent == loc) {
+      break;
+    }
+    loc = parent;
+  }
+  loc = sm.getSpellingLoc(loc);
+  if (loc.isInvalid() || sm.isInSystemHeader(loc) || sm.isWrittenInScratchSpace(loc) ||
+      sm.isInPredefinedFile(loc)) {
     return;
   }
   const clang::PresumedLoc pl = sm.getPresumedLoc(loc);
-  if (pl.isInvalid()) {
+  if (pl.isInvalid() || !pl.getFilename()) {
+    return;
+  }
+  const SeenDiag key{pl.getFilename(), pl.getLine(), pl.getColumn(), id, msg};
+  if (!seen.insert(key).second) {
     return;
   }
   ++findings;

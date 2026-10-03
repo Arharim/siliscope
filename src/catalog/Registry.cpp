@@ -33,6 +33,7 @@
 #include "siliscope/NoIncInExpr.h"
 #include "siliscope/NoLogInIsr.h"
 #include "siliscope/NoLogicalRhs.h"
+#include "siliscope/NoMoveConst.h"
 #include "siliscope/NoNestedTernary.h"
 #include "siliscope/NoOctal.h"
 #include "siliscope/NoPtrInt.h"
@@ -51,11 +52,13 @@
 #include "siliscope/NoStdio.h"
 #include "siliscope/NoThrowDtor.h"
 #include "siliscope/NoThrowSpec.h"
+#include "siliscope/NoThrowingSwap.h"
 #include "siliscope/NoUnboundedString.h"
 #include "siliscope/NoUnusedParams.h"
 #include "siliscope/NoUsingDirective.h"
 #include "siliscope/NoUsingInHeader.h"
 #include "siliscope/NoVLA.h"
+#include "siliscope/NoVectorBool.h"
 #include "siliscope/Noreturn.h"
 #include "siliscope/Nullptr.h"
 #include "siliscope/Override.h"
@@ -64,6 +67,7 @@
 #include "siliscope/PtrNull.h"
 #include "siliscope/ReturnAllPaths.h"
 #include "siliscope/ShiftRange.h"
+#include "siliscope/SpecialMembers.h"
 #include "siliscope/StaticInternal.h"
 #include "siliscope/StringConst.h"
 #include "siliscope/SwitchFallthroughComment.h"
@@ -95,14 +99,18 @@ static const CheckSpec kSpecs[] = {
     {"ss.cpp.no-friend", makeCheck<NoFriendCheck>},
     {"ss.cpp.no-heap-stl", makeCheck<NoHeapStlCheck>},
     {"ss.cpp.no-implicit-conversion", makeCheck<NoImplicitConversionCheck>},
+    {"ss.cpp.no-move-const", makeCheck<NoMoveConstCheck>},
     {"ss.cpp.no-rtti", makeCheck<NoRttiCheck>},
     {"ss.cpp.no-throw-dtor", makeCheck<NoThrowDtorCheck>},
     {"ss.cpp.no-throw-spec", makeCheck<NoThrowSpecCheck>},
+    {"ss.cpp.no-throwing-swap", makeCheck<NoThrowingSwapCheck>},
     {"ss.cpp.no-using-directive", makeCheck<NoUsingDirectiveCheck>},
     {"ss.cpp.no-using-in-header", makeCheck<NoUsingInHeaderCheck>},
+    {"ss.cpp.no-vector-bool", makeCheck<NoVectorBoolCheck>},
     {"ss.cpp.nullptr", makeCheck<NullptrCheck>},
     {"ss.cpp.override", makeCheck<OverrideCheck>},
     {"ss.cpp.private-data", makeCheck<PrivateDataCheck>},
+    {"ss.cpp.special-members", makeCheck<SpecialMembersCheck>},
     {"ss.cpp.virtual-dtor", makeCheck<VirtualDtorCheck>},
     {"ss.ctrl.braces", makeCheck<BracesCheck>},
     {"ss.ctrl.empty-loop-comment", makeCheck<EmptyLoopCommentCheck>},

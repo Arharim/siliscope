@@ -4,6 +4,10 @@ struct Widget {
   explicit operator int() const { return value_; }
   Widget(int left, int right) : value_(left + right) {}
   Widget(const Widget &) = default;
+  ~Widget() = default;
+  Widget &operator=(const Widget &) = default;
+  Widget(Widget &&) = default;
+  Widget &operator=(Widget &&) = default;
 
 private:
   int value_;

@@ -99,6 +99,10 @@ if(SILISCOPE_ENABLE_CLANG)
     src/checks/EnumClass.cpp
     src/checks/NoFriend.cpp
     src/checks/PrivateData.cpp
+    src/checks/SpecialMembers.cpp
+    src/checks/NoVectorBool.cpp
+    src/checks/NoMoveConst.cpp
+    src/checks/NoThrowingSwap.cpp
   )
   target_compile_definitions(siliscope PRIVATE SILISCOPE_WITH_CLANG)
   target_include_directories(siliscope PRIVATE

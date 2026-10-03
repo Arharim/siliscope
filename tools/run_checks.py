@@ -268,9 +268,9 @@ class Runner:
             "ss.cpp.no-exceptions missing",
         )
         self.check(
-            "embedded-cpp still has C++ rules without a checker",
-            present(cpp_rows, "ss.cpp.special-members", "no-checker"),
-            "ss.cpp.special-members missing",
+            "embedded-cpp still has rules without a checker",
+            present(cpp_rows, "ss.ctrl.loop-bound", "no-checker"),
+            "ss.ctrl.loop-bound missing",
         )
         self.check(
             "embedded-cpp keeps shared checker",
@@ -299,14 +299,18 @@ class Runner:
             "ss.cpp.no-friend",
             "ss.cpp.no-heap-stl",
             "ss.cpp.no-implicit-conversion",
+            "ss.cpp.no-move-const",
             "ss.cpp.no-rtti",
             "ss.cpp.no-throw-dtor",
             "ss.cpp.no-throw-spec",
+            "ss.cpp.no-throwing-swap",
             "ss.cpp.no-using-directive",
             "ss.cpp.no-using-in-header",
+            "ss.cpp.no-vector-bool",
             "ss.cpp.nullptr",
             "ss.cpp.override",
             "ss.cpp.private-data",
+            "ss.cpp.special-members",
             "ss.cpp.virtual-dtor",
         }
         c_checkers = {rid for rid, parts in c_rows.items() if parts[3] == "checker"}

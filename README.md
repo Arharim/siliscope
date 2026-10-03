@@ -121,7 +121,9 @@ Live checkers (see `src/catalog/Registry.cpp` and `just test`):
   that initialize every trivial base and member, no using-directive, no
   `using` in a header, explicit conversions, no dynamic exception
   specification, no default arguments, `enum class`, no friend and no
-  public data outside a POD, a packed record, or a union
+  public data outside a POD, a packed record, or a union, the rule of five,
+  no `vector<bool>`, no `std::move` from a const object, and a noexcept swap
+  that does not allocate when assignment is written as construct-and-swap
 
 Not in this release: dataflow (uninit, bounds, dangling), `ss.ctrl.loop-bound`,
-the rest of `ss.cpp.*` / `ss.pre.*`, the rest of `ss.conv.*`, review-only catalog rows.
+`ss.pre.*`, the rest of `ss.conv.*`, review-only catalog rows.

@@ -2,6 +2,10 @@
 struct Base {
   virtual int id() const { return 1; }
   virtual ~Base() = default;
+  Base(const Base &) = default;
+  Base &operator=(const Base &) = default;
+  Base(Base &&) = default;
+  Base &operator=(Base &&) = default;
 };
 
 struct Derived : Base {
@@ -10,6 +14,10 @@ struct Derived : Base {
 
 struct ProtectedBase {
   virtual int id() const { return 3; }
+  ProtectedBase(const ProtectedBase &) = default;
+  ProtectedBase &operator=(const ProtectedBase &) = default;
+  ProtectedBase(ProtectedBase &&) = default;
+  ProtectedBase &operator=(ProtectedBase &&) = default;
 
 protected:
   ~ProtectedBase() = default;
@@ -18,11 +26,19 @@ protected:
 struct Child : ProtectedBase {
   int id() const override { return 4; }
   virtual ~Child() = default;
+  Child(const Child &) = default;
+  Child &operator=(const Child &) = default;
+  Child(Child &&) = default;
+  Child &operator=(Child &&) = default;
 };
 
 struct Deleted {
   virtual int id() const { return 5; }
   ~Deleted() = delete;
+  Deleted(const Deleted &) = delete;
+  Deleted &operator=(const Deleted &) = delete;
+  Deleted(Deleted &&) = delete;
+  Deleted &operator=(Deleted &&) = delete;
 };
 
 struct Leaf final {

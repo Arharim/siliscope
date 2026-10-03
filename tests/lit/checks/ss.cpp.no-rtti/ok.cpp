@@ -2,6 +2,10 @@
 struct Base {
   virtual int id() const { return 1; }
   virtual ~Base() = default;
+  Base(const Base &) = default;
+  Base &operator=(const Base &) = default;
+  Base(Base &&) = default;
+  Base &operator=(Base &&) = default;
 };
 
 struct Derived : Base {

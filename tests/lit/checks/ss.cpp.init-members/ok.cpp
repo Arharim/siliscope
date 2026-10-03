@@ -2,6 +2,10 @@
 struct Inner {
   Inner() : value_(0) {}
   Inner(const Inner &) = default;
+  ~Inner() = default;
+  Inner &operator=(const Inner &) = default;
+  Inner(Inner &&) = default;
+  Inner &operator=(Inner &&) = default;
   int value() const { return value_; }
 
 private:

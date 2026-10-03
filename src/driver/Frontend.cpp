@@ -19,6 +19,7 @@
 #include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/FileSystem.h"
+#include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/Path.h"
 #include "llvm/Support/Program.h"
 #include "llvm/Support/raw_ostream.h"
@@ -26,6 +27,7 @@
 #include <algorithm>
 #include <memory>
 #include <string>
+#include <unistd.h>
 #include <vector>
 
 using clang::ASTConsumer;
@@ -180,6 +182,94 @@ static std::string gnuArmSysroot(llvm::StringRef compiler) {
     return std::string(path);
   }
   return {};
+}
+
+static std::string gnuArmGccInclude(llvm::StringRef compiler);
+
+// GCC adds libstdc++ implicitly. Clang does not, so <cstdint> is missing
+// unless these directories are passed through. The second one depends on
+// -mcpu/-mfpu/-mfloat-abi; g++ -print-multi-directory names it.
+static std::string captureProgram(llvm::StringRef program, llvm::ArrayRef<llvm::StringRef> args) {
+  llvm::SmallString<128> outPath;
+  int fd = -1;
+  if (llvm::sys::fs::createTemporaryFile("siliscope", "txt", fd, outPath)) {
+    return {};
+  }
+  close(fd);
+  const std::optional<llvm::StringRef> redirects[3] = {
+      std::nullopt, llvm::StringRef(outPath), std::nullopt};
+  std::string err;
+  const int rc = llvm::sys::ExecuteAndWait(program, args, std::nullopt, redirects, 5, 0, &err);
+  std::string text;
+  if (rc == 0) {
+    if (auto buf = llvm::MemoryBuffer::getFile(outPath)) {
+      text = (*buf)->getBuffer().trim().str();
+    }
+  }
+  llvm::sys::fs::remove(outPath);
+  return text;
+}
+
+static bool affectsMultilib(llvm::StringRef arg) {
+  return arg == "-mthumb" || arg == "-marm" || arg == "-mlittle-endian" || arg == "-mbig-endian" ||
+         arg.starts_with("-mcpu=") || arg.starts_with("-mfpu=") ||
+         arg.starts_with("-mfloat-abi=") || arg.starts_with("-march=");
+}
+
+static void appendGnuArmCxxIncludes(clang::tooling::CommandLineArguments &out,
+                                    llvm::StringRef compiler,
+                                    const clang::tooling::CommandLineArguments &args) {
+  if (!compiler.contains_insensitive("g++")) {
+    return;
+  }
+  for (size_t i = 1; i < args.size(); ++i) {
+    if (args[i] == "-nostdinc" || args[i] == "-nostdinc++") {
+      return;
+    }
+  }
+  const std::string gccinc = gnuArmGccInclude(compiler);
+  if (gccinc.empty()) {
+    return;
+  }
+  llvm::SmallString<256> versionDir(gccinc);
+  llvm::sys::path::remove_filename(versionDir);
+  const llvm::StringRef version = llvm::sys::path::filename(versionDir);
+  llvm::SmallString<256> root = gnuArmPrefix(compiler);
+  llvm::sys::path::append(root, "arm-none-eabi", "include", "c++", version);
+  llvm::SmallString<256> cstdint(root);
+  llvm::sys::path::append(cstdint, "cstdint");
+  if (!llvm::sys::fs::is_regular_file(cstdint)) {
+    return;
+  }
+
+  auto add = [&out](const llvm::SmallString<256> &dir) {
+    if (!llvm::sys::fs::is_directory(dir)) {
+      return;
+    }
+    out.push_back("-isystem");
+    out.push_back(std::string(dir));
+  };
+  add(root);
+
+  std::vector<llvm::StringRef> argv;
+  argv.push_back(compiler);
+  for (size_t i = 1; i < args.size(); ++i) {
+    if (affectsMultilib(args[i])) {
+      argv.push_back(args[i]);
+    }
+  }
+  argv.push_back("-print-multi-directory");
+  const std::string multi = captureProgram(compiler, argv);
+  llvm::SmallString<256> bits(root);
+  llvm::sys::path::append(bits, "arm-none-eabi");
+  if (!multi.empty() && multi != ".") {
+    llvm::sys::path::append(bits, multi);
+  }
+  add(bits);
+
+  llvm::SmallString<256> backward(root);
+  llvm::sys::path::append(backward, "backward");
+  add(backward);
 }
 
 // lib/gcc/arm-none-eabi/<ver>/include holds GCC's builtins. It is added with
@@ -379,6 +469,9 @@ int runFrontend(const FrontendOptions &opt) {
           if (gnuArm && !sawGccInclude && !gccinc.empty()) {
             out.push_back("-idirafter");
             out.push_back(std::move(gccinc));
+          }
+          if (gnuArm && !args.empty()) {
+            appendGnuArmCxxIncludes(out, args.front(), args);
           }
           if (!resourceDir.empty()) {
             out.push_back("-resource-dir");

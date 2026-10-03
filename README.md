@@ -67,10 +67,12 @@ just test ss.ctrl.no-goto
 ```
 
 `just fw DIR SRC...` uses `DIR/compile_commands.json`. For `arm-none-eabi-gcc`
-jobs the driver injects `--target`, sysroot, and Clang's resource directory,
-drops `--specs=` and GCC flags Clang rejects, and searches GCC's include after
-Clang's so `<arm_acle.h>` is Clang's header. Do not put firmware tree paths in
-this repo.
+and `arm-none-eabi-g++` jobs the driver injects `--target`, sysroot, and
+Clang's resource directory, drops `--specs=` and GCC flags Clang rejects, and
+searches GCC's include after Clang's so `<arm_acle.h>` is Clang's header. A
+g++ job also gets that toolchain's libstdc++ include and the multilib
+directory selected by `-mcpu` / `-mfloat-abi`, so `<cstdint>` resolves. Do not
+put firmware tree paths in this repo.
 
 Profiles: `embedded-c` (default), `embedded-cpp`, `strict`, `style`. A profile's
 `languages` drop rules that do not apply, so `embedded-c` does not enable

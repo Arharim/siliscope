@@ -1,0 +1,1 @@
+#define NAKED 1

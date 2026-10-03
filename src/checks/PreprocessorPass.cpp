@@ -3,6 +3,7 @@
 
 #include "clang/Basic/IdentifierTable.h"
 #include "clang/Basic/SourceLocation.h"
+#include "clang/Basic/SourceManager.h"
 #include "clang/Basic/TokenKinds.h"
 #include "clang/Lex/MacroInfo.h"
 #include "clang/Lex/PPCallbacks.h"
@@ -11,6 +12,7 @@
 #include "llvm/ADT/StringRef.h"
 
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -43,7 +45,332 @@ bool isParameter(const MacroInfo *mi, const Token &tok) {
     return false;
   }
   const IdentifierInfo *ii = tok.getIdentifierInfo();
-  return ii && mi->getParameterNum(ii) >= 0;
+  if (!ii) {
+    return false;
+  }
+  if (mi->getParameterNum(ii) >= 0) {
+    return true;
+  }
+  return mi->isVariadic() && ii->isStr("__VA_ARGS__");
+}
+
+// #param and param ## other cannot take parentheses without changing the tokens.
+bool hashOrPaste(const MacroInfo *mi, unsigned index) {
+  const unsigned n = mi->getNumTokens();
+  if (index > 0) {
+    const Token &prev = mi->getReplacementToken(index - 1);
+    if (prev.is(clang::tok::hash) || prev.is(clang::tok::hashhash)) {
+      return true;
+    }
+  }
+  return index + 1 < n && mi->getReplacementToken(index + 1).is(clang::tok::hashhash);
+}
+
+bool paramParenthesized(const MacroInfo *mi, unsigned index) {
+  const unsigned n = mi->getNumTokens();
+  if (index == 0 || index + 1 >= n) {
+    return false;
+  }
+  return mi->getReplacementToken(index - 1).is(clang::tok::l_paren) &&
+         mi->getReplacementToken(index + 1).is(clang::tok::r_paren);
+}
+
+// The outer pair has to cover the whole replacement list, not just the first term.
+bool bodyWrapped(const MacroInfo *mi) {
+  const unsigned n = mi->getNumTokens();
+  if (n == 0) {
+    return true;
+  }
+  if (!mi->getReplacementToken(0).is(clang::tok::l_paren) ||
+      !mi->getReplacementToken(n - 1).is(clang::tok::r_paren)) {
+    return false;
+  }
+  int depth = 0;
+  for (unsigned i = 0; i < n; ++i) {
+    const Token &tok = mi->getReplacementToken(i);
+    if (tok.is(clang::tok::l_paren)) {
+      ++depth;
+    } else if (tok.is(clang::tok::r_paren)) {
+      --depth;
+      if (depth < 0 || (depth == 0 && i + 1 != n)) {
+        return false;
+      }
+    }
+  }
+  return depth == 0;
+}
+
+// A statement body cannot be parenthesized and stay a statement.
+bool statementBody(const MacroInfo *mi) {
+  if (mi->getNumTokens() == 0) {
+    return false;
+  }
+  const Token &tok = mi->getReplacementToken(0);
+  return tok.isOneOf(clang::tok::l_brace,
+                     clang::tok::kw_do,
+                     clang::tok::kw_while,
+                     clang::tok::kw_for,
+                     clang::tok::kw_if,
+                     clang::tok::kw_switch,
+                     clang::tok::kw_return,
+                     clang::tok::kw_goto,
+                     clang::tok::kw_break,
+                     clang::tok::kw_continue,
+                     clang::tok::kw_case,
+                     clang::tok::kw_default,
+                     clang::tok::kw_try,
+                     clang::tok::kw_throw,
+                     clang::tok::kw_asm);
+}
+
+std::string spliceLines(llvm::StringRef in) {
+  std::string out;
+  out.reserve(in.size());
+  for (size_t i = 0; i < in.size(); ++i) {
+    if (in[i] == '\\' && i + 1 < in.size()) {
+      if (in[i + 1] == '\n') {
+        ++i;
+        continue;
+      }
+      if (in[i + 1] == '\r') {
+        ++i;
+        if (i + 1 < in.size() && in[i + 1] == '\n') {
+          ++i;
+        }
+        continue;
+      }
+    }
+    out.push_back(in[i]);
+  }
+  return out;
+}
+
+bool identChar(char c, bool first) {
+  if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_' || c == '$') {
+    return true;
+  }
+  return !first && c >= '0' && c <= '9';
+}
+
+llvm::StringRef readIdent(const std::string &text, size_t &i) {
+  if (i >= text.size() || !identChar(text[i], true)) {
+    return {};
+  }
+  const size_t begin = i++;
+  while (i < text.size() && identChar(text[i], false)) {
+    ++i;
+  }
+  return llvm::StringRef(text.data() + begin, i - begin);
+}
+
+void skipBlockComment(const std::string &text, size_t &i) {
+  i += 2;
+  while (i + 1 < text.size() && !(text[i] == '*' && text[i + 1] == '/')) {
+    ++i;
+  }
+  if (i + 1 < text.size()) {
+    i += 2;
+  }
+}
+
+// Returns false when the directive is over (end of line or a line comment).
+bool skipWsInDirective(const std::string &text, size_t &i) {
+  while (i < text.size()) {
+    const char c = text[i];
+    if (c == ' ' || c == '\t' || c == '\v' || c == '\f') {
+      ++i;
+      continue;
+    }
+    if (c == '\n' || c == '\r') {
+      return false;
+    }
+    if (c == '/' && i + 1 < text.size() && text[i + 1] == '/') {
+      return false;
+    }
+    if (c == '/' && i + 1 < text.size() && text[i + 1] == '*') {
+      skipBlockComment(text, i);
+      continue;
+    }
+    return true;
+  }
+  return false;
+}
+
+void finishDirective(const std::string &text, size_t &i) {
+  while (i < text.size()) {
+    if (text[i] == '\n') {
+      ++i;
+      return;
+    }
+    if (text[i] == '\r') {
+      ++i;
+      if (i < text.size() && text[i] == '\n') {
+        ++i;
+      }
+      return;
+    }
+    if (text[i] == '/' && i + 1 < text.size() && text[i + 1] == '/') {
+      while (i < text.size() && text[i] != '\n' && text[i] != '\r') {
+        ++i;
+      }
+      continue;
+    }
+    if (text[i] == '/' && i + 1 < text.size() && text[i + 1] == '*') {
+      skipBlockComment(text, i);
+      continue;
+    }
+    ++i;
+  }
+}
+
+// #ifndef NAME / #define NAME / #endif around the whole file, or #pragma once.
+// #if !defined is a different directive and does not count.
+bool headerGuarded(llvm::StringRef input) {
+  std::string text = spliceLines(input);
+  if (text.size() >= 3 && static_cast<unsigned char>(text[0]) == 0xEF &&
+      static_cast<unsigned char>(text[1]) == 0xBB && static_cast<unsigned char>(text[2]) == 0xBF) {
+    text.erase(0, 3);
+  }
+
+  enum class Phase { Open, Guard, Closed, NotGuard };
+  Phase phase = Phase::Open;
+  int depth = 0;
+  bool once = false;
+  bool defined = false;
+  std::string guard;
+  bool bol = true;
+
+  auto onCode = [&] {
+    if (phase == Phase::Open && depth == 0) {
+      phase = Phase::NotGuard;
+    }
+    if (phase == Phase::Closed) {
+      phase = Phase::NotGuard;
+    }
+    bol = false;
+  };
+
+  auto onOpen = [&](llvm::StringRef name, bool ifndef) {
+    if (phase == Phase::Open && depth == 0) {
+      if (ifndef && !name.empty()) {
+        phase = Phase::Guard;
+        guard.assign(name.data(), name.size());
+      } else {
+        phase = Phase::NotGuard;
+      }
+    }
+    ++depth;
+  };
+
+  auto onOther = [&] {
+    if (phase == Phase::Open && depth == 0) {
+      phase = Phase::NotGuard;
+    }
+    if (phase == Phase::Closed) {
+      phase = Phase::NotGuard;
+    }
+  };
+
+  for (size_t i = 0; i < text.size();) {
+    const char c = text[i];
+    if (c == ' ' || c == '\t' || c == '\v' || c == '\f') {
+      ++i;
+      continue;
+    }
+    if (c == '\n') {
+      ++i;
+      bol = true;
+      continue;
+    }
+    if (c == '\r') {
+      ++i;
+      if (i < text.size() && text[i] == '\n') {
+        ++i;
+      }
+      bol = true;
+      continue;
+    }
+    if (c == '/' && i + 1 < text.size() && text[i + 1] == '/') {
+      while (i < text.size() && text[i] != '\n' && text[i] != '\r') {
+        ++i;
+      }
+      continue;
+    }
+    if (c == '/' && i + 1 < text.size() && text[i + 1] == '*') {
+      skipBlockComment(text, i);
+      continue;
+    }
+    if (!(bol && c == '#')) {
+      if (c == '"' || c == '\'') {
+        onCode();
+        const char quote = c;
+        ++i;
+        while (i < text.size() && text[i] != '\n' && text[i] != '\r') {
+          if (text[i] == '\\' && i + 1 < text.size()) {
+            i += 2;
+            continue;
+          }
+          if (text[i] == quote) {
+            ++i;
+            break;
+          }
+          ++i;
+        }
+        continue;
+      }
+      onCode();
+      ++i;
+      continue;
+    }
+
+    ++i;
+    if (!skipWsInDirective(text, i)) {
+      onOther();
+      finishDirective(text, i);
+      bol = true;
+      continue;
+    }
+    const llvm::StringRef kw = readIdent(text, i);
+    if (kw == "ifndef" || kw == "ifdef" || kw == "if") {
+      llvm::StringRef name;
+      if (skipWsInDirective(text, i)) {
+        name = readIdent(text, i);
+      }
+      onOpen(name, kw == "ifndef");
+    } else if (kw == "endif") {
+      if (depth > 0) {
+        --depth;
+      }
+      if (phase == Phase::Guard && depth == 0) {
+        phase = Phase::Closed;
+      }
+    } else if (kw == "define") {
+      llvm::StringRef name;
+      if (skipWsInDirective(text, i)) {
+        name = readIdent(text, i);
+      }
+      if (phase == Phase::Guard && depth > 0 && name == guard) {
+        defined = true;
+      } else {
+        onOther();
+      }
+    } else if (kw == "pragma") {
+      llvm::StringRef name;
+      if (skipWsInDirective(text, i)) {
+        name = readIdent(text, i);
+      }
+      if (name == "once" && depth == 0) {
+        once = true;
+      } else {
+        onOther();
+      }
+    } else {
+      onOther();
+    }
+    finishDirective(text, i);
+    bol = true;
+  }
+  return once || (phase == Phase::Closed && defined);
 }
 
 // Clang keeps one conditional stack per file. A #endif in another file is
@@ -108,6 +435,7 @@ public:
                         SourceLocation) override {
     if (Reason == LexedFileChangeReason::ExitFile) {
       closeFile(PrevFID);
+      checkIncludeGuard(PrevFID);
     }
   }
 
@@ -136,6 +464,7 @@ public:
     if (!mi || !mi->isFunctionLike()) {
       return;
     }
+    checkParens(mi, MacroNameTok, sm);
     const unsigned n = mi->getNumTokens();
     for (unsigned i = 0; i + 2 < n; ++i) {
       const Token &a = mi->getReplacementToken(i);
@@ -214,6 +543,44 @@ private:
                   loc,
                   "ss.pre.ifdef-same-file",
                   "close this conditional in the file that opened it");
+  }
+
+  void checkIncludeGuard(FileID file) {
+    const SourceManager &sm = pp.getSourceManager();
+    if (file.isInvalid() || file == sm.getMainFileID()) {
+      return;
+    }
+    const SourceLocation start = sm.getLocForStartOfFile(file);
+    if (start.isInvalid() || sm.isInSystemHeader(start) || sm.isWrittenInBuiltinFile(start) ||
+        sm.isWrittenInScratchSpace(start) || sm.isInPredefinedFile(start) ||
+        sm.isWrittenInCommandLineFile(start)) {
+      return;
+    }
+    bool invalid = false;
+    const llvm::StringRef buf = sm.getBufferData(file, &invalid);
+    if (invalid || headerGuarded(buf)) {
+      return;
+    }
+    reporter.emit(sm, start, "ss.pre.include-guard", "give this header an include guard");
+  }
+
+  void checkParens(const MacroInfo *mi, const Token &nameTok, const SourceManager &sm) {
+    const unsigned n = mi->getNumTokens();
+    if (n == 0) {
+      return;
+    }
+    if (!bodyWrapped(mi) && !statementBody(mi)) {
+      reporter.emit(
+          sm, nameTok.getLocation(), "ss.pre.macro-parens", "wrap this macro body in parentheses");
+    }
+    for (unsigned i = 0; i < n; ++i) {
+      const Token &tok = mi->getReplacementToken(i);
+      if (!isParameter(mi, tok) || hashOrPaste(mi, i) || paramParenthesized(mi, i)) {
+        continue;
+      }
+      reporter.emit(
+          sm, tok.getLocation(), "ss.pre.macro-parens", "wrap this macro parameter in parentheses");
+    }
   }
 
   const Preprocessor &pp;

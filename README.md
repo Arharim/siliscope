@@ -125,7 +125,9 @@ Live checkers (see `src/catalog/Registry.cpp` and `just test`):
   no `vector<bool>`, no `std::move` from a const object, and a noexcept swap
   that does not allocate when assignment is written as construct-and-swap
 - Preprocessor: no absolute `#include` path, `#if` / `#endif` closed in the
-  same file, no keyword macro, no stringify of a parameter that is then pasted
+  same file, no keyword macro, no stringify of a parameter that is then pasted,
+  an include guard or `#pragma once` on every header, parentheses around a
+  function-like macro and each of its parameters
 
 Not in this release: dataflow (uninit, bounds, dangling), `ss.ctrl.loop-bound`,
 the rest of `ss.pre.*`, the rest of `ss.conv.*`, review-only catalog rows.

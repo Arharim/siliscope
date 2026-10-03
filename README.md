@@ -95,8 +95,8 @@ belong in the user clangd config.
 Live checkers (see `src/catalog/Registry.cpp` and `just test`):
 
 - Control / style-adjacent AST: goto, setjmp, braces, assignment-in-condition,
-  if-else-final, continue, nested ternary, no-block-scope, prototype,
-  unused params
+  if-else-final, continue, nested ternary, switch labels and default,
+  commented fall-through, no-block-scope, prototype, unused params
 - Memory / libc: no heap after init, VLA, flexible array, unbounded string,
   stdio, stdarg (+ `--allow`), signal, atoi, abort/system, rand, qsort,
   setlocale

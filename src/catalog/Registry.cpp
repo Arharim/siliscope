@@ -49,6 +49,8 @@
 #include "siliscope/ShiftRange.h"
 #include "siliscope/StaticInternal.h"
 #include "siliscope/StringConst.h"
+#include "siliscope/SwitchFallthroughComment.h"
+#include "siliscope/SwitchWellFormed.h"
 #include "siliscope/USuffix.h"
 #include "siliscope/Unreachable.h"
 
@@ -75,6 +77,8 @@ static const CheckSpec kSpecs[] = {
     {"ss.ctrl.no-nested-ternary", makeCheck<NoNestedTernaryCheck>},
     {"ss.ctrl.no-recursion", makeCheck<NoRecursionCheck>},
     {"ss.ctrl.no-setjmp", makeCheck<NoSetjmpCheck>},
+    {"ss.ctrl.switch-fallthrough-comment", makeCheck<SwitchFallthroughCommentCheck>},
+    {"ss.ctrl.switch-well-formed", makeCheck<SwitchWellFormedCheck>},
     {"ss.ctrl.unreachable", makeCheck<UnreachableCheck>},
     {"ss.decl.const", makeCheck<DeclConstCheck>},
     {"ss.decl.distinct", makeCheck<DistinctCheck>},

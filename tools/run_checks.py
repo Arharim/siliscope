@@ -193,8 +193,13 @@ class Runner:
             self.check(f"embedded-c drops {rid}", absent(c_rows, rid), f"{rid} is enabled")
         self.check(
             "embedded-cpp keeps C++ rule",
-            present(cpp_rows, "ss.cpp.no-exceptions", "no-checker"),
+            present(cpp_rows, "ss.cpp.no-exceptions", "checker"),
             "ss.cpp.no-exceptions missing",
+        )
+        self.check(
+            "embedded-cpp still has C++ rules without a checker",
+            present(cpp_rows, "ss.cpp.override", "no-checker"),
+            "ss.cpp.override missing",
         )
         self.check(
             "embedded-cpp keeps shared checker",
@@ -214,17 +219,24 @@ class Runner:
             "ss.fn.prototype",
             "ss.fn.static-internal",
         }
+        cpp_only = {
+            "ss.cpp.no-cstyle-cast",
+            "ss.cpp.no-exceptions",
+            "ss.cpp.no-heap-stl",
+            "ss.cpp.no-rtti",
+            "ss.cpp.nullptr",
+        }
         c_checkers = {rid for rid, parts in c_rows.items() if parts[3] == "checker"}
         cpp_checkers = {rid for rid, parts in cpp_rows.items() if parts[3] == "checker"}
         self.check(
-            "embedded-cpp checker set is embedded-c minus C-only",
-            cpp_checkers == c_checkers - c_only,
+            "embedded-cpp checker set is embedded-c minus C-only plus C++",
+            cpp_checkers == (c_checkers - c_only) | cpp_only,
             f"only in C: {sorted(c_checkers - cpp_checkers)}\n"
             f"only in C++: {sorted(cpp_checkers - c_checkers)}",
         )
         self.check(
             "strict keeps inherited C++ rule",
-            present(strict_rows, "ss.cpp.no-exceptions", "no-checker"),
+            present(strict_rows, "ss.cpp.no-exceptions", "checker"),
             "ss.cpp.no-exceptions missing",
         )
         self.check(

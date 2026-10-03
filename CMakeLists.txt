@@ -81,6 +81,11 @@ if(SILISCOPE_ENABLE_CLANG)
     src/checks/NoSilentNarrow.cpp
     src/checks/SwitchWellFormed.cpp
     src/checks/SwitchFallthroughComment.cpp
+    src/checks/NoExceptions.cpp
+    src/checks/NoRtti.cpp
+    src/checks/NoCStyleCast.cpp
+    src/checks/Nullptr.cpp
+    src/checks/NoHeapStl.cpp
   )
   target_compile_definitions(siliscope PRIVATE SILISCOPE_WITH_CLANG)
   target_include_directories(siliscope PRIVATE

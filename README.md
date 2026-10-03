@@ -111,6 +111,8 @@ Live checkers (see `src/catalog/Registry.cpp` and `just test`):
   names, const, file-local `static`
 - Conversions: signed bitwise, shift amount, `U` suffix, stripping
   const/volatile, pointer/integer casts, floating equality, implicit narrowing
+- C++ subset: no exceptions, no RTTI (`typeid`, `dynamic_cast`), no C-style
+  or functional cast, `nullptr`, no heap-backed standard containers
 
 Not in this release: dataflow (uninit, bounds, dangling), `ss.ctrl.loop-bound`,
-most `ss.cpp.*` / `ss.pre.*`, the rest of `ss.conv.*`, review-only catalog rows.
+the rest of `ss.cpp.*` / `ss.pre.*`, the rest of `ss.conv.*`, review-only catalog rows.

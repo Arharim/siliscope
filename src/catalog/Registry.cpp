@@ -14,13 +14,16 @@
 #include "siliscope/NoAssignInCond.h"
 #include "siliscope/NoAtoi.h"
 #include "siliscope/NoBlockScope.h"
+#include "siliscope/NoCStyleCast.h"
 #include "siliscope/NoComma.h"
 #include "siliscope/NoContinue.h"
 #include "siliscope/NoCvAway.h"
+#include "siliscope/NoExceptions.h"
 #include "siliscope/NoFlexibleArray.h"
 #include "siliscope/NoFpEq.h"
 #include "siliscope/NoGoto.h"
 #include "siliscope/NoHeap.h"
+#include "siliscope/NoHeapStl.h"
 #include "siliscope/NoIncInExpr.h"
 #include "siliscope/NoLogInIsr.h"
 #include "siliscope/NoLogicalRhs.h"
@@ -30,6 +33,7 @@
 #include "siliscope/NoQsort.h"
 #include "siliscope/NoRand.h"
 #include "siliscope/NoRecursion.h"
+#include "siliscope/NoRtti.h"
 #include "siliscope/NoSetjmp.h"
 #include "siliscope/NoSetlocale.h"
 #include "siliscope/NoShadow.h"
@@ -43,6 +47,7 @@
 #include "siliscope/NoUnusedParams.h"
 #include "siliscope/NoVLA.h"
 #include "siliscope/Noreturn.h"
+#include "siliscope/Nullptr.h"
 #include "siliscope/Prototype.h"
 #include "siliscope/PtrNull.h"
 #include "siliscope/ReturnAllPaths.h"
@@ -69,6 +74,11 @@ static const CheckSpec kSpecs[] = {
     {"ss.conv.no-silent-narrow", makeCheck<NoSilentNarrowCheck>},
     {"ss.conv.shift-range", makeCheck<ShiftRangeCheck>},
     {"ss.conv.u-suffix", makeCheck<USuffixCheck>},
+    {"ss.cpp.no-cstyle-cast", makeCheck<NoCStyleCastCheck>},
+    {"ss.cpp.no-exceptions", makeCheck<NoExceptionsCheck>},
+    {"ss.cpp.no-heap-stl", makeCheck<NoHeapStlCheck>},
+    {"ss.cpp.no-rtti", makeCheck<NoRttiCheck>},
+    {"ss.cpp.nullptr", makeCheck<NullptrCheck>},
     {"ss.ctrl.braces", makeCheck<BracesCheck>},
     {"ss.ctrl.if-else-final", makeCheck<IfElseFinalCheck>},
     {"ss.ctrl.no-assignment-in-condition", makeCheck<NoAssignInCondCheck>},

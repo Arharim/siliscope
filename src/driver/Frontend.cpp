@@ -124,7 +124,7 @@ public:
 
   std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &ci, llvm::StringRef) override {
     if (watchPreprocessor) {
-      attachPreprocessorPass(ci.getPreprocessor(), reporter);
+      attachPreprocessorPass(ci.getPreprocessor(), reporter, finder);
     }
     std::vector<std::unique_ptr<ASTConsumer>> cs;
     cs.push_back(finder.newASTConsumer());

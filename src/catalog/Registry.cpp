@@ -167,6 +167,7 @@ static const CheckSpec kSpecs[] = {
     {"ss.pre.no-keyword-macro", makeCheck<PreprocessorCheck>},
     {"ss.pre.no-path-in-include", makeCheck<PreprocessorCheck>},
     {"ss.pre.no-stringify-then-paste", makeCheck<PreprocessorCheck>},
+    {"ss.pre.no-unused-include", makeCheck<PreprocessorCheck>},
     {"ss.pre.prefer-inline", makeCheck<PreprocessorCheck>},
 };
 

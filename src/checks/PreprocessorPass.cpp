@@ -1,6 +1,15 @@
 #include "siliscope/PreprocessorCheck.h"
 #include "siliscope/Report.h"
 
+#include "clang/AST/Decl.h"
+#include "clang/AST/DeclCXX.h"
+#include "clang/AST/Expr.h"
+#include "clang/AST/ExprCXX.h"
+#include "clang/AST/RecursiveASTVisitor.h"
+#include "clang/AST/Type.h"
+#include "clang/ASTMatchers/ASTMatchFinder.h"
+#include "clang/ASTMatchers/ASTMatchers.h"
+#include "clang/Basic/FileEntry.h"
 #include "clang/Basic/IdentifierTable.h"
 #include "clang/Basic/SourceLocation.h"
 #include "clang/Basic/SourceManager.h"
@@ -9,6 +18,8 @@
 #include "clang/Lex/PPCallbacks.h"
 #include "clang/Lex/Preprocessor.h"
 #include "clang/Lex/Token.h"
+#include "llvm/ADT/DenseMap.h"
+#include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringRef.h"
 
 #include <memory>
@@ -16,10 +27,13 @@
 #include <utility>
 #include <vector>
 
+using clang::FileEntry;
 using clang::FileID;
 using clang::IdentifierInfo;
+using clang::MacroDefinition;
 using clang::MacroDirective;
 using clang::MacroInfo;
+using clang::NamedDecl;
 using clang::Preprocessor;
 using clang::SourceLocation;
 using clang::SourceManager;
@@ -698,19 +712,20 @@ void scanCommentTokens(llvm::StringRef buf, bool cxx, Note note, Code code) {
 // the still-open directive is reported when its file is left.
 class Pass : public clang::PPCallbacks {
 public:
-  Pass(const Preprocessor &pp, Reporter &reporter) : pp(pp), reporter(reporter) {}
+  Pass(const Preprocessor &pp, Reporter &reporter) : pp(pp), reporter(reporter), uses(*this) {}
 
   void InclusionDirective(SourceLocation HashLoc,
                           const Token &,
                           llvm::StringRef FileName,
                           bool,
                           clang::CharSourceRange FilenameRange,
-                          clang::OptionalFileEntryRef,
+                          clang::OptionalFileEntryRef File,
                           llvm::StringRef,
                           llvm::StringRef,
                           const clang::Module *,
-                          bool,
+                          bool ModuleImported,
                           clang::SrcMgr::CharacteristicKind) override {
+    noteMainInclude(HashLoc, FileName, FilenameRange, File, ModuleImported);
     if (!absoluteInclude(FileName)) {
       return;
     }
@@ -724,12 +739,57 @@ public:
 
   void If(SourceLocation Loc, clang::SourceRange, ConditionValueKind) override { noteOpen(Loc); }
 
-  void Ifdef(SourceLocation Loc, const Token &, const clang::MacroDefinition &) override {
+  void Ifdef(SourceLocation Loc, const Token &, const MacroDefinition &MD) override {
     noteOpen(Loc);
+    creditMacro(MD, Loc);
   }
 
-  void Ifndef(SourceLocation Loc, const Token &, const clang::MacroDefinition &) override {
+  void Ifndef(SourceLocation Loc, const Token &, const MacroDefinition &MD) override {
     noteOpen(Loc);
+    creditMacro(MD, Loc);
+  }
+
+  void Elifdef(SourceLocation Loc, const Token &, const MacroDefinition &MD) override {
+    creditMacro(MD, Loc);
+  }
+
+  void Elifndef(SourceLocation Loc, const Token &, const MacroDefinition &MD) override {
+    creditMacro(MD, Loc);
+  }
+
+  void Defined(const Token &, const MacroDefinition &MD, clang::SourceRange Range) override {
+    creditMacro(MD, Range.getBegin());
+  }
+
+  void MacroExpands(const Token &,
+                    const MacroDefinition &MD,
+                    clang::SourceRange Range,
+                    const clang::MacroArgs *) override {
+    creditMacro(MD, Range.getBegin());
+  }
+
+  // A skipped include contributed no tokens. A second direct include of a file
+  // this file already entered is unused. A direct include of a file that an
+  // earlier header pulled in still counts once the main file uses that file.
+  void FileSkipped(const clang::FileEntryRef &SkippedFile,
+                   const Token &,
+                   clang::SrcMgr::CharacteristicKind) override {
+    if (pending < 0) {
+      return;
+    }
+    const unsigned index = static_cast<unsigned>(pending);
+    pending = -1;
+    const FileEntry *file = &SkippedFile.getFileEntry();
+    const auto ownerIt = includedBy.find(file);
+    if (ownerIt == includedBy.end()) {
+      alsoProvides[file].push_back(index);
+      return;
+    }
+    const DirectInclude &owner = includes[ownerIt->second];
+    if (owner.file == file) {
+      return;
+    }
+    alsoProvides[file].push_back(index);
   }
 
   void Endif(SourceLocation Loc, SourceLocation IfLoc) override {
@@ -748,11 +808,15 @@ public:
     noteClose(Loc);
   }
 
-  void LexedFileChanged(FileID,
+  void LexedFileChanged(FileID FID,
                         LexedFileChangeReason Reason,
                         clang::SrcMgr::CharacteristicKind,
                         FileID PrevFID,
-                        SourceLocation) override {
+                        SourceLocation Loc) override {
+    if (Reason == LexedFileChangeReason::EnterFile) {
+      noteEntered(FID, PrevFID, Loc);
+      return;
+    }
     if (Reason == LexedFileChangeReason::ExitFile) {
       closeFile(PrevFID);
       checkIncludeGuard(PrevFID);
@@ -970,9 +1034,267 @@ private:
     }
   }
 
+  struct DirectInclude {
+    SourceLocation at;
+    std::string name;
+    const FileEntry *file = nullptr;
+    bool used = false;
+  };
+
+  // A direct include of the main file is used when that file spells a macro,
+  // type, or declaration the include brought in. A later definition in the
+  // main file counts as a use of an earlier declaration in the header.
+  // --allow takes the include name as written, without quotes or brackets.
+  class Uses final : public clang::ast_matchers::MatchFinder::MatchCallback {
+  public:
+    explicit Uses(Pass &owner) : owner(owner) {}
+
+    void credit(const NamedDecl *decl) { owner.creditDecl(decl); }
+
+    void run(const clang::ast_matchers::MatchFinder::MatchResult &result) override {
+      if (done) {
+        return;
+      }
+      const auto *tu = result.Nodes.getNodeAs<clang::TranslationUnitDecl>("tu");
+      if (!tu) {
+        return;
+      }
+      done = true;
+      Walker walker(*this);
+      walker.TraverseDecl(const_cast<clang::TranslationUnitDecl *>(tu));
+      owner.emitUnusedIncludes();
+    }
+
+  private:
+    class Walker : public clang::RecursiveASTVisitor<Walker> {
+    public:
+      explicit Walker(Uses &uses) : uses(uses) {}
+
+      bool VisitDeclRefExpr(clang::DeclRefExpr *expr) {
+        if (uses.owner.inMain(expr->getLocation())) {
+          uses.credit(expr->getDecl());
+        }
+        return true;
+      }
+
+      bool VisitMemberExpr(clang::MemberExpr *expr) {
+        if (uses.owner.inMain(expr->getMemberLoc())) {
+          uses.credit(expr->getMemberDecl());
+        }
+        return true;
+      }
+
+      bool VisitCXXConstructExpr(clang::CXXConstructExpr *expr) {
+        if (uses.owner.inMain(expr->getLocation())) {
+          uses.credit(expr->getConstructor());
+        }
+        return true;
+      }
+
+      bool VisitTypeLoc(clang::TypeLoc loc) {
+        if (!uses.owner.inMain(loc.getBeginLoc()) || loc.isNull()) {
+          return true;
+        }
+        const clang::Type *type = loc.getType().getTypePtrOrNull();
+        if (!type) {
+          return true;
+        }
+        if (const auto *alias = clang::dyn_cast<clang::TypedefType>(type)) {
+          uses.credit(alias->getDecl());
+        } else if (const auto *tag = clang::dyn_cast<clang::TagType>(type)) {
+          uses.credit(tag->getDecl());
+        } else if (const auto *spec = clang::dyn_cast<clang::TemplateSpecializationType>(type)) {
+          if (clang::TemplateDecl *pattern = spec->getTemplateName().getAsTemplateDecl()) {
+            uses.credit(pattern);
+          }
+        } else if (const auto *used = clang::dyn_cast<clang::UsingType>(type)) {
+          if (const clang::UsingShadowDecl *shadow = used->getDecl()) {
+            uses.credit(shadow->getTargetDecl());
+          }
+        }
+        return true;
+      }
+
+      bool VisitFunctionDecl(clang::FunctionDecl *decl) {
+        if (decl->isImplicit() || !decl->isThisDeclarationADefinition() ||
+            !uses.owner.inMain(decl->getLocation())) {
+          return true;
+        }
+        for (clang::FunctionDecl *other : decl->redecls()) {
+          uses.credit(other);
+        }
+        if (const auto *method = clang::dyn_cast<clang::CXXMethodDecl>(decl)) {
+          uses.credit(method->getParent());
+        }
+        return true;
+      }
+
+      bool VisitVarDecl(clang::VarDecl *decl) {
+        if (decl->isImplicit() || !decl->isThisDeclarationADefinition() ||
+            !uses.owner.inMain(decl->getLocation())) {
+          return true;
+        }
+        for (clang::VarDecl *other : decl->redecls()) {
+          uses.credit(other);
+        }
+        return true;
+      }
+
+      bool VisitTagDecl(clang::TagDecl *decl) {
+        if (decl->isImplicit() || !decl->isThisDeclarationADefinition() ||
+            !uses.owner.inMain(decl->getLocation())) {
+          return true;
+        }
+        for (clang::TagDecl *other : decl->redecls()) {
+          uses.credit(other);
+        }
+        return true;
+      }
+
+    private:
+      Uses &uses;
+    };
+
+    Pass &owner;
+    bool done = false;
+  };
+
+public:
+  void watch(clang::ast_matchers::MatchFinder &finder) {
+    finder.addMatcher(clang::ast_matchers::translationUnitDecl().bind("tu"), &uses);
+  }
+
+  bool inMain(SourceLocation loc) const {
+    if (loc.isInvalid()) {
+      return false;
+    }
+    const SourceManager &sm = pp.getSourceManager();
+    loc = sm.getSpellingLoc(loc);
+    if (loc.isInvalid() || sm.isWrittenInScratchSpace(loc) || sm.isInPredefinedFile(loc) ||
+        sm.isWrittenInBuiltinFile(loc) || sm.isWrittenInCommandLineFile(loc)) {
+      return false;
+    }
+    return sm.getFileID(loc) == sm.getMainFileID();
+  }
+
+  void noteMainInclude(SourceLocation hash,
+                       llvm::StringRef name,
+                       clang::CharSourceRange filename,
+                       clang::OptionalFileEntryRef file,
+                       bool moduleImported) {
+    if (moduleImported || !file || !inMain(hash)) {
+      return;
+    }
+    SourceLocation at = filename.getBegin();
+    if (at.isInvalid()) {
+      at = hash;
+    }
+    includes.push_back(DirectInclude{at, name.str(), nullptr, false});
+    pending = static_cast<int>(includes.size() - 1);
+  }
+
+  void noteEntered(FileID fid, FileID prev, SourceLocation loc) {
+    const SourceManager &sm = pp.getSourceManager();
+    const FileEntry *file = sm.getFileEntryForID(fid);
+    if (!file) {
+      pending = -1;
+      return;
+    }
+    const bool fromMain = prev == sm.getMainFileID() || inMain(loc);
+    if (pending >= 0 && fromMain) {
+      const unsigned index = static_cast<unsigned>(pending);
+      pending = -1;
+      includes[index].file = file;
+      if (!includedBy.try_emplace(file, index).second) {
+        alsoProvides[file].push_back(index);
+      }
+      return;
+    }
+    pending = -1;
+    const FileEntry *parent = sm.getFileEntryForID(prev);
+    if (!parent) {
+      return;
+    }
+    const auto parentIt = includedBy.find(parent);
+    if (parentIt == includedBy.end()) {
+      return;
+    }
+    includedBy.try_emplace(file, parentIt->second);
+  }
+
+  void creditMacro(const MacroDefinition &definition, SourceLocation use) {
+    if (!inMain(use)) {
+      return;
+    }
+    const MacroInfo *info = definition.getMacroInfo();
+    if (!info) {
+      return;
+    }
+    creditLoc(info->getDefinitionLoc());
+  }
+
+  void creditDecl(const NamedDecl *decl) {
+    if (!decl || decl->isImplicit()) {
+      return;
+    }
+    if (const auto *first = clang::dyn_cast<NamedDecl>(decl->getCanonicalDecl())) {
+      creditLoc(first->getLocation());
+    }
+    creditLoc(decl->getLocation());
+  }
+
+  void creditLoc(SourceLocation loc) {
+    if (loc.isInvalid()) {
+      return;
+    }
+    const SourceManager &sm = pp.getSourceManager();
+    loc = sm.getSpellingLoc(loc);
+    if (loc.isInvalid() || sm.isWrittenInScratchSpace(loc) || sm.isInPredefinedFile(loc) ||
+        sm.isWrittenInBuiltinFile(loc) || sm.isWrittenInCommandLineFile(loc)) {
+      return;
+    }
+    creditFile(sm.getFileID(loc));
+  }
+
+  void creditFile(FileID fid) {
+    const FileEntry *file = pp.getSourceManager().getFileEntryForID(fid);
+    if (!file) {
+      return;
+    }
+    const auto ownerIt = includedBy.find(file);
+    if (ownerIt != includedBy.end()) {
+      includes[ownerIt->second].used = true;
+    }
+    const auto extra = alsoProvides.find(file);
+    if (extra == alsoProvides.end()) {
+      return;
+    }
+    for (const unsigned index : extra->second) {
+      includes[index].used = true;
+    }
+  }
+
+  void emitUnusedIncludes() {
+    const SourceManager &sm = pp.getSourceManager();
+    for (const DirectInclude &include : includes) {
+      if (include.used) {
+        continue;
+      }
+      if (reporter.allows("ss.pre.no-unused-include", include.name.c_str())) {
+        continue;
+      }
+      reporter.emit(sm, include.at, "ss.pre.no-unused-include", "this include is not used");
+    }
+  }
+
   const Preprocessor &pp;
   Reporter &reporter;
   std::vector<OpenCond> opens;
+  std::vector<DirectInclude> includes;
+  llvm::DenseMap<const FileEntry *, unsigned> includedBy;
+  llvm::DenseMap<const FileEntry *, llvm::SmallVector<unsigned, 1>> alsoProvides;
+  int pending = -1;
+  Uses uses;
 };
 
 } // namespace
@@ -981,6 +1303,11 @@ void PreprocessorCheck::registerMatchers(clang::ast_matchers::MatchFinder &) {}
 
 void PreprocessorCheck::run(const clang::ast_matchers::MatchFinder::MatchResult &) {}
 
-void attachPreprocessorPass(Preprocessor &pp, Reporter &reporter) {
-  pp.addPPCallbacks(std::make_unique<Pass>(pp, reporter));
+void attachPreprocessorPass(Preprocessor &pp,
+                            Reporter &reporter,
+                            clang::ast_matchers::MatchFinder &finder) {
+  auto pass = std::make_unique<Pass>(pp, reporter);
+  Pass *raw = pass.get();
+  pp.addPPCallbacks(std::move(pass));
+  raw->watch(finder);
 }

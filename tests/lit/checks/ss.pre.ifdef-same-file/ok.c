@@ -1,3 +1,4 @@
+/* ss-run: allow=ss.pre.no-unused-include:guard.h expect=clean */
 #include "guard.h"
 
 #if 0

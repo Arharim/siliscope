@@ -14,6 +14,11 @@ public:
 
 namespace clang {
 class Preprocessor;
+namespace ast_matchers {
+class MatchFinder;
 }
+} // namespace clang
 
-void attachPreprocessorPass(clang::Preprocessor &pp, Reporter &reporter);
+void attachPreprocessorPass(clang::Preprocessor &pp,
+                            Reporter &reporter,
+                            clang::ast_matchers::MatchFinder &finder);

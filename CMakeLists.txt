@@ -91,6 +91,14 @@ if(SILISCOPE_ENABLE_CLANG)
     src/checks/VirtualDtor.cpp
     src/checks/NoThrowDtor.cpp
     src/checks/InitMembers.cpp
+    src/checks/NoUsingDirective.cpp
+    src/checks/NoUsingInHeader.cpp
+    src/checks/NoImplicitConversion.cpp
+    src/checks/NoThrowSpec.cpp
+    src/checks/NoDefaultArgs.cpp
+    src/checks/EnumClass.cpp
+    src/checks/NoFriend.cpp
+    src/checks/PrivateData.cpp
   )
   target_compile_definitions(siliscope PRIVATE SILISCOPE_WITH_CLANG)
   target_include_directories(siliscope PRIVATE

@@ -118,7 +118,10 @@ Live checkers (see `src/catalog/Registry.cpp` and `just test`):
   or functional cast, `nullptr`, no heap-backed standard containers,
   `override` or `final` on an override, a virtual, protected, or deleted
   destructor on a polymorphic base, a non-throwing destructor, constructors
-  that initialize every trivial base and member
+  that initialize every trivial base and member, no using-directive, no
+  `using` in a header, explicit conversions, no dynamic exception
+  specification, no default arguments, `enum class`, no friend and no
+  public data outside a POD, a packed record, or a union
 
 Not in this release: dataflow (uninit, bounds, dangling), `ss.ctrl.loop-bound`,
 the rest of `ss.cpp.*` / `ss.pre.*`, the rest of `ss.conv.*`, review-only catalog rows.

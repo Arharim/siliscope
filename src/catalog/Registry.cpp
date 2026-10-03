@@ -7,6 +7,7 @@
 #include "siliscope/DeclConst.h"
 #include "siliscope/Distinct.h"
 #include "siliscope/EmptyLoopComment.h"
+#include "siliscope/EnumClass.h"
 #include "siliscope/IfElseFinal.h"
 #include "siliscope/InitMembers.h"
 #include "siliscope/IrqMaskBalanced.h"
@@ -20,12 +21,15 @@
 #include "siliscope/NoComma.h"
 #include "siliscope/NoContinue.h"
 #include "siliscope/NoCvAway.h"
+#include "siliscope/NoDefaultArgs.h"
 #include "siliscope/NoExceptions.h"
 #include "siliscope/NoFlexibleArray.h"
 #include "siliscope/NoFpEq.h"
+#include "siliscope/NoFriend.h"
 #include "siliscope/NoGoto.h"
 #include "siliscope/NoHeap.h"
 #include "siliscope/NoHeapStl.h"
+#include "siliscope/NoImplicitConversion.h"
 #include "siliscope/NoIncInExpr.h"
 #include "siliscope/NoLogInIsr.h"
 #include "siliscope/NoLogicalRhs.h"
@@ -46,12 +50,16 @@
 #include "siliscope/NoStdarg.h"
 #include "siliscope/NoStdio.h"
 #include "siliscope/NoThrowDtor.h"
+#include "siliscope/NoThrowSpec.h"
 #include "siliscope/NoUnboundedString.h"
 #include "siliscope/NoUnusedParams.h"
+#include "siliscope/NoUsingDirective.h"
+#include "siliscope/NoUsingInHeader.h"
 #include "siliscope/NoVLA.h"
 #include "siliscope/Noreturn.h"
 #include "siliscope/Nullptr.h"
 #include "siliscope/Override.h"
+#include "siliscope/PrivateData.h"
 #include "siliscope/Prototype.h"
 #include "siliscope/PtrNull.h"
 #include "siliscope/ReturnAllPaths.h"
@@ -79,14 +87,22 @@ static const CheckSpec kSpecs[] = {
     {"ss.conv.no-silent-narrow", makeCheck<NoSilentNarrowCheck>},
     {"ss.conv.shift-range", makeCheck<ShiftRangeCheck>},
     {"ss.conv.u-suffix", makeCheck<USuffixCheck>},
+    {"ss.cpp.enum-class", makeCheck<EnumClassCheck>},
     {"ss.cpp.init-members", makeCheck<InitMembersCheck>},
     {"ss.cpp.no-cstyle-cast", makeCheck<NoCStyleCastCheck>},
+    {"ss.cpp.no-default-args", makeCheck<NoDefaultArgsCheck>},
     {"ss.cpp.no-exceptions", makeCheck<NoExceptionsCheck>},
+    {"ss.cpp.no-friend", makeCheck<NoFriendCheck>},
     {"ss.cpp.no-heap-stl", makeCheck<NoHeapStlCheck>},
+    {"ss.cpp.no-implicit-conversion", makeCheck<NoImplicitConversionCheck>},
     {"ss.cpp.no-rtti", makeCheck<NoRttiCheck>},
     {"ss.cpp.no-throw-dtor", makeCheck<NoThrowDtorCheck>},
+    {"ss.cpp.no-throw-spec", makeCheck<NoThrowSpecCheck>},
+    {"ss.cpp.no-using-directive", makeCheck<NoUsingDirectiveCheck>},
+    {"ss.cpp.no-using-in-header", makeCheck<NoUsingInHeaderCheck>},
     {"ss.cpp.nullptr", makeCheck<NullptrCheck>},
     {"ss.cpp.override", makeCheck<OverrideCheck>},
+    {"ss.cpp.private-data", makeCheck<PrivateDataCheck>},
     {"ss.cpp.virtual-dtor", makeCheck<VirtualDtorCheck>},
     {"ss.ctrl.braces", makeCheck<BracesCheck>},
     {"ss.ctrl.empty-loop-comment", makeCheck<EmptyLoopCommentCheck>},

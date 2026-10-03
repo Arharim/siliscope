@@ -20,6 +20,7 @@ include:
     - ss.cpp.special-members
     - ss.cpp.no-implicit-conversion
     - ss.cpp.private-data
+    - ss.cpp.no-friend
     - ss.cpp.init-members
     - ss.cpp.no-throw-spec
     - ss.cpp.no-heap-stl

@@ -8,6 +8,7 @@
 #include "siliscope/Distinct.h"
 #include "siliscope/EmptyLoopComment.h"
 #include "siliscope/IfElseFinal.h"
+#include "siliscope/InitMembers.h"
 #include "siliscope/IrqMaskBalanced.h"
 #include "siliscope/IsrNoFp.h"
 #include "siliscope/IsrNotCalled.h"
@@ -44,11 +45,13 @@
 #include "siliscope/NoSizeofSideEffect.h"
 #include "siliscope/NoStdarg.h"
 #include "siliscope/NoStdio.h"
+#include "siliscope/NoThrowDtor.h"
 #include "siliscope/NoUnboundedString.h"
 #include "siliscope/NoUnusedParams.h"
 #include "siliscope/NoVLA.h"
 #include "siliscope/Noreturn.h"
 #include "siliscope/Nullptr.h"
+#include "siliscope/Override.h"
 #include "siliscope/Prototype.h"
 #include "siliscope/PtrNull.h"
 #include "siliscope/ReturnAllPaths.h"
@@ -59,6 +62,7 @@
 #include "siliscope/SwitchWellFormed.h"
 #include "siliscope/USuffix.h"
 #include "siliscope/Unreachable.h"
+#include "siliscope/VirtualDtor.h"
 
 #include <cstring>
 
@@ -75,11 +79,15 @@ static const CheckSpec kSpecs[] = {
     {"ss.conv.no-silent-narrow", makeCheck<NoSilentNarrowCheck>},
     {"ss.conv.shift-range", makeCheck<ShiftRangeCheck>},
     {"ss.conv.u-suffix", makeCheck<USuffixCheck>},
+    {"ss.cpp.init-members", makeCheck<InitMembersCheck>},
     {"ss.cpp.no-cstyle-cast", makeCheck<NoCStyleCastCheck>},
     {"ss.cpp.no-exceptions", makeCheck<NoExceptionsCheck>},
     {"ss.cpp.no-heap-stl", makeCheck<NoHeapStlCheck>},
     {"ss.cpp.no-rtti", makeCheck<NoRttiCheck>},
+    {"ss.cpp.no-throw-dtor", makeCheck<NoThrowDtorCheck>},
     {"ss.cpp.nullptr", makeCheck<NullptrCheck>},
+    {"ss.cpp.override", makeCheck<OverrideCheck>},
+    {"ss.cpp.virtual-dtor", makeCheck<VirtualDtorCheck>},
     {"ss.ctrl.braces", makeCheck<BracesCheck>},
     {"ss.ctrl.empty-loop-comment", makeCheck<EmptyLoopCommentCheck>},
     {"ss.ctrl.if-else-final", makeCheck<IfElseFinalCheck>},

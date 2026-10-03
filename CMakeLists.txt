@@ -87,6 +87,10 @@ if(SILISCOPE_ENABLE_CLANG)
     src/checks/NoCStyleCast.cpp
     src/checks/Nullptr.cpp
     src/checks/NoHeapStl.cpp
+    src/checks/Override.cpp
+    src/checks/VirtualDtor.cpp
+    src/checks/NoThrowDtor.cpp
+    src/checks/InitMembers.cpp
   )
   target_compile_definitions(siliscope PRIVATE SILISCOPE_WITH_CLANG)
   target_include_directories(siliscope PRIVATE

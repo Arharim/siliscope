@@ -6,11 +6,17 @@ struct Base {
 
 struct Derived : Base {
   int id() const override { return 2; }
+  ~Derived() override = default;
 };
 
-int kind(const Base *b) {
-  if (b == nullptr) {
+struct Closed final : Base {
+  int id() const final { return 3; }
+  ~Closed() override = default;
+};
+
+int kind(const Base *base) {
+  if (base == nullptr) {
     return 0;
   }
-  return b->id();
+  return base->id();
 }

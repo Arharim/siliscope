@@ -1,6 +1,7 @@
 /* ss-run: profile=embedded-cpp expect=ss.cpp.no-rtti */
 struct Base {
   virtual int id() const { return 1; }
+  virtual ~Base() = default;
 };
 
 struct Derived : Base {

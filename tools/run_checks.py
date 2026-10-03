@@ -269,8 +269,8 @@ class Runner:
         )
         self.check(
             "embedded-cpp still has C++ rules without a checker",
-            present(cpp_rows, "ss.cpp.override", "no-checker"),
-            "ss.cpp.override missing",
+            present(cpp_rows, "ss.cpp.no-using-directive", "no-checker"),
+            "ss.cpp.no-using-directive missing",
         )
         self.check(
             "embedded-cpp keeps shared checker",
@@ -291,11 +291,15 @@ class Runner:
             "ss.fn.static-internal",
         }
         cpp_only = {
+            "ss.cpp.init-members",
             "ss.cpp.no-cstyle-cast",
             "ss.cpp.no-exceptions",
             "ss.cpp.no-heap-stl",
             "ss.cpp.no-rtti",
+            "ss.cpp.no-throw-dtor",
             "ss.cpp.nullptr",
+            "ss.cpp.override",
+            "ss.cpp.virtual-dtor",
         }
         c_checkers = {rid for rid, parts in c_rows.items() if parts[3] == "checker"}
         cpp_checkers = {rid for rid, parts in cpp_rows.items() if parts[3] == "checker"}

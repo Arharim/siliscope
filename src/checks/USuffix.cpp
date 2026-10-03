@@ -21,8 +21,11 @@ namespace {
 static bool spellingHasU(const IntegerLiteral *lit,
                          const clang::SourceManager &sm,
                          const clang::LangOptions &lang) {
+  // The expansion location is the macro use, whose text has no suffix.
+  // The suffix is on the token in the definition: 256u, 0xE000EDFCu.
   llvm::SmallString<32> buf;
-  const llvm::StringRef spelling = Lexer::getSpelling(lit->getLocation(), buf, sm, lang);
+  const clang::SourceLocation spelled = sm.getSpellingLoc(lit->getLocation());
+  const llvm::StringRef spelling = Lexer::getSpelling(spelled, buf, sm, lang);
   return spelling.contains('u') || spelling.contains('U');
 }
 

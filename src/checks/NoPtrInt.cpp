@@ -2,6 +2,7 @@
 
 #include "siliscope/Report.h"
 
+#include "clang/AST/Decl.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/Type.h"
 #include "clang/ASTMatchers/ASTMatchers.h"
@@ -29,6 +30,51 @@ static bool isNullPointerConstant(const Expr *e, clang::ASTContext &ctx) {
          Expr::NPCK_NotNull;
 }
 
+static bool hasVolatileMember(const clang::RecordDecl *rec, int depth) {
+  if (!rec || depth > 2) {
+    return false;
+  }
+  for (const clang::FieldDecl *field : rec->fields()) {
+    QualType ft = field->getType();
+    if (const clang::ArrayType *array = ft->getAsArrayTypeUnsafe()) {
+      ft = array->getElementType();
+    }
+    if (ft.isVolatileQualified()) {
+      return true;
+    }
+    if (const auto *nested = ft->getAs<clang::RecordType>()) {
+      if (hasVolatileMember(nested->getDecl(), depth + 1)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+// `*(volatile uint32_t *)0xE000EDFCu` and CMSIS `((RCC_TypeDef *)RCC_BASE)`.
+// The address is a constant. A plain `(int *)0x1000u` is not a register block.
+static bool isMmioPointer(QualType pointer) {
+  if (!pointer->isPointerType()) {
+    return false;
+  }
+  const QualType pointee = pointer->getPointeeType();
+  if (pointee.isVolatileQualified()) {
+    return true;
+  }
+  if (const auto *rec = pointee->getAs<clang::RecordType>()) {
+    return hasVolatileMember(rec->getDecl(), 0);
+  }
+  return false;
+}
+
+static bool isAddressConstant(const Expr *e, clang::ASTContext &ctx) {
+  if (!e) {
+    return false;
+  }
+  clang::Expr::EvalResult value;
+  return e->IgnoreParenImpCasts()->EvaluateAsInt(value, ctx) && value.Val.isInt();
+}
+
 } // namespace
 
 void NoPtrIntCheck::registerMatchers(clang::ast_matchers::MatchFinder &finder) {
@@ -52,8 +98,12 @@ void NoPtrIntCheck::run(const clang::ast_matchers::MatchFinder::MatchResult &res
     return;
   }
   // NULL / 0 / 0u as a pointer is a null constant, not an address cast.
-  // A HAL allowlist for MMIO is still a catalog note, not a config knob.
   if (intToPointer && isNullPointerConstant(cast->getSubExpr(), *result.Context)) {
+    return;
+  }
+  // A constant address written as a volatile pointer or a register struct is MMIO.
+  // `(uintptr_t)p` and `(int *)runtime_value` stay flagged.
+  if (intToPointer && isAddressConstant(cast->getSubExpr(), *result.Context) && isMmioPointer(to)) {
     return;
   }
   reporter.emit(*result.SourceManager,

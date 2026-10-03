@@ -24,5 +24,10 @@ inline bool isIsr(const clang::FunctionDecl *fn) {
     return false;
   }
   const llvm::StringRef n = fn->getName();
-  return n.ends_with("_IRQHandler") || n.ends_with("_isr");
+  if (n.ends_with("_IRQHandler")) {
+    return true;
+  }
+  // A helper such as ringbuf_push_isr(buf, byte) is not a vector entry.
+  // Hardware handlers named *_isr take no parameters and return void.
+  return n.ends_with("_isr") && fn->getNumParams() == 0 && fn->getReturnType()->isVoidType();
 }

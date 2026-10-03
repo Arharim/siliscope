@@ -34,6 +34,13 @@ static bool isBitwiseOpcode(clang::BinaryOperator::Opcode op) {
   }
 }
 
+// A shift count is a bit count (`1u << 24`), not a bit pattern. Range of a
+// constant count is ss.conv.shift-range. The shifted value stays checked.
+static bool isShift(clang::BinaryOperator::Opcode op) {
+  return op == clang::BO_Shl || op == clang::BO_Shr || op == clang::BO_ShlAssign ||
+         op == clang::BO_ShrAssign;
+}
+
 // Type as written, before integer promotions. uint8_t is unsigned even though
 // the promotion is signed int.
 static bool isSignedIntegerOperand(const Expr *e) {
@@ -74,7 +81,9 @@ void NoSignedBitwiseCheck::run(const clang::ast_matchers::MatchFinder::MatchResu
       return;
     }
     operands[n++] = bin->getLHS();
-    operands[n++] = bin->getRHS();
+    if (!isShift(bin->getOpcode())) {
+      operands[n++] = bin->getRHS();
+    }
   } else if (const auto *un = result.Nodes.getNodeAs<UnaryOperator>("not")) {
     operands[n++] = un->getSubExpr();
   } else {

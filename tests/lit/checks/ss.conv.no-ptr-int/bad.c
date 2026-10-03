@@ -1,3 +1,4 @@
 static unsigned bad(int *p) {
-  return (unsigned)p;
+  int *raw = (int *)0x1000u;
+  return (unsigned)p + (unsigned)raw;
 }

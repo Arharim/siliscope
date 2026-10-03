@@ -5,5 +5,7 @@ static unsigned mask(unsigned value) {
   out = ~out;
   out = out << 1u;
   out = out >> 1u;
+  out = out << 24;
+  out = out >> 4;
   return out;
 }

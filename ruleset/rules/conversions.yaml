@@ -13,6 +13,7 @@ rules:
     check: types
     default: "on"
     summary: "Bitwise &, |, ^, ~, <<, >> apply only to unsigned integers."
+    notes: The shift count is a bit count, not a bit pattern. Its range is ss.conv.shift-range.
   - id: ss.conv.shift-range
     title: Shift amount shall be in range for an unsigned left operand
     severity: error
@@ -59,7 +60,9 @@ rules:
     summary: >
       Pointer/integer casts are confined to a small HAL layer (MMIO). Everywhere
       else they are errors.
-    notes: Need a HAL path allowlist in config.
+    notes: >
+      A constant address cast to a volatile pointer or a register block is MMIO.
+      A runtime integer and any pointer-to-integer cast stay flagged.
   - id: ss.conv.no-object-ptr-cast
     title: Do not convert between pointers to unrelated object types
     severity: warning

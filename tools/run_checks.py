@@ -14,6 +14,7 @@ Extra runs are comments in the fixture::
     /* ss-run: expect=clean */
     /* ss-run: profile=strict expect=ss.ctrl.no-continue */
     /* ss-run: allow=ss.fn.no-stdarg:log_printf expect=clean */
+    /* ss-run: extra=-ffreestanding expect=clean */
 
 ``expect=clean`` requires exit 0 and no findings. Any other expect value is
 the diagnostic id that must appear in brackets.
@@ -38,7 +39,7 @@ def parse_runs(path: Path, rule_id: str) -> list[dict]:
     text = path.read_text(encoding="utf-8")
     found: list[dict] = []
     for raw in RUN_RE.findall(text):
-        run = {"profile": "embedded-c", "expect": "", "allow": []}
+        run = {"profile": "embedded-c", "expect": "", "allow": [], "extra": []}
         for tok in raw.replace("*/", " ").split():
             if "=" not in tok:
                 continue
@@ -49,6 +50,8 @@ def parse_runs(path: Path, rule_id: str) -> list[dict]:
                 run["expect"] = val
             elif key == "allow":
                 run["allow"].append(val)
+            elif key == "extra":
+                run["extra"].append(val)
             else:
                 raise SystemExit(f"{path}: unknown ss-run key {key}")
         if not run["expect"]:
@@ -58,9 +61,9 @@ def parse_runs(path: Path, rule_id: str) -> list[dict]:
         return found
     stem = path.stem
     if stem.startswith("ok"):
-        return [{"profile": "embedded-c", "expect": "clean", "allow": []}]
+        return [{"profile": "embedded-c", "expect": "clean", "allow": [], "extra": []}]
     if stem.startswith("bad"):
-        return [{"profile": "embedded-c", "expect": rule_id, "allow": []}]
+        return [{"profile": "embedded-c", "expect": rule_id, "allow": [], "extra": []}]
     raise SystemExit(f"{path}: no ss-run directive and name is not ok*/bad*")
 
 
@@ -117,6 +120,8 @@ class Runner:
         args = ["--ruleset-dir", "ruleset", "--profile", run["profile"], "--target", "arm-none-eabi"]
         for spec in run["allow"]:
             args.extend(["--allow", spec])
+        for arg in run.get("extra", []):
+            args.extend(["-extra-arg", arg])
         args.append(str(path.relative_to(ROOT)))
         rc, out, err = self.invoke(args)
         label = f"{path.relative_to(ROOT)} profile={run['profile']} expect={run['expect']}"

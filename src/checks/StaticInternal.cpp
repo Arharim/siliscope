@@ -38,8 +38,18 @@ static bool isExternalFileScope(const NamedDecl *d) {
   return d && d->getFormalLinkage() == clang::Linkage::External;
 }
 
+static bool isRuntimeEntry(const FunctionDecl *fn) {
+  if (!fn->getIdentifier()) {
+    return false;
+  }
+  // isMain() is false under -ffreestanding, which is how firmware is built.
+  // _init and _fini are the newlib hooks the linker calls.
+  const llvm::StringRef name = fn->getName();
+  return name == "main" || name == "_init" || name == "_fini";
+}
+
 static bool skipFn(const FunctionDecl *fn) {
-  if (!fn || fn->isImplicit() || fn->getBuiltinID() != 0 || fn->isMain()) {
+  if (!fn || fn->isImplicit() || fn->getBuiltinID() != 0 || fn->isMain() || isRuntimeEntry(fn)) {
     return true;
   }
   if (fn->hasAttr<clang::WeakAttr>() || fn->hasAttr<clang::AliasAttr>()) {

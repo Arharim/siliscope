@@ -1,0 +1,4 @@
+#ifndef SS_PRE_SOURCE_OTHER_H
+#define SS_PRE_SOURCE_OTHER_H
+#define SOURCE_OTHER 1
+#endif

@@ -19,8 +19,11 @@
 #include "clang/Lex/Preprocessor.h"
 #include "clang/Lex/Token.h"
 #include "llvm/ADT/DenseMap.h"
+#include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringRef.h"
+#include "llvm/Support/FileSystem.h"
+#include "llvm/Support/Path.h"
 
 #include <memory>
 #include <string>
@@ -717,7 +720,7 @@ public:
   void InclusionDirective(SourceLocation HashLoc,
                           const Token &,
                           llvm::StringRef FileName,
-                          bool,
+                          bool IsAngled,
                           clang::CharSourceRange FilenameRange,
                           clang::OptionalFileEntryRef File,
                           llvm::StringRef,
@@ -725,7 +728,7 @@ public:
                           const clang::Module *,
                           bool ModuleImported,
                           clang::SrcMgr::CharacteristicKind) override {
-    noteMainInclude(HashLoc, FileName, FilenameRange, File, ModuleImported);
+    noteMainInclude(HashLoc, FileName, FilenameRange, File, ModuleImported, IsAngled);
     if (!absoluteInclude(FileName)) {
       return;
     }
@@ -831,6 +834,7 @@ public:
       reportUnclosed(open.loc);
     }
     checkCommentTokens(pp.getSourceManager().getMainFileID());
+    checkOwnHeader();
   }
 
   void MacroDefined(const Token &MacroNameTok, const MacroDirective *MD) override {
@@ -1039,6 +1043,7 @@ private:
     std::string name;
     const FileEntry *file = nullptr;
     bool used = false;
+    bool angled = false;
   };
 
   // A direct include of the main file is used when that file spells a macro,
@@ -1181,7 +1186,8 @@ public:
                        llvm::StringRef name,
                        clang::CharSourceRange filename,
                        clang::OptionalFileEntryRef file,
-                       bool moduleImported) {
+                       bool moduleImported,
+                       bool angled) {
     if (moduleImported || !file || !inMain(hash)) {
       return;
     }
@@ -1189,8 +1195,62 @@ public:
     if (at.isInvalid()) {
       at = hash;
     }
-    includes.push_back(DirectInclude{at, name.str(), nullptr, false});
+    includes.push_back(DirectInclude{at, name.str(), nullptr, false, angled});
     pending = static_cast<int>(includes.size() - 1);
+  }
+
+  // foo.c includes "foo.h" before any other header, so the header is parsed
+  // on its own. A quoted include whose filename is foo.h counts, including
+  // "inc/foo.h". Angle brackets do not. With no such include, the rule fires
+  // only when foo.h sits next to foo.c. --allow names that header.
+  void checkOwnHeader() {
+    if (pp.getLangOpts().CPlusPlus) {
+      return;
+    }
+    const SourceManager &sm = pp.getSourceManager();
+    const SourceLocation start = sm.getLocForStartOfFile(sm.getMainFileID());
+    if (start.isInvalid()) {
+      return;
+    }
+    const llvm::StringRef path(sm.getFilename(start));
+    llvm::StringRef base = llvm::sys::path::filename(path);
+    if (!base.consume_back(".c")) {
+      return;
+    }
+    const std::string header = (base + ".h").str();
+    if (reporter.allows("ss.pre.source-includes-own-header", header.c_str())) {
+      return;
+    }
+    int own = -1;
+    for (unsigned i = 0; i < includes.size(); ++i) {
+      const DirectInclude &include = includes[i];
+      if (include.angled) {
+        continue;
+      }
+      if (llvm::sys::path::filename(include.name) == header) {
+        own = static_cast<int>(i);
+        break;
+      }
+    }
+    if (own == 0) {
+      return;
+    }
+    if (own > 0) {
+      reporter.emit(sm,
+                    includes[static_cast<unsigned>(own)].at,
+                    "ss.pre.source-includes-own-header",
+                    "include this file's own header first");
+      return;
+    }
+    llvm::SmallString<256> sibling(path);
+    llvm::sys::path::remove_filename(sibling);
+    llvm::sys::path::append(sibling, header);
+    if (!llvm::sys::fs::exists(sibling)) {
+      return;
+    }
+    const SourceLocation at = includes.empty() ? start : includes[0].at;
+    reporter.emit(
+        sm, at, "ss.pre.source-includes-own-header", "include this file's own header first");
   }
 
   void noteEntered(FileID fid, FileID prev, SourceLocation loc) {

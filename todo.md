@@ -1,6 +1,6 @@
 # План работ
 
-Снимок после `ss.pre.no-unused-include` (ещё не закоммичен). Каталог — 192 правила. Suite: 224. `embedded-cpp`: 157 включено, 78 с чекером, 79 без. `embedded-c`: 149 / 61 / 88. Pump, те же 11 `.cpp`: 3939 срабатываний, no-checker 79.
+Снимок после `ss.pre.source-includes-own-header` (ещё не закоммичен). Каталог — 192 правила. Suite: 229. `embedded-cpp`: 157 включено, 78 с чекером, 79 без. `embedded-c`: 149 / 62 / 87. Pump, те же 11 `.cpp`: 3939 срабатываний, дельта 0, no-checker 79.
 
 Каждый срез: фикстуры, suite, `--list`, прогон тех же 11 файлов pump. `just fw` для замера шума не использовать. Шум FreeRTOS, CMSIS и SEGGER оставляем: правила не ослабляем и отдельный путь для вендора не заводим. `ruleset/INDEX.md` и `ruleset/coverage.md` руками не правим. Коммит по просьбе, один срез за раз.
 
@@ -9,7 +9,7 @@ Baseline и подавление шире `--allow rule:name` в эту очер
 ## Уже закрыто
 
 - Семейство `ss.cpp.*` (21 правило).
-- Препроцессор: `no-path-in-include`, `ifdef-same-file`, `no-keyword-macro`, `no-stringify-then-paste`, `include-guard`, `macro-parens`, `comment-tokens`, `prefer-inline`, `no-commented-code`, `no-unused-include`.
+- Препроцессор: `no-path-in-include`, `ifdef-same-file`, `no-keyword-macro`, `no-stringify-then-paste`, `include-guard`, `macro-parens`, `comment-tokens`, `prefer-inline`, `no-commented-code`, `no-unused-include`, `source-includes-own-header` (только C, из `embedded-cpp` исключено).
 - Срез конверсий, switch, CFG (все пути возврата, недостижимый код, noreturn, пары critical section и irq-mask) и локальный callgraph внутри одной единицы трансляции: рекурсия, ISR не как обычная функция, лог из ISR. `ss.mem.no-heap-after-init` запрещает любой `malloc` / `new`.
 
 ## Очередь
@@ -20,7 +20,7 @@ Baseline и подавление шире `--allow rule:name` в эту очер
 
 ### 2. `ss.pre.source-includes-own-header`
 
-Узкое правило рядом с шагом 1. Только C: `foo.c` включает `"foo.h"` первым, чтобы заголовок был самодостаточным. Из `embedded-cpp` исключено.
+Сделано. Только C, из `embedded-cpp` исключено. `foo.c` включает свой заголовок первым: имя файла в кавычках равно `foo.h`, в том числе `"inc/foo.h"`. Угловые скобки не считаются. Если своего include нет, правило срабатывает только когда `foo.h` лежит рядом с `foo.c`. На pump дельта 0: профиль `embedded-cpp` это правило не включает. `--allow` называет `foo.h`.
 
 ### 3. `ss.pre.limited`
 

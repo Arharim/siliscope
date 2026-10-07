@@ -1,6 +1,6 @@
 # План работ
 
-Снимок после `ss.pre.source-includes-own-header` (ещё не закоммичен). Каталог — 192 правила. Suite: 229. `embedded-cpp`: 157 включено, 78 с чекером, 79 без. `embedded-c`: 149 / 62 / 87. Pump, те же 11 `.cpp`: 3939 срабатываний, дельта 0, no-checker 79.
+Снимок после `ss.pre.limited` (ещё не закоммичен). Каталог — 192 правила. Suite: 231. `embedded-cpp`: 157 включено, 79 с чекером, 78 без. `embedded-c`: 149 / 63 / 86. Pump, те же 11 `.cpp`: 4550 срабатываний, дельта 611, no-checker 78.
 
 Каждый срез: фикстуры, suite, `--list`, прогон тех же 11 файлов pump. `just fw` для замера шума не использовать. Шум FreeRTOS, CMSIS и SEGGER оставляем: правила не ослабляем и отдельный путь для вендора не заводим. `ruleset/INDEX.md` и `ruleset/coverage.md` руками не правим. Коммит по просьбе, один срез за раз.
 
@@ -9,7 +9,7 @@ Baseline и подавление шире `--allow rule:name` в эту очер
 ## Уже закрыто
 
 - Семейство `ss.cpp.*` (21 правило).
-- Препроцессор: `no-path-in-include`, `ifdef-same-file`, `no-keyword-macro`, `no-stringify-then-paste`, `include-guard`, `macro-parens`, `comment-tokens`, `prefer-inline`, `no-commented-code`, `no-unused-include`, `source-includes-own-header` (только C, из `embedded-cpp` исключено).
+- Препроцессор: `no-path-in-include`, `ifdef-same-file`, `no-keyword-macro`, `no-stringify-then-paste`, `include-guard`, `macro-parens`, `comment-tokens`, `prefer-inline`, `no-commented-code`, `no-unused-include`, `source-includes-own-header` (только C, из `embedded-cpp` исключено), `limited`.
 - Срез конверсий, switch, CFG (все пути возврата, недостижимый код, noreturn, пары critical section и irq-mask) и локальный callgraph внутри одной единицы трансляции: рекурсия, ISR не как обычная функция, лог из ISR. `ss.mem.no-heap-after-init` запрещает любой `malloc` / `new`.
 
 ## Очередь
@@ -24,7 +24,7 @@ Baseline и подавление шире `--allow rule:name` в эту очер
 
 ### 3. `ss.pre.limited`
 
-После двух узких правил. Широкая политика: include guard, `#include` и короткие макросы остаются, token paste, рекурсивные макросы и лес `#if` без комментария «зачем» — нет. На этот шаг рано, пока 1 и 2 не готовы.
+Сделано. Оба языка. Три сообщения одного id. `##` даёт «do not paste tokens» один раз на макрос; `#` (stringize) молчит. Имя макроса в списке замены, если это не параметр, даёт «do not write a recursive macro». Взаимная рекурсия не ищется. `#if`, `#ifdef`, `#ifndef`, `#elif`, `#elifdef` и `#elifndef` без непустого комментария на этой строке или на предыдущей дают «say why this condition is here». Пустой `//` не считается, строка кода с комментарием внутри тоже. Открывающий `#ifndef` классического сторожа молчит. `#pragma once` поздний `#ifndef` не освобождает, `#if !defined` сторожем не считается. `#else` и `#endif` молчат. `--allow` называет макрос и глушит paste вместе с рекурсией. Условие глушится комментарием. На pump дельта 611: 601 условие, 10 paste в `cmsis_os.h`, рекурсий 0. Больше всего в `FreeRTOS.h` (220). Stderr тот же, что у прошлого прогона.
 
 ### 4. Снимок синтаксического отчёта
 

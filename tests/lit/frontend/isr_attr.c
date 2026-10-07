@@ -1,5 +1,5 @@
 /* Fixture for phase 1: Clang must see the interrupt attribute under GNU C. */
-#if defined(__GNUC__)
+#if defined(__GNUC__) // GNU interrupt attribute
 void systick_isr(void) __attribute__((interrupt));
 #endif
 

@@ -1,3 +1,4 @@
+/* ss-run: allow=ss.pre.limited:PASTE expect=clean */
 #define STR(x) (#x)
 #define PASTE(a, b) (a ## b)
 

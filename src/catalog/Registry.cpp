@@ -162,6 +162,7 @@ static const CheckSpec kSpecs[] = {
     {"ss.pre.comment-tokens", makeCheck<PreprocessorCheck>},
     {"ss.pre.ifdef-same-file", makeCheck<PreprocessorCheck>},
     {"ss.pre.include-guard", makeCheck<PreprocessorCheck>},
+    {"ss.pre.limited", makeCheck<PreprocessorCheck>},
     {"ss.pre.macro-parens", makeCheck<PreprocessorCheck>},
     {"ss.pre.no-commented-code", makeCheck<PreprocessorCheck>},
     {"ss.pre.no-keyword-macro", makeCheck<PreprocessorCheck>},

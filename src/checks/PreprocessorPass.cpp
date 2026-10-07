@@ -390,6 +390,173 @@ bool headerGuarded(llvm::StringRef input) {
   return once || (phase == Phase::Closed && defined);
 }
 
+// Hash offset of the first directive when it is #ifndef. npos otherwise.
+// Offsets match the raw file, so they line up with a spelling location.
+size_t openingIfndefHash(llvm::StringRef buf) {
+  bool bol = true;
+  for (size_t i = 0; i < buf.size();) {
+    const char c = buf[i];
+    if (c == ' ' || c == '\t' || c == '\v' || c == '\f') {
+      ++i;
+      continue;
+    }
+    if (c == '\n') {
+      ++i;
+      bol = true;
+      continue;
+    }
+    if (c == '\r') {
+      ++i;
+      if (i < buf.size() && buf[i] == '\n') {
+        ++i;
+      }
+      bol = true;
+      continue;
+    }
+    if (c == '/' && i + 1 < buf.size() && buf[i + 1] == '/') {
+      while (i < buf.size() && buf[i] != '\n' && buf[i] != '\r') {
+        ++i;
+      }
+      continue;
+    }
+    if (c == '/' && i + 1 < buf.size() && buf[i + 1] == '*') {
+      bool atBol = false;
+      i += 2;
+      while (i + 1 < buf.size() && !(buf[i] == '*' && buf[i + 1] == '/')) {
+        if (buf[i] == '\n' || buf[i] == '\r') {
+          atBol = true;
+        } else if (buf[i] != ' ' && buf[i] != '\t' && buf[i] != '\v' && buf[i] != '\f') {
+          atBol = false;
+        }
+        ++i;
+      }
+      if (i + 1 < buf.size()) {
+        i += 2;
+      }
+      bol = atBol;
+      continue;
+    }
+    if (!(bol && c == '#')) {
+      return llvm::StringRef::npos;
+    }
+    const size_t hash = i++;
+    while (i < buf.size() && (buf[i] == ' ' || buf[i] == '\t')) {
+      ++i;
+    }
+    const size_t begin = i;
+    while (i < buf.size() &&
+           (identChar(buf[i], false) || (i == begin && identChar(buf[i], true)))) {
+      ++i;
+    }
+    if (llvm::StringRef(buf.data() + begin, i - begin) == "ifndef") {
+      return hash;
+    }
+    return llvm::StringRef::npos;
+  }
+  return llvm::StringRef::npos;
+}
+
+bool commentText(llvm::StringRef body) {
+  for (const char c : body) {
+    if (c != ' ' && c != '\t' && c != '\v' && c != '\f' && c != '\r' && c != '\n' && c != '*' &&
+        c != '/') {
+      return true;
+    }
+  }
+  return false;
+}
+
+void scanQuoted(llvm::StringRef buf, size_t &i, char quote);
+
+// A non-empty // or /* */ comment in this slice of the file.
+bool regionHasComment(llvm::StringRef region) {
+  for (size_t i = 0; i < region.size();) {
+    const char c = region[i];
+    if (c == '"' || c == '\'') {
+      scanQuoted(region, i, c);
+      continue;
+    }
+    if (c == '/' && i + 1 < region.size() && region[i + 1] == '/') {
+      return commentText(region.substr(i + 2));
+    }
+    if (c == '/' && i + 1 < region.size() && region[i + 1] == '*') {
+      size_t end = i + 2;
+      while (end + 1 < region.size() && !(region[end] == '*' && region[end + 1] == '/')) {
+        ++end;
+      }
+      if (commentText(region.substr(i + 2, end - (i + 2)))) {
+        return true;
+      }
+      i = end + (end + 1 < region.size() ? 2 : 0);
+      if (i == end) {
+        break;
+      }
+      continue;
+    }
+    ++i;
+  }
+  return false;
+}
+
+// The physical line above the directive, when that line is itself a comment.
+// A code line that only contains a comment does not count, and neither does
+// an empty // or /* */.
+bool previousLineExplains(llvm::StringRef buf, unsigned offset) {
+  if (static_cast<size_t>(offset) > buf.size()) {
+    return false;
+  }
+  size_t line = offset;
+  while (line > 0 && buf[line - 1] != '\n' && buf[line - 1] != '\r') {
+    --line;
+  }
+  if (line == 0) {
+    return false;
+  }
+  size_t end = line;
+  if (end > 0 && buf[end - 1] == '\n') {
+    --end;
+  }
+  if (end > 0 && buf[end - 1] == '\r') {
+    --end;
+  }
+  size_t begin = end;
+  while (begin > 0 && buf[begin - 1] != '\n' && buf[begin - 1] != '\r') {
+    --begin;
+  }
+  const llvm::StringRef text = buf.substr(begin, end - begin).trim();
+  if (text.starts_with("//")) {
+    return commentText(text.substr(2));
+  }
+  if (text.starts_with("/*")) {
+    const size_t close = text.find("*/");
+    if (close == llvm::StringRef::npos) {
+      return commentText(text.substr(2));
+    }
+    if (!text.substr(close + 2).trim().empty()) {
+      return false;
+    }
+    return commentText(text.substr(2, close < 2 ? 0 : close - 2));
+  }
+  if (text.starts_with("*")) {
+    return commentText(text.substr(1));
+  }
+  return false;
+}
+
+bool conditionExplained(llvm::StringRef buf, unsigned offset) {
+  if (static_cast<size_t>(offset) >= buf.size()) {
+    return false;
+  }
+  size_t end = offset;
+  while (end < buf.size() && buf[end] != '\n' && buf[end] != '\r') {
+    ++end;
+  }
+  if (regionHasComment(buf.substr(offset, end - offset))) {
+    return true;
+  }
+  return previousLineExplains(buf, offset);
+}
+
 constexpr size_t kNotRaw = static_cast<size_t>(-1);
 
 bool digitChar(char c) {
@@ -740,23 +907,34 @@ public:
     reporter.emit(sm, loc, "ss.pre.no-path-in-include", "an include name is an absolute path");
   }
 
-  void If(SourceLocation Loc, clang::SourceRange, ConditionValueKind) override { noteOpen(Loc); }
+  void If(SourceLocation Loc, clang::SourceRange, ConditionValueKind) override {
+    noteOpen(Loc);
+    noteLimited(Loc);
+  }
 
   void Ifdef(SourceLocation Loc, const Token &, const MacroDefinition &MD) override {
     noteOpen(Loc);
+    noteLimited(Loc);
     creditMacro(MD, Loc);
   }
 
   void Ifndef(SourceLocation Loc, const Token &, const MacroDefinition &MD) override {
     noteOpen(Loc);
+    noteLimited(Loc);
     creditMacro(MD, Loc);
   }
 
+  void Elif(SourceLocation Loc, clang::SourceRange, ConditionValueKind, SourceLocation) override {
+    noteLimited(Loc);
+  }
+
   void Elifdef(SourceLocation Loc, const Token &, const MacroDefinition &MD) override {
+    noteLimited(Loc);
     creditMacro(MD, Loc);
   }
 
   void Elifndef(SourceLocation Loc, const Token &, const MacroDefinition &MD) override {
+    noteLimited(Loc);
     creditMacro(MD, Loc);
   }
 
@@ -824,6 +1002,7 @@ public:
       closeFile(PrevFID);
       checkIncludeGuard(PrevFID);
       checkCommentTokens(PrevFID);
+      flushLimited(PrevFID);
     }
   }
 
@@ -833,8 +1012,10 @@ public:
     for (const OpenCond &open : leftover) {
       reportUnclosed(open.loc);
     }
-    checkCommentTokens(pp.getSourceManager().getMainFileID());
+    const FileID main = pp.getSourceManager().getMainFileID();
+    checkCommentTokens(main);
     checkOwnHeader();
+    flushLimited(main);
   }
 
   void MacroDefined(const Token &MacroNameTok, const MacroDirective *MD) override {
@@ -851,6 +1032,9 @@ public:
       }
     }
     const MacroInfo *mi = MD ? MD->getMacroInfo() : nullptr;
+    if (mi) {
+      checkLimitedMacro(mi, MacroNameTok, sm);
+    }
     if (!mi || !mi->isFunctionLike()) {
       return;
     }
@@ -882,6 +1066,109 @@ private:
     SourceLocation loc;
     FileID file;
   };
+
+  struct Cond {
+    FileID file;
+    SourceLocation loc;
+    unsigned offset = 0;
+  };
+
+  void noteLimited(SourceLocation loc) {
+    if (loc.isInvalid()) {
+      return;
+    }
+    const SourceManager &sm = pp.getSourceManager();
+    const SourceLocation spell = sm.getSpellingLoc(loc);
+    if (spell.isInvalid()) {
+      return;
+    }
+    const FileID file = sm.getFileID(spell);
+    if (!projectFile(file, true)) {
+      return;
+    }
+    conds.push_back({file, spell, sm.getDecomposedLoc(spell).second});
+  }
+
+  // ## is paste. # stringize is not. A replacement identifier that is the
+  // macro itself is recursive; a parameter of the same name is not.
+  // --allow names the macro and silences both.
+  void checkLimitedMacro(const MacroInfo *mi, const Token &nameTok, const SourceManager &sm) {
+    const IdentifierInfo *nameII = nameTok.getIdentifierInfo();
+    if (nameII) {
+      const std::string name = nameII->getName().str();
+      if (reporter.allows("ss.pre.limited", name.c_str())) {
+        return;
+      }
+    }
+    SourceLocation pasteAt;
+    bool pasted = false;
+    bool recursive = false;
+    const unsigned n = mi->getNumTokens();
+    for (unsigned i = 0; i < n; ++i) {
+      const Token &tok = mi->getReplacementToken(i);
+      if (!pasted && tok.is(clang::tok::hashhash)) {
+        pasted = true;
+        pasteAt = tok.getLocation();
+      }
+      if (!recursive && nameII && tok.getIdentifierInfo() == nameII && !isParameter(mi, tok)) {
+        recursive = true;
+      }
+    }
+    if (pasted) {
+      if (pasteAt.isInvalid()) {
+        pasteAt = nameTok.getLocation();
+      }
+      reporter.emit(sm, pasteAt, "ss.pre.limited", "do not paste tokens");
+    }
+    if (recursive) {
+      reporter.emit(sm, nameTok.getLocation(), "ss.pre.limited", "do not write a recursive macro");
+    }
+  }
+
+  // The opening #ifndef of a classic guard needs no comment. #pragma once
+  // does not exempt a later #ifndef, and #if !defined is not a guard.
+  void flushLimited(FileID file) {
+    if (file.isInvalid() || conds.empty()) {
+      return;
+    }
+    std::vector<Cond> mine;
+    std::vector<Cond> kept;
+    mine.reserve(conds.size());
+    kept.reserve(conds.size());
+    for (const Cond &cond : conds) {
+      if (cond.file == file) {
+        mine.push_back(cond);
+      } else {
+        kept.push_back(cond);
+      }
+    }
+    conds.swap(kept);
+    if (mine.empty() || !projectFile(file, true)) {
+      return;
+    }
+    const SourceManager &sm = pp.getSourceManager();
+    bool invalid = false;
+    const llvm::StringRef buf = sm.getBufferData(file, &invalid);
+    if (invalid) {
+      return;
+    }
+    unsigned guardLine = 0;
+    if (headerGuarded(buf)) {
+      const size_t hash = openingIfndefHash(buf);
+      if (hash != llvm::StringRef::npos) {
+        guardLine = sm.getLineNumber(file, static_cast<unsigned>(hash));
+      }
+    }
+    for (const Cond &cond : mine) {
+      if (guardLine != 0 && sm.getLineNumber(file, cond.offset) == guardLine) {
+        continue;
+      }
+      if (conditionExplained(buf, cond.offset)) {
+        continue;
+      }
+      reporter.emit(sm, cond.loc, "ss.pre.limited", "say why this condition is here");
+    }
+  }
 
   void noteOpen(SourceLocation loc) {
     if (loc.isInvalid()) {
@@ -1350,6 +1637,7 @@ public:
   const Preprocessor &pp;
   Reporter &reporter;
   std::vector<OpenCond> opens;
+  std::vector<Cond> conds;
   std::vector<DirectInclude> includes;
   llvm::DenseMap<const FileEntry *, unsigned> includedBy;
   llvm::DenseMap<const FileEntry *, llvm::SmallVector<unsigned, 1>> alsoProvides;

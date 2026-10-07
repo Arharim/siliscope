@@ -1,4 +1,4 @@
-#if defined(__GNUC__)
+#if defined(__GNUC__) // GNU interrupt attribute
 void nvic_isr(void) __attribute__((interrupt));
 #endif
 

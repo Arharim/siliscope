@@ -130,8 +130,9 @@ Live checkers (see `src/catalog/Registry.cpp` and `just test`):
   function-like macro and each of its parameters, no `/*`, `//`, or trailing
   backslash inside a comment, a function-like macro that can be a static
   inline function, source left behind in a comment, an `#include` in a
-  source file that the file does not use, and a C source file that does not
-  include its own header first
+  source file that the file does not use, a C source file that does not
+  include its own header first, token paste, a recursive macro, and an `#if`
+  without a comment
 
 Not in this release: dataflow (uninit, bounds, dangling), `ss.ctrl.loop-bound`,
-the rest of `ss.pre.*`, the rest of `ss.conv.*`, review-only catalog rows.
+the rest of `ss.conv.*`, review-only catalog rows.

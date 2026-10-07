@@ -17,7 +17,7 @@ not implemented yet. Not a MISRA/CERT clone and not a certified tool.
 | `src/checks/` | LibTooling checkers |
 | `src/catalog/` | profile / allowlist load |
 | `tests/lit/` | `ok.c` / `bad.c` fixtures |
-| `tools/` | catalog index, validate, `run_checks.py` |
+| `tools/` | catalog index, validate, `run_checks.py`, `diff_report.py` |
 | `justfile` | build, `just fw`, `just test` |
 | `docs/` | local PDFs only; gitignored, do not commit |
 

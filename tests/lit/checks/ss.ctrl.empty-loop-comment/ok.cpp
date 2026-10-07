@@ -1,5 +1,5 @@
 static void flag(volatile int *ready) {
-  while (*ready == 0) {
+  for (int spins = 8; *ready == 0 && spins > 0; --spins) {
     /* wait until the peripheral sets the flag */
   }
 }

@@ -1,6 +1,7 @@
 #include "siliscope/Frontend.h"
 
 #include "siliscope/Check.h"
+#include "siliscope/DataflowCheck.h"
 #include "siliscope/PreprocessorCheck.h"
 #include "siliscope/Profile.h"
 #include "siliscope/Registry.h"
@@ -119,12 +120,18 @@ public:
       if (checks.back()->wantsPreprocessor()) {
         watchPreprocessor = true;
       }
+      if (checks.back()->wantsDataflow()) {
+        watchDataflow = true;
+      }
     }
   }
 
   std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &ci, llvm::StringRef) override {
     if (watchPreprocessor) {
       attachPreprocessorPass(ci.getPreprocessor(), reporter, finder);
+    }
+    if (watchDataflow) {
+      attachDataflowPass(finder, reporter, dataflow);
     }
     std::vector<std::unique_ptr<ASTConsumer>> cs;
     cs.push_back(finder.newASTConsumer());
@@ -138,6 +145,8 @@ private:
   Reporter &reporter;
   Probe *probe;
   bool watchPreprocessor = false;
+  bool watchDataflow = false;
+  std::unique_ptr<MatchFinder::MatchCallback> dataflow;
   std::vector<std::unique_ptr<Check>> checks;
   MatchFinder finder;
 };

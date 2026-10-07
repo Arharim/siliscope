@@ -4,6 +4,7 @@
 
 #include "clang/AST/Expr.h"
 #include "clang/AST/Stmt.h"
+#include "clang/AST/StmtCXX.h"
 #include "clang/ASTMatchers/ASTMatchers.h"
 
 using clang::ForStmt;
@@ -51,6 +52,13 @@ void NoIncInExprCheck::run(const clang::ast_matchers::MatchFinder::MatchResult &
     }
     if (const auto *fs = llvm::dyn_cast<ForStmt>(parent)) {
       const clang::Expr *inc = fs->getInc();
+      if (inc && inc->IgnoreParenImpCasts() == op) {
+        return;
+      }
+    }
+    // The iterator bump of a range-for is the loop increment, not user code.
+    if (const auto *rf = llvm::dyn_cast<clang::CXXForRangeStmt>(parent)) {
+      const clang::Expr *inc = rf->getInc();
       if (inc && inc->IgnoreParenImpCasts() == op) {
         return;
       }

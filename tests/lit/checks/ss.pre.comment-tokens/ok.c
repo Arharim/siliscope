@@ -18,7 +18,7 @@ static int ticks(void) { return '/' / '/'; }
 // path c:\temp\data
 
 #define WAIT_FLAG(flag) \
-  while (*(flag) == 0) { \
+  for (int spins = 8; *(flag) == 0 && spins > 0; --spins) { \
     /* wait */ \
   }
 

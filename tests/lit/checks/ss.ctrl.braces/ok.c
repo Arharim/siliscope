@@ -12,8 +12,10 @@ static void f(int x) {
   do {
     --x;
   } while (x);
-  for (;;) {
-    break;
+  for (x = 0; x < 1; ++x) {
+    if (x == 0) {
+      break;
+    }
   }
   switch (x) {
   default:

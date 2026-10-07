@@ -133,6 +133,9 @@ Live checkers (see `src/catalog/Registry.cpp` and `just test`):
   source file that the file does not use, a C source file that does not
   include its own header first, token paste, a recursive macro, and an `#if`
   without a comment
+- Dataflow inside one function: an uninitialized read, a constant index
+  outside an array, the address of an automatic returned or stored past its
+  lifetime, and a loop with no iteration cap (`for (;;)` with no exit stays
+  the superloop)
 
-Not in this release: dataflow (uninit, bounds, dangling), `ss.ctrl.loop-bound`,
-the rest of `ss.conv.*`, review-only catalog rows.
+Not in this release: the rest of `ss.conv.*`, review-only catalog rows.

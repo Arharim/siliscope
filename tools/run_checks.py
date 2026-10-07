@@ -269,8 +269,8 @@ class Runner:
         )
         self.check(
             "embedded-cpp still has rules without a checker",
-            present(cpp_rows, "ss.ctrl.loop-bound", "no-checker"),
-            "ss.ctrl.loop-bound missing",
+            present(cpp_rows, "ss.mem.no-null-deref", "no-checker"),
+            "ss.mem.no-null-deref missing",
         )
         self.check(
             "embedded-cpp keeps shared checker",

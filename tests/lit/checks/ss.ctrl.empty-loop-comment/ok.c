@@ -2,26 +2,26 @@
 static void poke(volatile int *flag) { *flag = 1; }
 
 static void inside(volatile int *flag) {
-  while (*flag == 0) {
+  for (int spins = 8; *flag == 0 && spins > 0; --spins) {
     /* wait until the peripheral sets the flag */
   }
 }
 
 static void above(volatile int *flag) {
   /* The status bit stays clear until the shift finishes. */
-  while (*flag == 0) {
+  for (int spins = 8; *flag == 0 && spins > 0; --spins) {
   }
 }
 
 static void block(volatile int *flag) {
   /* Wait until the peripheral leaves busy.
      The flag is the hardware status bit. */
-  while (*flag == 0) {
+  for (int spins = 8; *flag == 0 && spins > 0; --spins) {
   }
 }
 
 static void trailing(volatile int *flag) {
-  while (*flag == 0) {
+  for (int spins = 8; *flag == 0 && spins > 0; --spins) {
   } // peripheral ready
 }
 
@@ -32,25 +32,25 @@ static void same_line(volatile int *flag) {
 }
 
 static void dose(volatile int *flag) {
-  do {
+  for (int spins = 8; *flag == 0 && spins > 0; --spins) {
     /* poll until the flag is set */
-  } while (*flag == 0);
+  }
 }
 
 static void line_above(volatile int *flag) {
   // spin until the timeout bit is set
-  while (*flag == 0) {
+  for (int spins = 8; *flag == 0 && spins > 0; --spins) {
   }
 }
 
 static void poll(volatile int *flag) {
-  while (*flag == 0) {
+  for (int spins = 8; *flag == 0 && spins > 0; --spins) {
     poke(flag);
   }
 }
 
 #define WAIT_FLAG(flag) \
-  while (*(flag) == 0) { \
+  for (int spins = 8; *(flag) == 0 && spins > 0; --spins) { \
     /* wait until the peripheral sets the flag */ \
   }
 

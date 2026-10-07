@@ -4,6 +4,7 @@
 #include "siliscope/Check.h"
 #include "siliscope/CheckReturn.h"
 #include "siliscope/CsBalanced.h"
+#include "siliscope/DataflowCheck.h"
 #include "siliscope/DeclConst.h"
 #include "siliscope/Distinct.h"
 #include "siliscope/EmptyLoopComment.h"
@@ -116,6 +117,7 @@ static const CheckSpec kSpecs[] = {
     {"ss.ctrl.braces", makeCheck<BracesCheck>},
     {"ss.ctrl.empty-loop-comment", makeCheck<EmptyLoopCommentCheck>},
     {"ss.ctrl.if-else-final", makeCheck<IfElseFinalCheck>},
+    {"ss.ctrl.loop-bound", makeCheck<DataflowCheck>},
     {"ss.ctrl.no-assignment-in-condition", makeCheck<NoAssignInCondCheck>},
     {"ss.ctrl.no-continue", makeCheck<NoContinueCheck>},
     {"ss.ctrl.no-goto", makeCheck<NoGotoCheck>},
@@ -140,6 +142,7 @@ static const CheckSpec kSpecs[] = {
     {"ss.expr.no-octal", makeCheck<NoOctalCheck>},
     {"ss.expr.no-sizeof-side-effect", makeCheck<NoSizeofSideEffectCheck>},
     {"ss.expr.string-const", makeCheck<StringConstCheck>},
+    {"ss.expr.uninit", makeCheck<DataflowCheck>},
     {"ss.fn.check-return", makeCheck<CheckReturnCheck>},
     {"ss.fn.no-block-scope", makeCheck<NoBlockScopeCheck>},
     {"ss.fn.no-stdarg", makeCheck<NoStdargCheck>},
@@ -156,6 +159,8 @@ static const CheckSpec kSpecs[] = {
     {"ss.libc.no-signal", makeCheck<NoSignalCheck>},
     {"ss.libc.no-stdio", makeCheck<NoStdioCheck>},
     {"ss.libc.no-unbounded-string", makeCheck<NoUnboundedStringCheck>},
+    {"ss.mem.bounds", makeCheck<DataflowCheck>},
+    {"ss.mem.no-dangling", makeCheck<DataflowCheck>},
     {"ss.mem.no-flexible-array", makeCheck<NoFlexibleArrayCheck>},
     {"ss.mem.no-heap-after-init", makeCheck<NoHeapCheck>},
     {"ss.mem.no-vla", makeCheck<NoVLACheck>},

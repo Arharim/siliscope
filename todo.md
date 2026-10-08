@@ -1,6 +1,6 @@
 # План работ
 
-Снимок после остальных двенадцати правил dataflow. Каталог — 192 правила. Suite: 274. `embedded-cpp`: 157 включено, 95 с чекером, 62 без. `embedded-c`: 149 / 79 / 70. Живых чекеров 100. Pump, те же 11 `.cpp`: 4576 срабатываний, дельта +26 относительно `out/pump-syntax.txt` (прежние 21 `ss.ctrl.loop-bound` и 5 `ss.ctrl.no-invariant-condition`) и дельта +5 относительно `out/pump-callgraph.txt`. no-checker 62. Stderr совпал с замороженным: 0 fatal, 6 ошибок clang. Лог этого прогона: `out/pump-dataflow2.txt`. Замороженные `out/pump-syntax.txt`, `out/pump-dataflow.txt` и `out/pump-callgraph.txt` не трогали, в git они не входят.
+Снимок после политик поверх графа. Каталог — 192 правила. Suite: 288. `embedded-cpp`: 157 включено, 96 с чекером, 61 без. `embedded-c`: 149 / 80 / 69. Живых чекеров 101. Pump, те же 11 `.cpp`: 4576 срабатываний, дельта +26 относительно `out/pump-syntax.txt` и дельта 0 относительно `out/pump-dataflow2.txt`. no-checker 61. Stderr совпал с прошлым: 0 fatal, 6 ошибок clang. Лог этого прогона: `out/pump-policies.txt`. Замороженные `out/pump-syntax.txt`, `out/pump-dataflow.txt`, `out/pump-callgraph.txt` и `out/pump-dataflow2.txt` не трогали, в git они не входят.
 
 Каждый срез: фикстуры, suite, `--list`, прогон тех же 11 файлов pump. Дельту считать так: `python3 tools/diff_report.py out/pump-syntax.txt НОВЫЙ`. Сырой лог в разбор не тащить. `out/pump-syntax.txt` не подменять следующим прогоном. `just fw` для замера шума не использовать. Шум FreeRTOS, CMSIS и SEGGER оставляем: правила не ослабляем и отдельный путь для вендора не заводим. `ruleset/INDEX.md` и `ruleset/coverage.md` руками не правим. Коммит по просьбе, один срез за раз.
 
@@ -10,7 +10,7 @@ Baseline и подавление шире `--allow rule:name` в эту очер
 
 - Семейство `ss.cpp.*` (21 правило).
 - Препроцессор: `no-path-in-include`, `ifdef-same-file`, `no-keyword-macro`, `no-stringify-then-paste`, `include-guard`, `macro-parens`, `comment-tokens`, `prefer-inline`, `no-commented-code`, `no-unused-include`, `source-includes-own-header` (только C, из `embedded-cpp` исключено), `limited`.
-- Срез конверсий, switch, CFG (все пути возврата, недостижимый код, noreturn, пары critical section и irq-mask). Рекурсия, ISR не как обычная функция и лог из ISR смотрят граф всего запуска (шаг 6). `ss.mem.no-heap-after-init` запрещает любой `malloc` / `new`.
+- Срез конверсий, switch, CFG (все пути возврата, недостижимый код, noreturn, пары critical section и irq-mask). Рекурсия, ISR не как обычная функция, лог из ISR, блокировка внутри секции и куча только в фазе init смотрят граф всего запуска.
 
 ## Очередь
 
@@ -65,8 +65,12 @@ Baseline и подавление шире `--allow rule:name` в эту очер
 
 ### 8. Политики поверх графа
 
-- `ss.conc.no-block-in-cs`: не блокироваться, пока критическая секция или маска прерываний ещё открыта.
-- Поздний режим `ss.mem.no-heap-after-init`: выделение только в фазе init, в том числе через вызов в другом файле. Сплошной запрет `malloc` / `new` до этого остаётся как есть.
+Сделано. `ss.conc.no-block-in-cs` и поздний режим `ss.mem.no-heap-after-init` сидят на том же графе. Имена входа и выхода секции и маски те же, что у `ss.emb.cs-balanced` и `ss.emb.irq-mask-balanced`. Вызов конструктора — ребро. Вызов через указатель ребром не становится. На развилке CFG берётся первый путь, как у проверок баланса.
+
+- `ss.conc.no-block-in-cs`: вызов, пока секция или маска ещё открыта, если он сам или кто-то по прямым вызовам делает delay, ожидание очереди или семафора, `malloc` / `new` или стирание flash. `FromISR` ожиданием не считается. `--allow` называет прямой вызываемый идентификатор. Сообщение: «do not block while a critical section or interrupt mask is held».
+- `ss.mem.no-heap-after-init`: `malloc`, `calloc`, `realloc`, `free`, `aligned_alloc`, `posix_memalign`, `new` и `delete` по-прежнему ошибка. Тихо только если каждый путь к функции начинается в статической инициализации файла или в функции из `--allow ss.mem.no-heap-after-init:NAME`, включая помощника в другом файле. Статическая локальная — не init. Функция без такого пути, в том числе никем не вызванная, по-прежнему отмечается. Текст тот же: «do not use the heap».
+
+На pump дельта 0 относительно лога после остатка dataflow. Оба правила на этих 11 файлах молчат. Живых чекеров 101 из 192. В `embedded-cpp` 96 из 157. Сторож no-checker по-прежнему `ss.conv.signed-unsigned-mix`.
 
 ### 9. Межпроцедурный dataflow
 

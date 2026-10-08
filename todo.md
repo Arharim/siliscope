@@ -1,6 +1,6 @@
 # План работ
 
-Снимок после dataflow внутри одной функции (ещё не закоммичен). Каталог — 192 правила. Suite: 240. `embedded-cpp`: 157 включено, 83 с чекером, 74 без. `embedded-c`: 149 / 67 / 82. Живых чекеров 88. Pump, те же 11 `.cpp`: 4571 срабатывание, дельта +21 относительно `out/pump-syntax.txt`, все `ss.ctrl.loop-bound`, no-checker 74. Stderr совпал с замороженным: 0 fatal, 6 ошибок clang. Лог этого прогона: `out/pump-dataflow.txt`. Замороженный `out/pump-syntax.txt` не трогали, в git он не входит.
+Снимок после графа вызовов между единицами трансляции (ещё не закоммичен). Каталог — 192 правила. Suite: 247. `embedded-cpp`: 157 включено, 83 с чекером, 74 без. `embedded-c`: 149 / 67 / 82. Живых чекеров 88. Pump, те же 11 `.cpp`: 4571 срабатывание, дельта +21 относительно `out/pump-syntax.txt` (все `ss.ctrl.loop-bound`, как после шага 5) и дельта 0 относительно `out/pump-dataflow.txt`. no-checker 74. Stderr совпал с замороженным: 0 fatal, 6 ошибок clang. Лог этого прогона: `out/pump-callgraph.txt`. Замороженный `out/pump-syntax.txt` не трогали, в git он не входит.
 
 Каждый срез: фикстуры, suite, `--list`, прогон тех же 11 файлов pump. Дельту считать так: `python3 tools/diff_report.py out/pump-syntax.txt НОВЫЙ`. Сырой лог в разбор не тащить. `out/pump-syntax.txt` не подменять следующим прогоном. `just fw` для замера шума не использовать. Шум FreeRTOS, CMSIS и SEGGER оставляем: правила не ослабляем и отдельный путь для вендора не заводим. `ruleset/INDEX.md` и `ruleset/coverage.md` руками не правим. Коммит по просьбе, один срез за раз.
 
@@ -10,7 +10,7 @@ Baseline и подавление шире `--allow rule:name` в эту очер
 
 - Семейство `ss.cpp.*` (21 правило).
 - Препроцессор: `no-path-in-include`, `ifdef-same-file`, `no-keyword-macro`, `no-stringify-then-paste`, `include-guard`, `macro-parens`, `comment-tokens`, `prefer-inline`, `no-commented-code`, `no-unused-include`, `source-includes-own-header` (только C, из `embedded-cpp` исключено), `limited`.
-- Срез конверсий, switch, CFG (все пути возврата, недостижимый код, noreturn, пары critical section и irq-mask) и локальный callgraph внутри одной единицы трансляции: рекурсия, ISR не как обычная функция, лог из ISR. `ss.mem.no-heap-after-init` запрещает любой `malloc` / `new`.
+- Срез конверсий, switch, CFG (все пути возврата, недостижимый код, noreturn, пары critical section и irq-mask). Рекурсия, ISR не как обычная функция и лог из ISR смотрят граф всего запуска (шаг 6). `ss.mem.no-heap-after-init` запрещает любой `malloc` / `new`.
 
 ## Очередь
 
@@ -40,9 +40,9 @@ Baseline и подавление шире `--allow rule:name` в эту очер
 
 ### 6. Граф вызовов между единицами трансляции
 
-Связать вызовы одного запуска. Уже живые `ss.ctrl.no-recursion`, `ss.emb.isr-not-called` и `ss.emb.no-log-in-isr` начинают видеть калли в других `.c` / `.cpp`. Новых id у самого графа нет. `ss.conc.no-block-in-cs` и режим «куча только в init» от появления рёбер сами не включаются: это шаг 8.
+Сделано. Новых id нет. Прямые вызовы одного запуска складываются в один граф после разбора всех файлов: узел — USR, у файлового `static` в ключе ещё и файл, чтобы одно имя в двух `.c` не склеилось. `ss.ctrl.no-recursion`, `ss.emb.isr-not-called` и `ss.emb.no-log-in-isr` смотрят этот граф, в том числе методы C++. Вызов через указатель ребром не становится. `ss.conc.no-block-in-cs` и режим «куча только в init» не включились: это шаг 8.
 
-Живых чекеров после шага 5 — 88 из 192, в `embedded-cpp` 83 из 157. Этот шаг счётчик не меняет. `ss.pre.source-includes-own-header` в `embedded-cpp` не входит.
+На pump дельта 0 относительно лога после dataflow. Три прежних `ss.emb.no-log-in-isr` в `can_task.cpp` остались на тех же строках. Рекурсии и вызова ISR как обычной функции по-прежнему нет. Счётчик чекеров тот же: живых 88 из 192, в `embedded-cpp` 83 из 157. `ss.pre.source-includes-own-header` в этот профиль не входит.
 
 ### 7. Остаток dataflow на том же проходе
 

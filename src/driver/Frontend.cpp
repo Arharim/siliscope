@@ -1,5 +1,6 @@
 #include "siliscope/Frontend.h"
 
+#include "siliscope/CallGraph.h"
 #include "siliscope/Check.h"
 #include "siliscope/DataflowCheck.h"
 #include "siliscope/PreprocessorCheck.h"
@@ -108,8 +109,8 @@ private:
 
 class AnalyzeAction : public ASTFrontendAction {
 public:
-  AnalyzeAction(Reporter &reporter, Probe *probe, const Profile &profile)
-      : reporter(reporter), probe(probe) {
+  AnalyzeAction(Reporter &reporter, Probe *probe, const Profile &profile, ProgramCallGraph &calls)
+      : reporter(reporter), probe(probe), calls(calls) {
     const CheckSpec *specs = checkSpecs();
     for (unsigned i = 0; i < checkSpecCount(); ++i) {
       if (!profile.isEnabled(specs[i].id)) {
@@ -123,6 +124,9 @@ public:
       if (checks.back()->wantsDataflow()) {
         watchDataflow = true;
       }
+      if (checks.back()->wantsCallGraph()) {
+        watchCallGraph = true;
+      }
     }
   }
 
@@ -132,6 +136,9 @@ public:
     }
     if (watchDataflow) {
       attachDataflowPass(finder, reporter, dataflow);
+    }
+    if (watchCallGraph) {
+      attachCallGraph(finder, calls, reporter, callGraph);
     }
     std::vector<std::unique_ptr<ASTConsumer>> cs;
     cs.push_back(finder.newASTConsumer());
@@ -144,9 +151,12 @@ public:
 private:
   Reporter &reporter;
   Probe *probe;
+  ProgramCallGraph &calls;
   bool watchPreprocessor = false;
   bool watchDataflow = false;
+  bool watchCallGraph = false;
   std::unique_ptr<MatchFinder::MatchCallback> dataflow;
+  std::unique_ptr<MatchFinder::MatchCallback> callGraph;
   std::vector<std::unique_ptr<Check>> checks;
   MatchFinder finder;
 };
@@ -157,13 +167,16 @@ public:
       : reporter(reporter), probe(probe), profile(profile) {}
 
   std::unique_ptr<FrontendAction> create() override {
-    return std::make_unique<AnalyzeAction>(reporter, probe, profile);
+    return std::make_unique<AnalyzeAction>(reporter, probe, profile, calls);
   }
+
+  void finish(Reporter &out) const { calls.finish(out); }
 
 private:
   Reporter &reporter;
   Probe *probe;
   const Profile &profile;
+  ProgramCallGraph calls;
 };
 
 std::unique_ptr<CompilationDatabase> loadCompilations(const FrontendOptions &opt,
@@ -502,6 +515,7 @@ int runFrontend(const FrontendOptions &opt) {
   }
   AnalyzeFactory factory(reporter, opt.probe ? &probe : nullptr, profile);
   const int parse_rc = tool.run(&factory);
+  factory.finish(reporter);
 
   if (opt.probe) {
     llvm::outs() << "target: " << opt.target << "\n"

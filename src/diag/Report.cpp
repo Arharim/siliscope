@@ -24,16 +24,10 @@ bool Reporter::SeenDiag::operator<(const SeenDiag &other) const {
   return msg < other.msg;
 }
 
-void Reporter::emit(const clang::SourceManager &sm,
-                    clang::SourceLocation loc,
-                    const char *id,
-                    const char *msg) {
-  const char *severity = profile->severityOf(id);
-  if (!severity) {
-    return;
-  }
+std::optional<DiagSite> Reporter::locate(const clang::SourceManager &sm,
+                                         clang::SourceLocation loc) const {
   if (loc.isInvalid()) {
-    return;
+    return std::nullopt;
   }
   // Zephyr's LOG_* macros pass their implementation through as arguments, so
   // the expansion location of every token is the call. The spelling location
@@ -48,21 +42,46 @@ void Reporter::emit(const clang::SourceManager &sm,
     loc = parent;
   }
   loc = sm.getSpellingLoc(loc);
-  if (loc.isInvalid() || sm.isInSystemHeader(loc) || sm.isWrittenInScratchSpace(loc) ||
-      sm.isInPredefinedFile(loc)) {
-    return;
+  if (loc.isInvalid()) {
+    return std::nullopt;
   }
   const clang::PresumedLoc pl = sm.getPresumedLoc(loc);
   if (pl.isInvalid() || !pl.getFilename()) {
+    return std::nullopt;
+  }
+  DiagSite site;
+  site.file = pl.getFilename();
+  site.line = pl.getLine();
+  site.col = pl.getColumn();
+  const bool dropped =
+      sm.isInSystemHeader(loc) || sm.isWrittenInScratchSpace(loc) || sm.isInPredefinedFile(loc);
+  site.reportable = !dropped && !site.file.empty();
+  return site;
+}
+
+void Reporter::emitSite(const DiagSite &site, const char *id, const char *msg) {
+  const char *severity = profile->severityOf(id);
+  if (!severity || !site.reportable || site.file.empty()) {
     return;
   }
-  const SeenDiag key{pl.getFilename(), pl.getLine(), pl.getColumn(), id, msg};
+  const SeenDiag key{site.file, site.line, site.col, id, msg};
   if (!seen.insert(key).second) {
     return;
   }
   ++findings;
-  llvm::outs() << pl.getFilename() << ":" << pl.getLine() << ":" << pl.getColumn() << ": "
-               << severity << ": " << msg << " [" << id << "]\n";
+  llvm::outs() << site.file << ":" << site.line << ":" << site.col << ": " << severity << ": "
+               << msg << " [" << id << "]\n";
+}
+
+void Reporter::emit(const clang::SourceManager &sm,
+                    clang::SourceLocation loc,
+                    const char *id,
+                    const char *msg) {
+  const std::optional<DiagSite> site = locate(sm, loc);
+  if (!site) {
+    return;
+  }
+  emitSite(*site, id, msg);
 }
 
 void Reporter::printSummary() const {

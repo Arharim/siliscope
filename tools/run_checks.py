@@ -16,12 +16,15 @@ Extra runs are comments in the fixture::
     /* ss-run: allow=ss.fn.no-stdarg:log_printf expect=clean */
     /* ss-run: extra=-ffreestanding expect=clean */
     /* ss-run: extra=@arm-cxx expect=ss.cpp.no-heap-stl */
+    /* ss-run: also=other.c expect=ss.ctrl.no-recursion */
 
 ``expect=clean`` requires exit 0 and no findings. Any other expect value is
 the diagnostic id that must appear in brackets. ``extra=@arm-cxx`` expands to
 the ``arm-none-eabi`` libstdc++ include, its sysroot, and Clang's resource
 directory, so a fixture can include ``<vector>`` without a version pinned in
-the file.
+the file. ``also=`` is another translation unit, a path relative to the
+fixture. A companion file starts with ``/* ss-companion */`` and is not a
+case of its own.
 """
 
 from __future__ import annotations
@@ -101,7 +104,7 @@ def parse_runs(path: Path, rule_id: str) -> list[dict]:
     text = path.read_text(encoding="utf-8")
     found: list[dict] = []
     for raw in RUN_RE.findall(text):
-        run = {"profile": "embedded-c", "expect": "", "allow": [], "extra": []}
+        run = {"profile": "embedded-c", "expect": "", "allow": [], "extra": [], "also": []}
         for tok in raw.replace("*/", " ").split():
             if "=" not in tok:
                 continue
@@ -114,6 +117,8 @@ def parse_runs(path: Path, rule_id: str) -> list[dict]:
                 run["allow"].append(val)
             elif key == "extra":
                 run["extra"].append(val)
+            elif key == "also":
+                run["also"].append(val)
             else:
                 raise SystemExit(f"{path}: unknown ss-run key {key}")
         if not run["expect"]:
@@ -195,6 +200,12 @@ class Runner:
             else:
                 args.extend(["-extra-arg", arg])
         args.append(str(path.relative_to(ROOT)))
+        for name in run.get("also", []):
+            extra = path.parent / name
+            if not extra.is_file():
+                self.check(label, False, f"missing also={name}")
+                return
+            args.append(str(extra.relative_to(ROOT)))
         rc, out, err = self.invoke(args)
         findings = findings_of(out)
         if run["expect"] == "clean":
@@ -422,6 +433,9 @@ def collect_cases(filters: list[str]) -> list[tuple[Path, str, dict]]:
         for path in sorted(directory.iterdir()):
             if path.suffix not in {".c", ".cpp"}:
                 continue
+            with path.open(encoding="utf-8") as handle:
+                if handle.readline().startswith("/* ss-companion"):
+                    continue
             if filters and not any(f in rule_id or f in path.name for f in filters):
                 continue
             for run in parse_runs(path, rule_id):

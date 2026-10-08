@@ -108,7 +108,8 @@ Live checkers (see `src/catalog/Registry.cpp` and `just test`):
 - Expressions: octal, comma, `++`/`--` as a statement, sizeof side effects,
   logical-rhs side effects, string literal → `const char *`
 - CFG / callgraph: return on all paths, unreachable, noreturn, no recursion,
-  ISR not called as a function, no log from ISR, critical-section pairing,
+  ISR not called as a function, no log from ISR (these three follow direct
+  calls across every file of the run), critical-section pairing,
   irq-mask restore (not a blind enable)
 - Types / decls: ISR no FP, check-return, no-shadow, ptr-null, distinct
   names, const, file-local `static`

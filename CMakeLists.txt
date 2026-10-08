@@ -59,6 +59,7 @@ if(SILISCOPE_ENABLE_CLANG)
     src/checks/Unreachable.cpp
     src/checks/Noreturn.cpp
     src/checks/NoRecursion.cpp
+    src/checks/CallGraph.cpp
     src/checks/IsrNotCalled.cpp
     src/checks/NoLogInIsr.cpp
     src/checks/CsBalanced.cpp

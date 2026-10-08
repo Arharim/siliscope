@@ -13,9 +13,11 @@
 #include "clang/Analysis/CFG.h"
 #include "clang/Basic/SourceManager.h"
 #include "llvm/ADT/DenseMap.h"
+#include "llvm/ADT/DenseSet.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallVector.h"
 
+#include <cctype>
 #include <limits>
 #include <optional>
 #include <string>
@@ -45,6 +47,7 @@ using clang::DeclStmt;
 using clang::DoStmt;
 using clang::Expr;
 using clang::ExprWithCleanups;
+using clang::FileID;
 using clang::ForStmt;
 using clang::FunctionDecl;
 using clang::GotoStmt;
@@ -75,6 +78,18 @@ constexpr const char *kUninit = "ss.expr.uninit";
 constexpr const char *kBounds = "ss.mem.bounds";
 constexpr const char *kDangle = "ss.mem.no-dangling";
 constexpr const char *kLoop = "ss.ctrl.loop-bound";
+constexpr const char *kNull = "ss.mem.no-null-deref";
+constexpr const char *kFree = "ss.mem.no-use-after-free";
+constexpr const char *kOverlap = "ss.mem.no-overlap-copy";
+constexpr const char *kNul = "ss.mem.string-room-for-nul";
+constexpr const char *kOnePast = "ss.ptr.no-deref-one-past";
+constexpr const char *kSame = "ss.ptr.same-array";
+constexpr const char *kCopy = "ss.libc.copy-fits-dest";
+constexpr const char *kDiv = "ss.conv.no-div-zero";
+constexpr const char *kSigned = "ss.conv.no-signed-overflow";
+constexpr const char *kUnseq = "ss.expr.no-unseq";
+constexpr const char *kFinite = "ss.expr.fp-must-be-finite";
+constexpr const char *kInvariant = "ss.ctrl.no-invariant-condition";
 
 bool ident(const NamedDecl *d, std::string &out) {
   if (!d || !d->getDeclName().isIdentifier()) {
@@ -342,6 +357,400 @@ void checkLoops(const FunctionDecl *fn,
   walkLoops(fn->getBody(), ctx, reporter, sm);
 }
 
+bool fnAllowed(Reporter &reporter, const FunctionDecl *fn, const char *id) {
+  if (!fn || !fn->getDeclName().isIdentifier()) {
+    return false;
+  }
+  const std::string name = fn->getName().str();
+  return reporter.allows(id, name.c_str());
+}
+
+bool hasTrait(const Stmt *s) {
+  if (!s) {
+    return false;
+  }
+  if (llvm::isa<clang::UnaryExprOrTypeTraitExpr>(s)) {
+    return true;
+  }
+  for (const Stmt *c : s->children()) {
+    if (hasTrait(c)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool lineHas(const SourceManager &sm, FileID fid, unsigned line, const char *needle) {
+  if (line == 0) {
+    return false;
+  }
+  const SourceLocation begin = sm.translateLineCol(fid, line, 1);
+  if (begin.isInvalid()) {
+    return false;
+  }
+  bool invalid = false;
+  const char *p = sm.getCharacterData(begin, &invalid);
+  if (invalid || !p) {
+    return false;
+  }
+  std::string text;
+  for (int i = 0; i < 400 && p[i] != '\0' && p[i] != '\n' && p[i] != '\r'; ++i) {
+    text.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(p[i]))));
+  }
+  return text.find(needle) != std::string::npos;
+}
+
+// A comment that says static_assert documents a compile-time guard.
+bool documentedGuard(const SourceManager &sm, SourceLocation loc) {
+  loc = sm.getSpellingLoc(loc);
+  if (loc.isInvalid()) {
+    return false;
+  }
+  const unsigned line = sm.getSpellingLineNumber(loc);
+  const FileID fid = sm.getFileID(loc);
+  if (lineHas(sm, fid, line, "static_assert")) {
+    return true;
+  }
+  return line > 1 && lineHas(sm, fid, line - 1, "static_assert");
+}
+
+bool alwaysBool(const Expr *cond, bool &zero) {
+  const Expr *e = cond->IgnoreParenImpCasts();
+  if (const auto *b = llvm::dyn_cast<clang::CXXBoolLiteralExpr>(e)) {
+    zero = !b->getValue();
+    return true;
+  }
+  return false;
+}
+
+void walkInvariant(const Stmt *s, ASTContext &ctx, Reporter &reporter, const SourceManager &sm) {
+  if (!s || llvm::isa<LambdaExpr>(s)) {
+    return;
+  }
+  const Expr *cond = nullptr;
+  bool loop = false;
+  if (const auto *i = llvm::dyn_cast<IfStmt>(s)) {
+    // if constexpr is a compile-time branch. Its condition is required to fold.
+    if (!i->isConstexpr()) {
+      cond = i->getCond();
+    }
+  } else if (const auto *w = llvm::dyn_cast<WhileStmt>(s)) {
+    cond = w->getCond();
+    loop = true;
+  } else if (const auto *d = llvm::dyn_cast<DoStmt>(s)) {
+    cond = d->getCond();
+    loop = true;
+  } else if (const auto *f = llvm::dyn_cast<ForStmt>(s)) {
+    cond = f->getCond();
+    loop = true;
+  } else if (const auto *sw = llvm::dyn_cast<SwitchStmt>(s)) {
+    cond = sw->getCond();
+  } else if (const auto *c = llvm::dyn_cast<ConditionalOperator>(s)) {
+    cond = c->getCond();
+  }
+  if (cond && !hasTrait(cond) && !documentedGuard(sm, cond->getExprLoc())) {
+    bool zero = false;
+    const bool folded = constantInt(cond, ctx, zero) || alwaysBool(cond, zero);
+    // while (0) / do while (0) is the empty macro idiom, not a dead branch.
+    if (folded && !(loop && zero)) {
+      reporter.emit(sm, cond->getExprLoc(), kInvariant, "condition is always true or always false");
+    }
+  }
+  for (const Stmt *c : s->children()) {
+    walkInvariant(c, ctx, reporter, sm);
+  }
+}
+
+void checkInvariant(const FunctionDecl *fn,
+                    ASTContext &ctx,
+                    Reporter &reporter,
+                    const SourceManager &sm) {
+  if (!fn->getBody() || fnAllowed(reporter, fn, kInvariant)) {
+    return;
+  }
+  walkInvariant(fn->getBody(), ctx, reporter, sm);
+}
+
+struct Acc {
+  const VarDecl *vd = nullptr;
+  bool mod = false;
+  SourceLocation loc;
+};
+
+const Expr *bareExpr(const Expr *e) {
+  while (e) {
+    if (const auto *p = llvm::dyn_cast<clang::ParenExpr>(e)) {
+      e = p->getSubExpr();
+      continue;
+    }
+    if (const auto *f = llvm::dyn_cast<clang::FullExpr>(e)) {
+      e = f->getSubExpr();
+      continue;
+    }
+    if (const auto *c = llvm::dyn_cast<CastExpr>(e)) {
+      const auto k = c->getCastKind();
+      if (k == clang::CK_NoOp || k == clang::CK_LValueToRValue || k == clang::CK_IntegralCast ||
+          k == clang::CK_FloatingCast || k == clang::CK_BitCast) {
+        e = c->getSubExpr();
+        continue;
+      }
+    }
+    break;
+  }
+  return e;
+}
+
+const VarDecl *scalarVar(const Expr *e) {
+  const VarDecl *vd = plainVar(bareExpr(e));
+  if (!vd || vd->getType().isNull() || vd->getType().isVolatileQualified()) {
+    return nullptr;
+  }
+  if (!vd->getType()->isScalarType()) {
+    return nullptr;
+  }
+  return vd;
+}
+
+class UnseqWalk {
+public:
+  UnseqWalk(Reporter &reporter, const SourceManager &sm) : reporter(reporter), sm(sm) {}
+
+  void walk(const Stmt *s) {
+    if (!s || llvm::isa<LambdaExpr>(s)) {
+      return;
+    }
+    if (const auto *i = llvm::dyn_cast<IfStmt>(s)) {
+      region(i->getCond());
+      if (const Stmt *init = i->getInit()) {
+        walk(init);
+      }
+      walk(i->getThen());
+      walk(i->getElse());
+      return;
+    }
+    if (const auto *w = llvm::dyn_cast<WhileStmt>(s)) {
+      region(w->getCond());
+      walk(w->getBody());
+      return;
+    }
+    if (const auto *d = llvm::dyn_cast<DoStmt>(s)) {
+      walk(d->getBody());
+      region(d->getCond());
+      return;
+    }
+    if (const auto *f = llvm::dyn_cast<ForStmt>(s)) {
+      if (const Stmt *init = f->getInit()) {
+        walk(init);
+      }
+      region(f->getCond());
+      region(f->getInc());
+      walk(f->getBody());
+      return;
+    }
+    if (const auto *sw = llvm::dyn_cast<SwitchStmt>(s)) {
+      if (const Stmt *init = sw->getInit()) {
+        walk(init);
+      }
+      region(sw->getCond());
+      walk(sw->getBody());
+      return;
+    }
+    if (const auto *rs = llvm::dyn_cast<ReturnStmt>(s)) {
+      region(rs->getRetValue());
+      return;
+    }
+    if (const auto *ds = llvm::dyn_cast<DeclStmt>(s)) {
+      for (const Decl *d : ds->decls()) {
+        if (const auto *vd = llvm::dyn_cast<VarDecl>(d)) {
+          region(vd->getInit());
+        }
+      }
+      return;
+    }
+    if (const auto *e = llvm::dyn_cast<Expr>(s)) {
+      region(e);
+      return;
+    }
+    for (const Stmt *c : s->children()) {
+      walk(c);
+    }
+  }
+
+private:
+  Reporter &reporter;
+  const SourceManager &sm;
+
+  void region(const Expr *e) {
+    if (!e) {
+      return;
+    }
+    std::vector<Acc> hits;
+    collect(e, hits);
+    report(hits);
+  }
+
+  void report(const std::vector<Acc> &hits) {
+    for (size_t i = 0; i < hits.size(); ++i) {
+      const VarDecl *vd = hits[i].vd;
+      if (!vd) {
+        continue;
+      }
+      bool seen = false;
+      for (size_t k = 0; k < i; ++k) {
+        if (hits[k].vd == vd) {
+          seen = true;
+          break;
+        }
+      }
+      if (seen) {
+        continue;
+      }
+      int mods = 0;
+      int reads = 0;
+      SourceLocation at;
+      for (const Acc &h : hits) {
+        if (h.vd != vd) {
+          continue;
+        }
+        if (h.mod) {
+          ++mods;
+          at = h.loc;
+        } else {
+          ++reads;
+          if (mods > 0) {
+            at = h.loc;
+          }
+        }
+      }
+      if (mods >= 2 || (mods == 1 && reads >= 1)) {
+        emitNamed(reporter, sm, at, kUnseq, "unsequenced side effect on this object", vd);
+      }
+    }
+  }
+
+  void collect(const Expr *e, std::vector<Acc> &hits) {
+    e = bareExpr(e);
+    if (!e) {
+      return;
+    }
+    if (const auto *bo = llvm::dyn_cast<BinaryOperator>(e)) {
+      const auto op = bo->getOpcode();
+      // Each side is sequenced against the other. Effects do not pair across the operator.
+      if (op == clang::BO_Comma || op == clang::BO_LAnd || op == clang::BO_LOr) {
+        region(bo->getLHS());
+        region(bo->getRHS());
+        return;
+      }
+      if (op == clang::BO_Assign) {
+        std::vector<Acc> rhs;
+        collect(bo->getRHS(), rhs);
+        const VarDecl *slot = nullptr;
+        std::vector<Acc> lhs;
+        collectLvalue(bo->getLHS(), lhs, slot);
+        if (slot) {
+          bool rhsMod = false;
+          for (const Acc &h : rhs) {
+            if (h.vd == slot && h.mod) {
+              rhsMod = true;
+              break;
+            }
+          }
+          if (!rhsMod) {
+            std::vector<Acc> kept;
+            for (const Acc &h : rhs) {
+              if (!(h.vd == slot && !h.mod)) {
+                kept.push_back(h);
+              }
+            }
+            rhs.swap(kept);
+          }
+        }
+        hits.insert(hits.end(), rhs.begin(), rhs.end());
+        hits.insert(hits.end(), lhs.begin(), lhs.end());
+        if (slot) {
+          hits.push_back(Acc{slot, true, bo->getOperatorLoc()});
+        }
+        return;
+      }
+      if (bo->isCompoundAssignmentOp()) {
+        collect(bo->getRHS(), hits);
+        const VarDecl *slot = nullptr;
+        collectLvalue(bo->getLHS(), hits, slot);
+        if (slot) {
+          hits.push_back(Acc{slot, true, bo->getOperatorLoc()});
+        }
+        return;
+      }
+    }
+    if (const auto *co = llvm::dyn_cast<ConditionalOperator>(e)) {
+      region(co->getCond());
+      region(co->getTrueExpr());
+      region(co->getFalseExpr());
+      return;
+    }
+    if (const auto *call = llvm::dyn_cast<clang::CallExpr>(e)) {
+      collect(call->getCallee(), hits);
+      for (const Expr *arg : call->arguments()) {
+        collect(arg, hits);
+      }
+      return;
+    }
+    if (const auto *uo = llvm::dyn_cast<UnaryOperator>(e)) {
+      if (uo->isIncrementDecrementOp()) {
+        const VarDecl *slot = nullptr;
+        collectLvalue(uo->getSubExpr(), hits, slot);
+        if (slot) {
+          hits.push_back(Acc{slot, true, uo->getOperatorLoc()});
+        }
+        return;
+      }
+    }
+    if (const VarDecl *vd = scalarVar(e)) {
+      hits.push_back(Acc{vd, false, e->getExprLoc()});
+      return;
+    }
+    for (const Stmt *c : e->children()) {
+      if (const auto *ce = llvm::dyn_cast_or_null<Expr>(c)) {
+        collect(ce, hits);
+      }
+    }
+  }
+
+  void collectLvalue(const Expr *e, std::vector<Acc> &hits, const VarDecl *&slot) {
+    e = bareExpr(e);
+    if (!e) {
+      return;
+    }
+    if (const VarDecl *vd = scalarVar(e)) {
+      slot = vd;
+      return;
+    }
+    if (const auto *sub = llvm::dyn_cast<ArraySubscriptExpr>(e)) {
+      collect(sub->getBase(), hits);
+      collect(sub->getIdx(), hits);
+      return;
+    }
+    if (const auto *uo = llvm::dyn_cast<UnaryOperator>(e)) {
+      if (uo->getOpcode() == clang::UO_Deref) {
+        collect(uo->getSubExpr(), hits);
+        return;
+      }
+    }
+    if (const auto *me = llvm::dyn_cast<MemberExpr>(e)) {
+      collect(me->getBase(), hits);
+      return;
+    }
+    collect(e, hits);
+  }
+};
+
+void checkUnseq(const FunctionDecl *fn, Reporter &reporter, const SourceManager &sm) {
+  if (!fn->getBody()) {
+    return;
+  }
+  UnseqWalk(reporter, sm).walk(fn->getBody());
+}
+
 class UninitHandler final : public clang::UninitVariablesHandler {
 public:
   UninitHandler(Reporter &reporter, const SourceManager &sm) : reporter(reporter), sm(sm) {}
@@ -391,10 +800,16 @@ struct ArrRef {
   bool operator==(const ArrRef &o) const { return base == o.base && off == o.off; }
 };
 
+enum class NullFact { Must, Not };
+enum class FpFact { Finite, NonFinite };
+
 struct State {
   llvm::DenseMap<const VarDecl *, VarList> ptrs;
   llvm::DenseMap<const VarDecl *, IntList> ints;
   llvm::DenseMap<const VarDecl *, ArrRef> arrs;
+  llvm::DenseMap<const VarDecl *, NullFact> nulls;
+  llvm::DenseMap<const VarDecl *, FpFact> fps;
+  llvm::DenseSet<const VarDecl *> freed;
 };
 
 struct ArrBound {
@@ -489,9 +904,50 @@ bool sameInts(const IntList &a, const IntList &b) {
   return true;
 }
 
+bool sameFacts(const llvm::DenseMap<const VarDecl *, NullFact> &a,
+               const llvm::DenseMap<const VarDecl *, NullFact> &b) {
+  if (a.size() != b.size()) {
+    return false;
+  }
+  for (const auto &kv : a) {
+    auto it = b.find(kv.first);
+    if (it == b.end() || it->second != kv.second) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool sameFacts(const llvm::DenseMap<const VarDecl *, FpFact> &a,
+               const llvm::DenseMap<const VarDecl *, FpFact> &b) {
+  if (a.size() != b.size()) {
+    return false;
+  }
+  for (const auto &kv : a) {
+    auto it = b.find(kv.first);
+    if (it == b.end() || it->second != kv.second) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool sameFreed(const llvm::DenseSet<const VarDecl *> &a, const llvm::DenseSet<const VarDecl *> &b) {
+  if (a.size() != b.size()) {
+    return false;
+  }
+  for (const VarDecl *v : a) {
+    if (!b.contains(v)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 bool sameState(const State &a, const State &b) {
   if (a.ptrs.size() != b.ptrs.size() || a.ints.size() != b.ints.size() ||
-      a.arrs.size() != b.arrs.size()) {
+      a.arrs.size() != b.arrs.size() || a.nulls.size() != b.nulls.size() ||
+      a.fps.size() != b.fps.size() || a.freed.size() != b.freed.size()) {
     return false;
   }
   for (const auto &kv : a.ptrs) {
@@ -512,7 +968,7 @@ bool sameState(const State &a, const State &b) {
       return false;
     }
   }
-  return true;
+  return sameFacts(a.nulls, b.nulls) && sameFacts(a.fps, b.fps) && sameFreed(a.freed, b.freed);
 }
 
 bool transparentCast(clang::CastKind k) {
@@ -589,7 +1045,7 @@ const Stmt *peelStmt(const Stmt *s) {
 class Lattice {
 public:
   Lattice(const FunctionDecl *fn, ASTContext &ctx, Reporter &reporter, const SourceManager &sm)
-      : ctx(ctx), reporter(reporter), sm(sm) {
+      : ctx(ctx), reporter(reporter), sm(sm), fn(fn) {
     if (fn->getBody()) {
       walkScope(fn->getBody(), nullptr);
     }
@@ -673,7 +1129,10 @@ private:
   ASTContext &ctx;
   Reporter &reporter;
   const SourceManager &sm;
+  const FunctionDecl *fn = nullptr;
   State *st = nullptr;
+  bool inFiniteTest = false;
+  bool suppressFreed = false;
   std::vector<State> outs;
   std::vector<char> ready;
   std::vector<char> reach;
@@ -767,7 +1226,7 @@ private:
     }
     e = e->IgnoreParenImpCasts();
     if (const VarDecl *vd = plainVar(e)) {
-      if (vd->hasLocalStorage() && integral(vd)) {
+      if (integral(vd) && (vd->hasLocalStorage() || llvm::isa<ParmVarDecl>(vd))) {
         auto it = st->ints.find(vd);
         if (it == st->ints.end()) {
           return std::nullopt;
@@ -775,14 +1234,8 @@ private:
         return it->second;
       }
     }
-    Expr::EvalResult folded;
-    if (e->EvaluateAsInt(folded, ctx) && folded.Val.isInt()) {
-      IntList one;
-      if (!addInt(one, folded.Val.getInt())) {
-        return std::nullopt;
-      }
-      return one;
-    }
+    // Fold + - * / % << in 64 bits before EvaluateAsInt. That API wraps into
+    // the expression type, so a signed 1 << 31 looks like it fits in int.
     if (const auto *uo = llvm::dyn_cast<UnaryOperator>(e)) {
       if (uo->getOpcode() == clang::UO_Minus || uo->getOpcode() == clang::UO_Plus) {
         auto inner = evalInt(uo->getSubExpr());
@@ -803,7 +1256,8 @@ private:
     }
     if (const auto *bo = llvm::dyn_cast<BinaryOperator>(e)) {
       auto op = bo->getOpcode();
-      if (op == clang::BO_Add || op == clang::BO_Sub) {
+      if (op == clang::BO_Add || op == clang::BO_Sub || op == clang::BO_Mul ||
+          op == clang::BO_Div || op == clang::BO_Rem || op == clang::BO_Shl) {
         auto L = evalInt(bo->getLHS());
         auto R = evalInt(bo->getRHS());
         if (!L || !R || L->size() * R->size() > 4) {
@@ -812,7 +1266,31 @@ private:
         IntList out;
         for (const auto &a : *L) {
           for (const auto &b : *R) {
-            llvm::APSInt v = op == clang::BO_Add ? (a + b) : (a - b);
+            llvm::APSInt v = a;
+            if (op == clang::BO_Add) {
+              v = a + b;
+            } else if (op == clang::BO_Sub) {
+              v = a - b;
+            } else if (op == clang::BO_Mul) {
+              bool overflow = false;
+              v = a.smul_ov(b, overflow);
+              if (overflow) {
+                return std::nullopt;
+              }
+            } else if (op == clang::BO_Div || op == clang::BO_Rem) {
+              if (b.isZero()) {
+                return std::nullopt;
+              }
+              if (a.isMinSignedValue() && b.isAllOnes()) {
+                return std::nullopt;
+              }
+              v = op == clang::BO_Div ? a.sdiv(b) : a.srem(b);
+            } else {
+              if (a.isNegative() || b.isNegative() || b.getActiveBits() > 6 || b.uge(63)) {
+                return std::nullopt;
+              }
+              v = a.shl(static_cast<unsigned>(b.getZExtValue()));
+            }
             if (!addInt(out, std::move(v))) {
               return std::nullopt;
             }
@@ -820,6 +1298,14 @@ private:
         }
         return out;
       }
+    }
+    Expr::EvalResult folded;
+    if (e->EvaluateAsInt(folded, ctx) && folded.Val.isInt()) {
+      IntList one;
+      if (!addInt(one, folded.Val.getInt())) {
+        return std::nullopt;
+      }
+      return one;
     }
     return std::nullopt;
   }
@@ -1020,12 +1506,552 @@ private:
     emitNamed(reporter, sm, loc, kBounds, "index is outside the array", base);
   }
 
+  void emitRule(SourceLocation loc, const char *id, const char *msg, const NamedDecl *who) {
+    if (fnAllowed(reporter, fn, id)) {
+      return;
+    }
+    emitNamed(reporter, sm, loc, id, msg, who);
+  }
+
+  bool fitsSigned(const llvm::APSInt &v, QualType t) const {
+    if (t.isNull() || !t->isSignedIntegerType()) {
+      return true;
+    }
+    const unsigned bits = ctx.getIntWidth(t);
+    if (bits == 0 || bits >= 64) {
+      return true;
+    }
+    const int64_t sv = v.getSExtValue();
+    const int64_t min = -(static_cast<int64_t>(1) << (bits - 1));
+    const int64_t max = (static_cast<int64_t>(1) << (bits - 1)) - 1;
+    return sv >= min && sv <= max;
+  }
+
+  void noteSigned(const Expr *e, SourceLocation loc) {
+    if (!e || e->getType().isNull() || !e->getType()->isSignedIntegerType()) {
+      return;
+    }
+    auto vals = evalInt(e);
+    if (!vals || vals->size() != 1) {
+      return;
+    }
+    if (!fitsSigned((*vals)[0], e->getType())) {
+      emitRule(loc, kSigned, "signed arithmetic overflows", nullptr);
+    }
+  }
+
+  void noteStored(const VarDecl *vd, SourceLocation loc) {
+    if (!vd || !integral(vd)) {
+      return;
+    }
+    auto it = st->ints.find(vd);
+    if (it == st->ints.end() || it->second.size() != 1) {
+      return;
+    }
+    if (!fitsSigned(it->second[0], vd->getType())) {
+      emitRule(loc, kSigned, "signed arithmetic overflows", vd);
+    }
+  }
+
+  bool isNullConst(const Expr *e) const {
+    e = peel(e);
+    if (!e) {
+      return false;
+    }
+    if (llvm::isa<clang::CXXNullPtrLiteralExpr>(e) || llvm::isa<clang::GNUNullExpr>(e)) {
+      return true;
+    }
+    if (const auto *lit = llvm::dyn_cast<clang::IntegerLiteral>(e)) {
+      return lit->getValue().isZero();
+    }
+    Expr::EvalResult value;
+    return e->EvaluateAsInt(value, ctx) && value.Val.isInt() && value.Val.getInt().isZero();
+  }
+
+  bool obviousNonNull(const Expr *e) const {
+    e = peel(e);
+    if (!e) {
+      return false;
+    }
+    if (llvm::isa<clang::StringLiteral>(e)) {
+      return true;
+    }
+    if (const auto *c = llvm::dyn_cast<CastExpr>(e)) {
+      if (c->getCastKind() == clang::CK_ArrayToPointerDecay) {
+        return true;
+      }
+    }
+    if (const auto *uo = llvm::dyn_cast<UnaryOperator>(e)) {
+      return uo->getOpcode() == clang::UO_AddrOf;
+    }
+    return false;
+  }
+
+  void trackNull(const VarDecl *vd, const Expr *rhs) {
+    if (!vd || vd->getType().isNull() || !vd->getType()->isPointerType()) {
+      return;
+    }
+    vd = vd->getCanonicalDecl();
+    if (!rhs) {
+      st->nulls.erase(vd);
+      return;
+    }
+    if (isNullConst(rhs)) {
+      st->nulls[vd] = NullFact::Must;
+      return;
+    }
+    if (obviousNonNull(rhs)) {
+      st->nulls[vd] = NullFact::Not;
+      return;
+    }
+    if (const VarDecl *src = plainVar(peel(rhs))) {
+      auto it = st->nulls.find(src);
+      if (it != st->nulls.end()) {
+        st->nulls[vd] = it->second;
+        return;
+      }
+    }
+    st->nulls.erase(vd);
+  }
+
+  void trackFreed(const VarDecl *vd, const Expr *rhs) {
+    if (!vd || vd->getType().isNull() || !vd->getType()->isPointerType()) {
+      return;
+    }
+    vd = vd->getCanonicalDecl();
+    const VarDecl *src = rhs ? plainVar(peel(rhs)) : nullptr;
+    if (src && st->freed.contains(src->getCanonicalDecl())) {
+      st->freed.insert(vd);
+    } else {
+      st->freed.erase(vd);
+    }
+  }
+
+  std::optional<FpFact> foldFp(const Expr *e) const {
+    if (!e) {
+      return std::nullopt;
+    }
+    const Expr *inner = e->IgnoreParenImpCasts();
+    if (!inner || inner->getType().isNull() || !inner->getType()->isRealFloatingType()) {
+      return std::nullopt;
+    }
+    Expr::EvalResult value;
+    if (!inner->EvaluateAsRValue(value, ctx) || !value.Val.isFloat()) {
+      return std::nullopt;
+    }
+    const llvm::APFloat &f = value.Val.getFloat();
+    if (f.isNaN() || f.isInfinity()) {
+      return FpFact::NonFinite;
+    }
+    return FpFact::Finite;
+  }
+
+  void trackFp(const VarDecl *vd, const Expr *rhs) {
+    if (!vd || vd->getType().isNull() || !vd->getType()->isRealFloatingType()) {
+      return;
+    }
+    vd = vd->getCanonicalDecl();
+    if (auto folded = rhs ? foldFp(rhs) : std::nullopt) {
+      st->fps[vd] = *folded;
+      return;
+    }
+    if (const VarDecl *src = rhs ? plainVar(peel(rhs)) : nullptr) {
+      auto it = st->fps.find(src);
+      if (it != st->fps.end()) {
+        st->fps[vd] = it->second;
+        return;
+      }
+    }
+    st->fps.erase(vd);
+  }
+
+  void noteNull(const Expr *ptr, SourceLocation loc) {
+    if (!ptr) {
+      return;
+    }
+    if (isNullConst(ptr)) {
+      emitRule(loc, kNull, "dereference of a null pointer", nullptr);
+      return;
+    }
+    const VarDecl *vd = plainVar(peel(ptr));
+    if (!vd) {
+      return;
+    }
+    auto it = st->nulls.find(vd);
+    if (it != st->nulls.end() && it->second == NullFact::Must) {
+      emitRule(loc, kNull, "dereference of a null pointer", vd);
+    }
+  }
+
+  void noteFreedUse(const VarDecl *vd, SourceLocation loc) {
+    if (suppressFreed || !vd || !st->freed.contains(vd)) {
+      return;
+    }
+    emitRule(loc, kFree, "use of a released pointer", vd);
+  }
+
+  void noteFpUse(const Expr *e, SourceLocation loc) {
+    if (inFiniteTest || !e) {
+      return;
+    }
+    if (auto folded = foldFp(e)) {
+      if (*folded == FpFact::NonFinite) {
+        emitRule(loc, kFinite, "floating value is not finite", nullptr);
+      }
+      return;
+    }
+    const VarDecl *vd = plainVar(peel(e));
+    if (!vd) {
+      return;
+    }
+    auto it = st->fps.find(vd);
+    if (it != st->fps.end() && it->second == FpFact::NonFinite) {
+      emitRule(loc, kFinite, "floating value is not finite", vd);
+    }
+  }
+
+  bool provenZero(const Expr *e) {
+    auto vals = evalInt(e);
+    if (vals && vals->size() == 1 && (*vals)[0].isZero()) {
+      return true;
+    }
+    if (!e) {
+      return false;
+    }
+    const Expr *inner = e->IgnoreParenImpCasts();
+    if (!inner || inner->getType().isNull() || !inner->getType()->isRealFloatingType()) {
+      return false;
+    }
+    Expr::EvalResult value;
+    return inner->EvaluateAsRValue(value, ctx) && value.Val.isFloat() &&
+           value.Val.getFloat().isZero();
+  }
+
+  std::string calleeName(const clang::CallExpr *call) const {
+    const FunctionDecl *fd = call ? call->getDirectCallee() : nullptr;
+    if (!fd || !fd->getDeclName().isIdentifier()) {
+      return {};
+    }
+    std::string name = fd->getName().str();
+    const std::string prefix = "__builtin_";
+    if (name.compare(0, prefix.size(), prefix) == 0) {
+      name.erase(0, prefix.size());
+    }
+    return name;
+  }
+
+  bool isReleaseName(const std::string &name) const { return name == "free" || name == "realloc"; }
+
+  bool isFiniteName(const std::string &name) const {
+    return name == "isfinite" || name == "isfinitef" || name == "isinf" || name == "isinff" ||
+           name == "isnan" || name == "isnanf" || name == "finite";
+  }
+
+  std::optional<uint64_t> destBytes(const Expr *e) {
+    auto b = boundOf(e);
+    if (!b || !b->type) {
+      return std::nullopt;
+    }
+    auto off = norm(b->off);
+    if (!off || off->isNegative()) {
+      return std::nullopt;
+    }
+    const uint64_t count = arrayCount(b->type);
+    const uint64_t o = off->getZExtValue();
+    if (o > count) {
+      return std::nullopt;
+    }
+    const uint64_t elems = count - o;
+    const uint64_t width = ctx.getTypeSizeInChars(b->type->getElementType()).getQuantity();
+    if (width != 0 && elems > std::numeric_limits<uint64_t>::max() / width) {
+      return std::nullopt;
+    }
+    return elems * width;
+  }
+
+  std::optional<uint64_t> litChars(const Expr *e) const {
+    e = e ? e->IgnoreParenImpCasts() : nullptr;
+    const auto *lit = llvm::dyn_cast_or_null<clang::StringLiteral>(e);
+    if (!lit || lit->getCharByteWidth() != 1) {
+      return std::nullopt;
+    }
+    return lit->getLength();
+  }
+
+  void noteTooBig(const Expr *dest, const llvm::APSInt &n, SourceLocation loc, bool stringNul) {
+    auto cap = destBytes(dest);
+    if (!cap || n.isNegative()) {
+      return;
+    }
+    const uint64_t need = n.getZExtValue();
+    if (need > *cap) {
+      emitRule(loc, kCopy, "copy length exceeds the destination", nullptr);
+    }
+    if (stringNul && need >= *cap) {
+      emitRule(loc, kNul, "string write leaves no room for the terminator", nullptr);
+    }
+  }
+
+  void noteStringLit(const Expr *dest, const Expr *src, SourceLocation loc) {
+    auto chars = litChars(src);
+    auto cap = destBytes(dest);
+    if (!chars || !cap) {
+      return;
+    }
+    if (*chars > std::numeric_limits<uint64_t>::max() - 1) {
+      return;
+    }
+    if (*chars + 1 > *cap) {
+      emitRule(loc, kNul, "string write leaves no room for the terminator", nullptr);
+    }
+  }
+
+  bool rangesOverlap(uint64_t a, uint64_t an, uint64_t b, uint64_t bn) const {
+    if (an == 0 || bn == 0) {
+      return false;
+    }
+    if (a > std::numeric_limits<uint64_t>::max() - an ||
+        b > std::numeric_limits<uint64_t>::max() - bn) {
+      return true;
+    }
+    return a < b + bn && b < a + an;
+  }
+
+  std::optional<uint64_t> elemBytes(const ArrBound &b) const {
+    if (!b.type) {
+      return std::nullopt;
+    }
+    auto off = norm(b.off);
+    if (!off || off->isNegative()) {
+      return std::nullopt;
+    }
+    const uint64_t width = ctx.getTypeSizeInChars(b.type->getElementType()).getQuantity();
+    const uint64_t o = off->getZExtValue();
+    if (width != 0 && o > std::numeric_limits<uint64_t>::max() / width) {
+      return std::nullopt;
+    }
+    return o * width;
+  }
+
+  void noteOverlap(const clang::CallExpr *call, const std::string &name) {
+    if (name != "memcpy" && name != "mempcpy") {
+      return;
+    }
+    if (call->getNumArgs() < 3) {
+      return;
+    }
+    const Expr *dest = call->getArg(0);
+    const Expr *src = call->getArg(1);
+    auto n = evalInt(call->getArg(2));
+    if (n && n->size() == 1 && (*n)[0].isZero()) {
+      return;
+    }
+    auto bd = boundOf(dest);
+    auto bs = boundOf(src);
+    if (bd && bs && bd->base && bd->base == bs->base && n && n->size() == 1 &&
+        !(*n)[0].isNegative()) {
+      auto d0 = elemBytes(*bd);
+      auto s0 = elemBytes(*bs);
+      if (d0 && s0 && rangesOverlap(*d0, (*n)[0].getZExtValue(), *s0, (*n)[0].getZExtValue())) {
+        emitRule(call->getBeginLoc(), kOverlap, "copy overlaps itself", bd->base);
+        return;
+      }
+    }
+    const VarDecl *ds = plainVar(peel(dest));
+    const VarDecl *ss = plainVar(peel(src));
+    if (ds && ds == ss) {
+      emitRule(call->getBeginLoc(), kOverlap, "copy overlaps itself", ds);
+    }
+  }
+
+  void noteCopy(const clang::CallExpr *call, const std::string &name) {
+    const SourceLocation loc = call->getBeginLoc();
+    if ((name == "memcpy" || name == "memmove" || name == "memset" || name == "mempcpy") &&
+        call->getNumArgs() >= 3) {
+      auto n = evalInt(call->getArg(name == "memset" ? 2 : 2));
+      if (n && n->size() == 1) {
+        noteTooBig(call->getArg(0), (*n)[0], loc, false);
+      }
+      return;
+    }
+    if (name == "strncpy" && call->getNumArgs() >= 3) {
+      auto n = evalInt(call->getArg(2));
+      if (n && n->size() == 1) {
+        noteTooBig(call->getArg(0), (*n)[0], loc, true);
+      }
+      return;
+    }
+    if (name == "strncat" && call->getNumArgs() >= 3) {
+      auto n = evalInt(call->getArg(2));
+      auto cap = destBytes(call->getArg(0));
+      if (n && n->size() == 1 && !(*n)[0].isNegative() && cap) {
+        const uint64_t extra = (*n)[0].getZExtValue();
+        if (extra < std::numeric_limits<uint64_t>::max() && extra + 1 > *cap) {
+          emitRule(loc, kNul, "string write leaves no room for the terminator", nullptr);
+        }
+      }
+      return;
+    }
+    if ((name == "snprintf" || name == "vsnprintf") && call->getNumArgs() >= 2) {
+      auto n = evalInt(call->getArg(1));
+      if (n && n->size() == 1) {
+        noteTooBig(call->getArg(0), (*n)[0], loc, false);
+      }
+      return;
+    }
+    if (name == "strcpy" || name == "stpcpy" || name == "strcat" || name == "sprintf") {
+      const unsigned srcSlot = name == "sprintf" ? 1 : 1;
+      if (call->getNumArgs() > srcSlot) {
+        noteStringLit(call->getArg(0), call->getArg(srcSlot), loc);
+      }
+    }
+  }
+
+  void noteCall(const clang::CallExpr *call) {
+    const std::string name = calleeName(call);
+    if (name.empty()) {
+      return;
+    }
+    noteOverlap(call, name);
+    noteCopy(call, name);
+  }
+
+  void forget(const VarDecl *vd) {
+    if (!vd) {
+      return;
+    }
+    vd = vd->getCanonicalDecl();
+    st->ptrs.erase(vd);
+    st->ints.erase(vd);
+    st->arrs.erase(vd);
+    st->nulls.erase(vd);
+    st->fps.erase(vd);
+    st->freed.erase(vd);
+  }
+
+  // A call may write through a pointer argument. &local escapes, so the local is no longer proven.
+  void forgetEscaped(const clang::CallExpr *call) {
+    if (!call) {
+      return;
+    }
+    for (const Expr *arg : call->arguments()) {
+      const Expr *e = peel(arg);
+      const auto *uo = llvm::dyn_cast_or_null<UnaryOperator>(e);
+      if (!uo || uo->getOpcode() != clang::UO_AddrOf) {
+        continue;
+      }
+      forget(plainVar(uo->getSubExpr()));
+    }
+  }
+
+  void markReleased(const Expr *arg, bool emit, SourceLocation loc) {
+    const VarDecl *vd = plainVar(peel(arg));
+    if (!vd) {
+      return;
+    }
+    vd = vd->getCanonicalDecl();
+    if (emit && st->freed.contains(vd)) {
+      emitRule(loc, kFree, "use of a released pointer", vd);
+    }
+    st->freed.insert(vd);
+  }
+
+  struct ObjKey {
+    const ValueDecl *owner = nullptr;
+    const ValueDecl *decl = nullptr;
+    bool operator==(const ObjKey &o) const { return owner == o.owner && decl == o.decl; }
+  };
+
+  std::optional<ObjKey> objectOf(const Expr *e) {
+    if (!e) {
+      return std::nullopt;
+    }
+    if (auto b = boundOf(e)) {
+      if (b->base) {
+        return ObjKey{b->base, b->base};
+      }
+    }
+    e = peel(e);
+    if (const auto *uo = llvm::dyn_cast_or_null<UnaryOperator>(e)) {
+      if (uo->getOpcode() == clang::UO_AddrOf) {
+        const Expr *sub = uo->getSubExpr()->IgnoreParenImpCasts();
+        if (const VarDecl *vd = plainVar(sub)) {
+          return ObjKey{vd, vd};
+        }
+        if (const auto *me = llvm::dyn_cast<MemberExpr>(sub)) {
+          const VarDecl *owner = plainVar(me->getBase());
+          const auto *field = llvm::dyn_cast<ValueDecl>(me->getMemberDecl());
+          if (owner && field) {
+            return ObjKey{owner->getCanonicalDecl(),
+                          llvm::cast<ValueDecl>(field->getCanonicalDecl())};
+          }
+        }
+      }
+    }
+    return std::nullopt;
+  }
+
+  void noteSame(const BinaryOperator *bo) {
+    const auto op = bo->getOpcode();
+    const bool rel = bo->isRelationalOp();
+    const bool sub = op == clang::BO_Sub;
+    if (!rel && !sub) {
+      return;
+    }
+    const Expr *lhs = bo->getLHS();
+    const Expr *rhs = bo->getRHS();
+    if (!lhs->getType()->isPointerType() || !rhs->getType()->isPointerType()) {
+      return;
+    }
+    auto L = objectOf(lhs);
+    auto R = objectOf(rhs);
+    if (!L || !R || *L == *R) {
+      return;
+    }
+    emitRule(
+        bo->getOperatorLoc(), kSame, "pointer compare or subtraction leaves this array", L->decl);
+  }
+
+  void noteAssignOverlap(const BinaryOperator *bo) {
+    if (bo->getOpcode() != clang::BO_Assign) {
+      return;
+    }
+    const Expr *lhs = bo->getLHS()->IgnoreParenImpCasts();
+    const Expr *rhs = bo->getRHS()->IgnoreParenImpCasts();
+    QualType t = lhs->getType();
+    if (t.isNull() || t->isScalarType()) {
+      return;
+    }
+    const VarDecl *ld = plainVar(lhs);
+    const VarDecl *rd = plainVar(rhs);
+    if (ld && ld == rd) {
+      emitRule(bo->getOperatorLoc(), kOverlap, "copy overlaps itself", ld);
+    }
+  }
+
+  bool onePast(const llvm::APSInt &off, const llvm::APSInt &idx, uint64_t size) const {
+    auto o = norm(off);
+    auto n = norm(idx);
+    if (!o || !n || o->isNegative() || n->isNegative()) {
+      return false;
+    }
+    const uint64_t a = o->getZExtValue();
+    const uint64_t b = n->getZExtValue();
+    if (a > std::numeric_limits<uint64_t>::max() - b) {
+      return false;
+    }
+    return a + b == size;
+  }
+
   void checkVals(const ArrBound &b, const IntList &vals, SourceLocation loc) {
     if (!b.type) {
       return;
     }
     const uint64_t size = arrayCount(b.type);
     for (const auto &v : vals) {
+      if (onePast(b.off, v, size)) {
+        emitRule(loc, kOnePast, "dereference of a one-past-the-end pointer", b.base);
+      }
       if (oob(b.off, v, size)) {
         flagBounds(b.base, loc);
         return;
@@ -1063,12 +2089,67 @@ private:
     if (!e) {
       return;
     }
+    if (const auto *call = llvm::dyn_cast<clang::CallExpr>(e)) {
+      const std::string name = calleeName(call);
+      noteCall(call);
+      const bool finite = isFiniteName(name);
+      const bool release = isReleaseName(name);
+      const bool prevFinite = inFiniteTest;
+      const bool prevFreed = suppressFreed;
+      if (finite) {
+        inFiniteTest = true;
+      }
+      unsigned index = 0;
+      for (const Expr *arg : call->arguments()) {
+        if (release && index == 0) {
+          suppressFreed = true;
+        }
+        scan(arg);
+        suppressFreed = prevFreed;
+        ++index;
+      }
+      inFiniteTest = prevFinite;
+      if (!finite) {
+        scan(call->getCallee());
+      }
+      return;
+    }
     if (const auto *sub = llvm::dyn_cast<ArraySubscriptExpr>(e)) {
       checkSub(sub);
+      noteNull(sub->getBase(), sub->getBeginLoc());
     } else if (const auto *uo = llvm::dyn_cast<UnaryOperator>(e)) {
       if (uo->getOpcode() == clang::UO_Deref) {
         checkDeref(uo);
+        noteNull(uo->getSubExpr(), uo->getOperatorLoc());
+      } else if (uo->getOpcode() == clang::UO_Minus) {
+        noteSigned(uo, uo->getOperatorLoc());
       }
+    } else if (const auto *me = llvm::dyn_cast<MemberExpr>(e)) {
+      if (me->isArrow()) {
+        noteNull(me->getBase(), me->getOperatorLoc());
+      }
+    } else if (const auto *bo = llvm::dyn_cast<BinaryOperator>(e)) {
+      const auto op = bo->getOpcode();
+      if (op == clang::BO_Div || op == clang::BO_Rem || op == clang::BO_DivAssign ||
+          op == clang::BO_RemAssign) {
+        if (provenZero(bo->getRHS())) {
+          const VarDecl *vd = plainVar(peel(bo->getRHS()));
+          emitRule(bo->getOperatorLoc(), kDiv, "divisor is zero", vd);
+        }
+      }
+      if (op == clang::BO_Add || op == clang::BO_Sub || op == clang::BO_Mul ||
+          op == clang::BO_Div || op == clang::BO_Rem || op == clang::BO_Shl) {
+        noteSigned(bo, bo->getOperatorLoc());
+      }
+      noteSame(bo);
+      if (!bo->getType().isNull() && bo->getType()->isRealFloatingType()) {
+        noteFpUse(bo, bo->getExprLoc());
+      }
+    } else if (const VarDecl *vd = plainVar(e)) {
+      noteFreedUse(vd, e->getExprLoc());
+      noteFpUse(e, e->getExprLoc());
+    } else {
+      noteFpUse(e, e->getExprLoc());
     }
     for (const Stmt *c : e->children()) {
       if (const auto *ce = llvm::dyn_cast_or_null<Expr>(c)) {
@@ -1147,7 +2228,7 @@ private:
       }
       return;
     }
-    if (integral(vd) && vd->hasLocalStorage()) {
+    if (integral(vd) && (vd->hasLocalStorage() || llvm::isa<ParmVarDecl>(vd))) {
       auto vals = rhs ? evalInt(rhs) : std::nullopt;
       if (!vals) {
         st->ints.erase(vd);
@@ -1155,9 +2236,14 @@ private:
         st->ints[vd] = *vals;
       }
     }
+    if (vd->getType()->isRealFloatingType()) {
+      trackFp(vd, rhs);
+    }
     if (!vd->getType()->isPointerType()) {
       return;
     }
+    trackNull(vd, rhs);
+    trackFreed(vd, rhs);
     VarList held = rhs ? autosOf(rhs) : VarList{};
     if (vd->hasLocalStorage()) {
       trackPointer(vd, rhs, false);
@@ -1167,7 +2253,7 @@ private:
     }
   }
 
-  void applyInc(const UnaryOperator *uo) {
+  void applyInc(const UnaryOperator *uo, bool emit) {
     const VarDecl *vd = plainVar(uo->getSubExpr());
     if (!vd) {
       return;
@@ -1188,6 +2274,9 @@ private:
       } else {
         st->ints[vd] = next;
       }
+      if (emit) {
+        noteStored(vd, uo->getOperatorLoc());
+      }
     }
     auto ar = st->arrs.find(vd);
     if (ar != st->arrs.end()) {
@@ -1200,7 +2289,7 @@ private:
     }
   }
 
-  void applyCompound(const BinaryOperator *bo) {
+  void applyCompound(const BinaryOperator *bo, bool emit) {
     const VarDecl *vd = plainVar(bo->getLHS());
     if (!vd) {
       return;
@@ -1236,6 +2325,9 @@ private:
         st->ints.erase(vd);
       } else {
         st->ints[vd] = next;
+      }
+      if (emit) {
+        noteStored(vd, bo->getOperatorLoc());
       }
       return;
     }
@@ -1292,13 +2384,16 @@ private:
           scan(bo->getLHS());
           scan(bo->getRHS());
         }
-        applyCompound(bo);
+        applyCompound(bo, emit);
         return;
       }
       if (bo->isAssignmentOp()) {
         if (emit) {
           scan(bo->getRHS());
-          scan(bo->getLHS());
+          if (!plainVar(bo->getLHS())) {
+            scan(bo->getLHS());
+          }
+          noteAssignOverlap(bo);
         }
         if (const VarDecl *vd = plainVar(bo->getLHS())) {
           trackWrite(vd, bo->getRHS(), emit, bo->getOperatorLoc(), false);
@@ -1313,9 +2408,29 @@ private:
         if (emit) {
           scan(uo->getSubExpr());
         }
-        applyInc(uo);
+        applyInc(uo, emit);
         return;
       }
+    }
+    if (const auto *call = llvm::dyn_cast<clang::CallExpr>(s)) {
+      if (emit) {
+        scan(call);
+      }
+      if (isReleaseName(calleeName(call)) && call->getNumArgs() >= 1) {
+        markReleased(call->getArg(0), emit, call->getBeginLoc());
+      }
+      forgetEscaped(call);
+      return;
+    }
+    if (const auto *del = llvm::dyn_cast<clang::CXXDeleteExpr>(s)) {
+      if (emit) {
+        const bool prev = suppressFreed;
+        suppressFreed = true;
+        scan(del->getArgument());
+        suppressFreed = prev;
+      }
+      markReleased(del->getArgument(), emit, del->getBeginLoc());
+      return;
     }
     if (emit) {
       if (const auto *e = llvm::dyn_cast<Expr>(s)) {
@@ -1352,9 +2467,151 @@ private:
     return nullptr;
   }
 
+  void setZero(State &s, const VarDecl *vd) const {
+    IntList one;
+    if (addInt(one, i64(0))) {
+      s.ints[vd] = std::move(one);
+    }
+  }
+
+  void dropZero(State &s, const VarDecl *vd) const {
+    auto it = s.ints.find(vd);
+    if (it == s.ints.end()) {
+      return;
+    }
+    IntList keep;
+    for (const auto &v : it->second) {
+      if (!v.isZero()) {
+        keep.push_back(v);
+      }
+    }
+    if (keep.empty()) {
+      s.ints.erase(vd);
+    } else {
+      s.ints[vd] = std::move(keep);
+    }
+  }
+
+  void pinEqual(State &s, const Expr *varSide, const Expr *other, bool equal) const {
+    const VarDecl *vd = plainVar(varSide ? varSide->IgnoreParenImpCasts() : nullptr);
+    if (!vd) {
+      return;
+    }
+    if (vd->getType()->isPointerType()) {
+      if (!isNullConst(other)) {
+        return;
+      }
+      s.nulls[vd] = equal ? NullFact::Must : NullFact::Not;
+      return;
+    }
+    if (!integral(vd) || !other) {
+      return;
+    }
+    Expr::EvalResult value;
+    if (!other->IgnoreParenImpCasts()->EvaluateAsInt(value, ctx) || !value.Val.isInt()) {
+      return;
+    }
+    if (equal) {
+      IntList one;
+      if (addInt(one, value.Val.getInt())) {
+        s.ints[vd] = std::move(one);
+      }
+      return;
+    }
+    auto it = s.ints.find(vd);
+    if (it == s.ints.end()) {
+      return;
+    }
+    auto banned = norm(value.Val.getInt());
+    IntList keep;
+    for (const auto &v : it->second) {
+      if (!banned || v != *banned) {
+        keep.push_back(v);
+      }
+    }
+    if (keep.empty()) {
+      s.ints.erase(vd);
+    } else {
+      s.ints[vd] = std::move(keep);
+    }
+  }
+
+  void applyCond(State &s, const Expr *cond, bool whenTrue) const {
+    if (!cond) {
+      return;
+    }
+    cond = cond->IgnoreParenImpCasts();
+    if (const auto *uo = llvm::dyn_cast<UnaryOperator>(cond)) {
+      if (uo->getOpcode() == clang::UO_LNot) {
+        applyCond(s, uo->getSubExpr(), !whenTrue);
+      }
+      return;
+    }
+    if (const auto *bo = llvm::dyn_cast<BinaryOperator>(cond)) {
+      const auto op = bo->getOpcode();
+      if (op == clang::BO_LAnd) {
+        if (whenTrue) {
+          applyCond(s, bo->getLHS(), true);
+          applyCond(s, bo->getRHS(), true);
+        }
+        return;
+      }
+      if (op == clang::BO_LOr) {
+        if (!whenTrue) {
+          applyCond(s, bo->getLHS(), false);
+          applyCond(s, bo->getRHS(), false);
+        }
+        return;
+      }
+      if (op == clang::BO_EQ || op == clang::BO_NE) {
+        const bool equal = (op == clang::BO_EQ) == whenTrue;
+        pinEqual(s, bo->getLHS(), bo->getRHS(), equal);
+        pinEqual(s, bo->getRHS(), bo->getLHS(), equal);
+        return;
+      }
+    }
+    if (const VarDecl *vd = plainVar(cond)) {
+      if (vd->getType()->isPointerType()) {
+        s.nulls[vd] = whenTrue ? NullFact::Not : NullFact::Must;
+      } else if (integral(vd)) {
+        if (whenTrue) {
+          dropZero(s, vd);
+        } else {
+          setZero(s, vd);
+        }
+      }
+    }
+  }
+
+  void refineEdge(State &s, const CFGBlock *from, const CFGBlock *to) const {
+    if (!from || !to) {
+      return;
+    }
+    const Stmt *term = from->getTerminatorStmt();
+    if (!llvm::isa_and_nonnull<IfStmt>(term) && !llvm::isa_and_nonnull<WhileStmt>(term) &&
+        !llvm::isa_and_nonnull<DoStmt>(term) && !llvm::isa_and_nonnull<ForStmt>(term) &&
+        !llvm::isa_and_nonnull<ConditionalOperator>(term)) {
+      return;
+    }
+    int index = -1;
+    int matches = 0;
+    int at = 0;
+    for (const CFGBlock *succ : from->succs()) {
+      if (succ == to) {
+        index = at;
+        ++matches;
+      }
+      ++at;
+    }
+    if (matches != 1 || (index != 0 && index != 1)) {
+      return;
+    }
+    applyCond(s, termExpr(term), index == 0);
+  }
+
   State join(const CFGBlock *b, bool &partial) const {
     partial = false;
-    std::vector<const State *> preds;
+    std::vector<const CFGBlock *> blocks;
     for (const CFGBlock *p : b->preds()) {
       if (!p || !reach[p->getBlockID()]) {
         continue;
@@ -1363,23 +2620,31 @@ private:
         partial = true;
         continue;
       }
-      preds.push_back(&outs[p->getBlockID()]);
+      blocks.push_back(p);
+    }
+    std::vector<State> preds;
+    preds.reserve(blocks.size());
+    for (const CFGBlock *p : blocks) {
+      preds.push_back(outs[p->getBlockID()]);
+      if (!partial) {
+        refineEdge(preds.back(), p, b);
+      }
     }
     State out;
-    for (const State *p : preds) {
-      for (const auto &kv : p->ptrs) {
+    for (const State &p : preds) {
+      for (const auto &kv : p.ptrs) {
         addVars(out.ptrs[kv.first], kv.second);
       }
     }
     if (partial || preds.empty()) {
       return out;
     }
-    for (const auto &kv : preds[0]->ints) {
+    for (const auto &kv : preds[0].ints) {
       IntList acc = kv.second;
       bool all = true;
       for (size_t i = 1; i < preds.size(); ++i) {
-        auto it = preds[i]->ints.find(kv.first);
-        if (it == preds[i]->ints.end()) {
+        auto it = preds[i].ints.find(kv.first);
+        if (it == preds[i].ints.end()) {
           all = false;
           break;
         }
@@ -1397,17 +2662,55 @@ private:
         out.ints[kv.first] = std::move(acc);
       }
     }
-    for (const auto &kv : preds[0]->arrs) {
+    for (const auto &kv : preds[0].arrs) {
       bool all = true;
       for (size_t i = 1; i < preds.size(); ++i) {
-        auto it = preds[i]->arrs.find(kv.first);
-        if (it == preds[i]->arrs.end() || !(it->second == kv.second)) {
+        auto it = preds[i].arrs.find(kv.first);
+        if (it == preds[i].arrs.end() || !(it->second == kv.second)) {
           all = false;
           break;
         }
       }
       if (all) {
         out.arrs[kv.first] = kv.second;
+      }
+    }
+    for (const auto &kv : preds[0].nulls) {
+      bool all = true;
+      for (size_t i = 1; i < preds.size(); ++i) {
+        auto it = preds[i].nulls.find(kv.first);
+        if (it == preds[i].nulls.end() || it->second != kv.second) {
+          all = false;
+          break;
+        }
+      }
+      if (all) {
+        out.nulls[kv.first] = kv.second;
+      }
+    }
+    for (const auto &kv : preds[0].fps) {
+      bool all = true;
+      for (size_t i = 1; i < preds.size(); ++i) {
+        auto it = preds[i].fps.find(kv.first);
+        if (it == preds[i].fps.end() || it->second != kv.second) {
+          all = false;
+          break;
+        }
+      }
+      if (all) {
+        out.fps[kv.first] = kv.second;
+      }
+    }
+    for (const VarDecl *vd : preds[0].freed) {
+      bool all = true;
+      for (size_t i = 1; i < preds.size(); ++i) {
+        if (!preds[i].freed.contains(vd)) {
+          all = false;
+          break;
+        }
+      }
+      if (all) {
+        out.freed.insert(vd);
       }
     }
     return out;
@@ -1439,6 +2742,8 @@ public:
       return;
     }
     checkLoops(fn, *result.Context, reporter, sm);
+    checkInvariant(fn, *result.Context, reporter, sm);
+    checkUnseq(fn, reporter, sm);
     if (fn->isDependentContext()) {
       return;
     }

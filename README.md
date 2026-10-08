@@ -135,8 +135,14 @@ Live checkers (see `src/catalog/Registry.cpp` and `just test`):
   include its own header first, token paste, a recursive macro, and an `#if`
   without a comment
 - Dataflow inside one function: an uninitialized read, a constant index
-  outside an array, the address of an automatic returned or stored past its
-  lifetime, and a loop with no iteration cap (`for (;;)` with no exit stays
-  the superloop)
+  outside an array, a one-past dereference, a null dereference, a use after
+  `free` or `delete`, an overlapping `memcpy` or struct assignment, a copy
+  or string write that does not fit the destination, pointer subtraction or
+  a relational compare of two different objects, a zero divisor, signed
+  overflow of a known value, an unsequenced side effect, a constant Inf or
+  NaN, a condition that folds to true or false (`while (0)` stays the empty
+  idiom, `for (;;)` stays the superloop, and `if constexpr` is a compile-time
+  branch), the address of an automatic
+  returned or stored past its lifetime, and a loop with no iteration cap
 
 Not in this release: the rest of `ss.conv.*`, review-only catalog rows.

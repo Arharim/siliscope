@@ -1,6 +1,6 @@
 # План работ
 
-Снимок после графа вызовов между единицами трансляции (ещё не закоммичен). Каталог — 192 правила. Suite: 247. `embedded-cpp`: 157 включено, 83 с чекером, 74 без. `embedded-c`: 149 / 67 / 82. Живых чекеров 88. Pump, те же 11 `.cpp`: 4571 срабатывание, дельта +21 относительно `out/pump-syntax.txt` (все `ss.ctrl.loop-bound`, как после шага 5) и дельта 0 относительно `out/pump-dataflow.txt`. no-checker 74. Stderr совпал с замороженным: 0 fatal, 6 ошибок clang. Лог этого прогона: `out/pump-callgraph.txt`. Замороженный `out/pump-syntax.txt` не трогали, в git он не входит.
+Снимок после остальных двенадцати правил dataflow. Каталог — 192 правила. Suite: 274. `embedded-cpp`: 157 включено, 95 с чекером, 62 без. `embedded-c`: 149 / 79 / 70. Живых чекеров 100. Pump, те же 11 `.cpp`: 4576 срабатываний, дельта +26 относительно `out/pump-syntax.txt` (прежние 21 `ss.ctrl.loop-bound` и 5 `ss.ctrl.no-invariant-condition`) и дельта +5 относительно `out/pump-callgraph.txt`. no-checker 62. Stderr совпал с замороженным: 0 fatal, 6 ошибок clang. Лог этого прогона: `out/pump-dataflow2.txt`. Замороженные `out/pump-syntax.txt`, `out/pump-dataflow.txt` и `out/pump-callgraph.txt` не трогали, в git они не входят.
 
 Каждый срез: фикстуры, suite, `--list`, прогон тех же 11 файлов pump. Дельту считать так: `python3 tools/diff_report.py out/pump-syntax.txt НОВЫЙ`. Сырой лог в разбор не тащить. `out/pump-syntax.txt` не подменять следующим прогоном. `just fw` для замера шума не использовать. Шум FreeRTOS, CMSIS и SEGGER оставляем: правила не ослабляем и отдельный путь для вендора не заводим. `ruleset/INDEX.md` и `ruleset/coverage.md` руками не правим. Коммит по просьбе, один срез за раз.
 
@@ -46,20 +46,22 @@ Baseline и подавление шире `--allow rule:name` в эту очер
 
 ### 7. Остаток dataflow на том же проходе
 
-Двенадцать правил:
+Сделано. Те же двенадцать правил и тот же проход на функцию. Вызов непрозрачен. Отмечается доказанное нарушение, а не всякий непроверенный указатель, делитель или индекс. `--allow` называет функцию. Сторож no-checker теперь `ss.conv.signed-unsigned-mix`.
 
-- `ss.mem.no-null-deref`
-- `ss.mem.no-use-after-free`
-- `ss.mem.no-overlap-copy`
-- `ss.mem.string-room-for-nul`
-- `ss.ptr.no-deref-one-past`
-- `ss.ptr.same-array`
-- `ss.libc.copy-fits-dest`
-- `ss.conv.no-div-zero`
-- `ss.conv.no-signed-overflow`
-- `ss.expr.no-unseq`
-- `ss.expr.fp-must-be-finite`
-- `ss.ctrl.no-invariant-condition`
+- `ss.mem.no-null-deref`: `*`, `->` и индекс, когда указатель точно null. `if (p)` и `if (p == 0) return` факт снимают. Адрес локальной, переданный в вызов, факт сбрасывает: вызываемый может её записать.
+- `ss.mem.no-use-after-free`: чтение, запись или передача после `free` / `delete`. Сам освобождающий вызов использованием не считается. `p = NULL` и `p = realloc(p, n)` факт снимают. В чистой фикстуре `free` нет: сплошной запрет кучи на `--allow` не смотрит.
+- `ss.mem.no-overlap-copy`: `memcpy` / `mempcpy` с пересечением и присваивание структуры самой себе. `memmove` и скаляр `x = x` молчат.
+- `ss.mem.string-room-for-nul`: литерал, которому не хватает байта под NUL, и `strncpy`, чья длина не меньше ёмкости. Для `memcpy` длина, равная ёмкости, ещё влезает.
+- `ss.ptr.no-deref-one-past`: разыменование ровно на элемент за концом. `ss.mem.bounds` на том же месте тоже срабатывает.
+- `ss.ptr.same-array`: вычитание и `<` `<=` `>` `>=` двух доказанно разных объектов. `==` / `!=` и неизвестная сторона молчат.
+- `ss.libc.copy-fits-dest`: постоянная длина `memcpy`, `memmove`, `memset`, `strncpy` или размер `snprintf` больше ёмкости назначения. Неизвестный буфер молчит.
+- `ss.conv.no-div-zero`: `/` и `%`, у которых делитель точно ноль, включая ребро `if (d == 0) return n / d`.
+- `ss.conv.no-signed-overflow`: `+` `-` `*` `/` `%` `<<` и унарный минус, чей результат не влезает в знаковый тип. `1 << 31` на `int` сюда входит. Слагаемое с несколькими возможными значениями молчит.
+- `ss.expr.no-unseq`: два изменения одного объекта или изменение вместе с чтением в одном полном выражении. `i = i + 1` и инкремент `for` молчат. Через `&&`, `||` и запятую эффекты не склеиваются.
+- `ss.expr.fp-must-be-finite`: доказанные Inf и NaN. Аргумент `isfinite` / `isinf` / `isnan` / `finite` молчит.
+- `ss.ctrl.no-invariant-condition`: условие, которое сворачивается в истину или ложь. `while (0)`, `do while (0)`, `while (false)` и `for (; 0;)` остаются пустым идиомом. `for (;;)` молчит, `while (1)` отмечается. `sizeof` / `alignof`, комментарий со `static_assert` на этой или предыдущей строке и `if constexpr` молчат.
+
+На pump дельта +5 относительно лога после графа вызовов, все `while (1)`: `can_task.cpp:368`, `esp32_uart_task.cpp:542`, `exp_pump_task.cpp:237`, `pump_task.cpp:321`, `pump_task.cpp:1804`. Остальные десять правил на этих 11 файлах молчат. Прежние 21 `ss.ctrl.loop-bound` на месте.
 
 ### 8. Политики поверх графа
 

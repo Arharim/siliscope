@@ -17,6 +17,7 @@
 #include "siliscope/NoAbortSystem.h"
 #include "siliscope/NoAssignInCond.h"
 #include "siliscope/NoAtoi.h"
+#include "siliscope/NoBlockInCs.h"
 #include "siliscope/NoBlockScope.h"
 #include "siliscope/NoCStyleCast.h"
 #include "siliscope/NoComma.h"
@@ -86,6 +87,7 @@ static std::unique_ptr<Check> makeCheck(Reporter &reporter) {
 }
 
 static const CheckSpec kSpecs[] = {
+    {"ss.conc.no-block-in-cs", makeCheck<NoBlockInCsCheck>},
     {"ss.conv.no-cv-away", makeCheck<NoCvAwayCheck>},
     {"ss.conv.no-div-zero", makeCheck<DataflowCheck>},
     {"ss.conv.no-fp-eq", makeCheck<NoFpEqCheck>},

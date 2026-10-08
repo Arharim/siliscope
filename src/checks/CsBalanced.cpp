@@ -1,13 +1,13 @@
 #include "siliscope/CsBalanced.h"
 
 #include "siliscope/Report.h"
+#include "siliscope/Section.h"
 
 #include "clang/AST/Decl.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/Stmt.h"
 #include "clang/ASTMatchers/ASTMatchers.h"
 #include "clang/Analysis/CFG.h"
-#include "llvm/ADT/StringRef.h"
 
 #include <vector>
 
@@ -28,20 +28,15 @@ namespace {
 enum CSOp { None, Enter, Leave, Restore };
 
 static CSOp classify(const FunctionDecl *fn) {
-  if (!fn || !fn->getIdentifier()) {
-    return None;
-  }
-  const llvm::StringRef n = fn->getName();
-  if (n.contains("ENTER_CRITICAL") || n.contains("EnterCritical") || n.ends_with("disable_irq") ||
-      n == "__disable_fault_irq" || n == "irq_lock") {
+  switch (siliscope::sectionOp(fn)) {
+  case siliscope::SectionOp::Enter:
     return Enter;
-  }
-  if (n.contains("EXIT_CRITICAL") || n.contains("ExitCritical") || n.ends_with("enable_irq") ||
-      n == "__enable_fault_irq" || n == "irq_unlock") {
+  case siliscope::SectionOp::Leave:
     return Leave;
-  }
-  if (n == "__set_PRIMASK" || n == "__set_FAULTMASK") {
+  case siliscope::SectionOp::Restore:
     return Restore;
+  case siliscope::SectionOp::None:
+    return None;
   }
   return None;
 }

@@ -1,13 +1,13 @@
 #include "siliscope/IrqMaskBalanced.h"
 
 #include "siliscope/Report.h"
+#include "siliscope/Section.h"
 
 #include "clang/AST/Decl.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/Stmt.h"
 #include "clang/ASTMatchers/ASTMatchers.h"
 #include "clang/Analysis/CFG.h"
-#include "llvm/ADT/StringRef.h"
 
 #include <vector>
 
@@ -49,30 +49,23 @@ struct Depth {
 };
 
 static IrqOp classify(const FunctionDecl *fn) {
-  if (!fn || !fn->getIdentifier()) {
-    return None;
-  }
-  const llvm::StringRef n = fn->getName();
-  if (n.ends_with("enable_irq") || n == "__enable_fault_irq" || n == "cpsie") {
+  switch (siliscope::irqOp(fn)) {
+  case siliscope::IrqOp::BlindEnable:
     return BlindEnable;
-  }
-  if (n.ends_with("disable_irq") || n == "cpsid") {
+  case siliscope::IrqOp::DisableIrq:
     return DisableIrq;
-  }
-  if (n == "__disable_fault_irq") {
-    return DisableFault;
-  }
-  if (n == "__set_PRIMASK") {
+  case siliscope::IrqOp::RestorePrimask:
     return RestorePrimask;
-  }
-  if (n == "__set_FAULTMASK") {
+  case siliscope::IrqOp::DisableFault:
+    return DisableFault;
+  case siliscope::IrqOp::RestoreFault:
     return RestoreFault;
-  }
-  if (n == "__set_BASEPRI_MAX") {
+  case siliscope::IrqOp::RaiseBasepri:
     return RaiseBasepri;
-  }
-  if (n == "__set_BASEPRI") {
+  case siliscope::IrqOp::SetBasepri:
     return SetBasepri;
+  case siliscope::IrqOp::None:
+    return None;
   }
   return None;
 }

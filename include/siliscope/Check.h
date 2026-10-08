@@ -13,7 +13,8 @@ public:
   virtual bool wantsPreprocessor() const { return false; }
   // The four intra-TU dataflow rules share one CFG walk.
   virtual bool wantsDataflow() const { return false; }
-  // Recursion, ISR calls, and logs in an ISR share one cross-TU call graph.
+  // Recursion, ISR calls, logs in an ISR, blocking inside a critical section,
+  // and heap-after-init share one cross-TU call graph.
   virtual bool wantsCallGraph() const { return false; }
 
 protected:

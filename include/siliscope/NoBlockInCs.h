@@ -2,7 +2,7 @@
 
 #include "siliscope/Check.h"
 
-class NoHeapCheck final : public Check {
+class NoBlockInCsCheck final : public Check {
 public:
   using Check::Check;
   void registerMatchers(clang::ast_matchers::MatchFinder &finder) override;

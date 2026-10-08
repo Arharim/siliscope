@@ -11,9 +11,10 @@ class SourceManager;
 class TranslationUnitDecl;
 } // namespace clang
 
-// Direct calls of one siliscope run. FunctionDecl pointers do not survive
-// the translation unit, so nodes are USRs. A file-scope static keeps the
-// file in its key: the same name in two .c files is two functions.
+// Direct calls of one siliscope run, including constructors. FunctionDecl
+// pointers do not survive the translation unit, so nodes are USRs. A
+// file-scope static keeps the file in its key: the same name in two .c
+// files is two functions.
 class ProgramCallGraph {
 public:
   ProgramCallGraph();

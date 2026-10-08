@@ -108,9 +108,12 @@ Live checkers (see `src/catalog/Registry.cpp` and `just test`):
 - Expressions: octal, comma, `++`/`--` as a statement, sizeof side effects,
   logical-rhs side effects, string literal → `const char *`
 - CFG / callgraph: return on all paths, unreachable, noreturn, no recursion,
-  ISR not called as a function, no log from ISR (these three follow direct
-  calls across every file of the run), critical-section pairing,
-  irq-mask restore (not a blind enable)
+  ISR not called as a function, no log from ISR, no delay, queue-wait,
+  malloc, or flash-erase while a critical section or interrupt mask is held
+  (these follow direct calls across every file of the run), critical-section
+  pairing, irq-mask restore (not a blind enable). Heap use is still an error
+  after init: it is quiet only in static initialization, or when every path
+  reaches it from a function named with `--allow ss.mem.no-heap-after-init:NAME`
 - Types / decls: ISR no FP, check-return, no-shadow, ptr-null, distinct
   names, const, file-local `static`
 - Conversions: signed bitwise, shift amount, `U` suffix, stripping

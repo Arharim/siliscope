@@ -19,6 +19,9 @@ class MatchFinder;
 }
 } // namespace clang
 
+class ProgramFacts;
+
 void attachDataflowPass(clang::ast_matchers::MatchFinder &finder,
                         Reporter &reporter,
-                        std::unique_ptr<clang::ast_matchers::MatchFinder::MatchCallback> &slot);
+                        std::unique_ptr<clang::ast_matchers::MatchFinder::MatchCallback> &slot,
+                        ProgramFacts &facts);

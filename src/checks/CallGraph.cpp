@@ -1,5 +1,6 @@
 #include "siliscope/CallGraph.h"
 
+#include "siliscope/FunctionKey.h"
 #include "siliscope/Isr.h"
 #include "siliscope/Report.h"
 #include "siliscope/Section.h"
@@ -12,10 +13,7 @@
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/AST/Stmt.h"
 #include "clang/Analysis/CFG.h"
-#include "clang/Basic/Linkage.h"
 #include "clang/Basic/SourceManager.h"
-#include "clang/UnifiedSymbolResolution/USRGeneration.h"
-#include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/StringRef.h"
 
 #include <map>
@@ -32,7 +30,6 @@ using clang::CXXConstructExpr;
 using clang::CXXDeleteExpr;
 using clang::CXXNewExpr;
 using clang::FunctionDecl;
-using clang::Linkage;
 using clang::SourceLocation;
 using clang::SourceManager;
 using clang::Stmt;
@@ -211,26 +208,7 @@ bool isLogOrConsole(const FunctionDecl *fn) {
 }
 
 std::string keyOf(const FunctionDecl *fn, const SourceManager &sm) {
-  if (!fn) {
-    return {};
-  }
-  fn = fn->getCanonicalDecl();
-  llvm::SmallString<256> buf;
-  if (clang::index::generateUSRForDecl(fn, buf) || buf.empty()) {
-    return {};
-  }
-  std::string key(buf);
-  // USR of an external function matches across translation units. A static
-  // with the same name in another file must not.
-  if (fn->getFormalLinkage() == Linkage::Internal) {
-    const SourceLocation loc = sm.getSpellingLoc(fn->getLocation());
-    const clang::PresumedLoc pl = sm.getPresumedLoc(loc);
-    if (!pl.isInvalid() && pl.getFilename()) {
-      key.push_back('@');
-      key.append(pl.getFilename());
-    }
-  }
-  return key;
+  return functionKey(fn, sm);
 }
 
 enum Color { White, Gray, Black };

@@ -3,6 +3,7 @@
 #include "siliscope/CallGraph.h"
 #include "siliscope/Check.h"
 #include "siliscope/DataflowCheck.h"
+#include "siliscope/Interproc.h"
 #include "siliscope/PreprocessorCheck.h"
 #include "siliscope/Profile.h"
 #include "siliscope/Registry.h"
@@ -109,8 +110,12 @@ private:
 
 class AnalyzeAction : public ASTFrontendAction {
 public:
-  AnalyzeAction(Reporter &reporter, Probe *probe, const Profile &profile, ProgramCallGraph &calls)
-      : reporter(reporter), probe(probe), calls(calls) {
+  AnalyzeAction(Reporter &reporter,
+                Probe *probe,
+                const Profile &profile,
+                ProgramCallGraph &calls,
+                ProgramFacts &facts)
+      : reporter(reporter), probe(probe), calls(calls), facts(facts) {
     const CheckSpec *specs = checkSpecs();
     for (unsigned i = 0; i < checkSpecCount(); ++i) {
       if (!profile.isEnabled(specs[i].id)) {
@@ -135,7 +140,7 @@ public:
       attachPreprocessorPass(ci.getPreprocessor(), reporter, finder);
     }
     if (watchDataflow) {
-      attachDataflowPass(finder, reporter, dataflow);
+      attachDataflowPass(finder, reporter, dataflow, facts);
     }
     if (watchCallGraph) {
       attachCallGraph(finder, calls, reporter, callGraph);
@@ -152,6 +157,7 @@ private:
   Reporter &reporter;
   Probe *probe;
   ProgramCallGraph &calls;
+  ProgramFacts &facts;
   bool watchPreprocessor = false;
   bool watchDataflow = false;
   bool watchCallGraph = false;
@@ -167,16 +173,20 @@ public:
       : reporter(reporter), probe(probe), profile(profile) {}
 
   std::unique_ptr<FrontendAction> create() override {
-    return std::make_unique<AnalyzeAction>(reporter, probe, profile, calls);
+    return std::make_unique<AnalyzeAction>(reporter, probe, profile, calls, facts);
   }
 
-  void finish(Reporter &out) const { calls.finish(out); }
+  void finish(Reporter &out) const {
+    facts.finish(out);
+    calls.finish(out);
+  }
 
 private:
   Reporter &reporter;
   Probe *probe;
   const Profile &profile;
   ProgramCallGraph calls;
+  ProgramFacts facts;
 };
 
 std::unique_ptr<CompilationDatabase> loadCompilations(const FrontendOptions &opt,

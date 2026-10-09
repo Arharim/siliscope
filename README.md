@@ -146,6 +146,9 @@ Live checkers (see `src/catalog/Registry.cpp` and `just test`):
   NaN, a condition that folds to true or false (`while (0)` stays the empty
   idiom, `for (;;)` stays the superloop, and `if constexpr` is a compile-time
   branch), the address of an automatic
-  returned or stored past its lifetime, and a loop with no iteration cap
+  returned or stored past its lifetime, and a loop with no iteration cap.
+  A proven null, an uninitialized address, and a constant index follow a
+  direct call when that callee's body is in the run. A missing body, a call
+  through a pointer, and a cycle stay opaque
 
 Not in this release: the rest of `ss.conv.*`, review-only catalog rows.

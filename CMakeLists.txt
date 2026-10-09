@@ -107,6 +107,7 @@ if(SILISCOPE_ENABLE_CLANG)
     src/checks/NoThrowingSwap.cpp
     src/checks/PreprocessorPass.cpp
     src/checks/DataflowPass.cpp
+    src/checks/Interproc.cpp
   )
   target_compile_definitions(siliscope PRIVATE SILISCOPE_WITH_CLANG)
   target_include_directories(siliscope PRIVATE

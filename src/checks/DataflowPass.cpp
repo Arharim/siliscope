@@ -1,4 +1,6 @@
 #include "siliscope/DataflowCheck.h"
+#include "siliscope/FunctionKey.h"
+#include "siliscope/Interproc.h"
 #include "siliscope/Report.h"
 
 #include "clang/AST/ASTContext.h"
@@ -17,6 +19,7 @@
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallVector.h"
 
+#include <algorithm>
 #include <cctype>
 #include <limits>
 #include <optional>
@@ -803,6 +806,19 @@ struct ArrRef {
 enum class NullFact { Must, Not };
 enum class FpFact { Finite, NonFinite };
 
+struct Origin {
+  uint32_t call = 0;
+  int64_t off = 0;
+  bool operator==(const Origin &o) const { return call == o.call && off == o.off; }
+};
+
+// Calls that received the address of an automatic while it was still uninitialized.
+struct Esc {
+  llvm::SmallVector<uint32_t, 4> calls;
+  llvm::SmallVector<unsigned, 4> args;
+  bool operator==(const Esc &o) const { return calls == o.calls && args == o.args; }
+};
+
 struct State {
   llvm::DenseMap<const VarDecl *, VarList> ptrs;
   llvm::DenseMap<const VarDecl *, IntList> ints;
@@ -810,6 +826,9 @@ struct State {
   llvm::DenseMap<const VarDecl *, NullFact> nulls;
   llvm::DenseMap<const VarDecl *, FpFact> fps;
   llvm::DenseSet<const VarDecl *> freed;
+  llvm::DenseMap<const VarDecl *, Origin> origins;
+  llvm::DenseMap<const VarDecl *, Esc> escapes;
+  llvm::DenseSet<const VarDecl *> uninit;
 };
 
 struct ArrBound {
@@ -944,10 +963,53 @@ bool sameFreed(const llvm::DenseSet<const VarDecl *> &a, const llvm::DenseSet<co
   return true;
 }
 
+bool sameOrigins(const llvm::DenseMap<const VarDecl *, Origin> &a,
+                 const llvm::DenseMap<const VarDecl *, Origin> &b) {
+  if (a.size() != b.size()) {
+    return false;
+  }
+  for (const auto &kv : a) {
+    const auto it = b.find(kv.first);
+    if (it == b.end() || !(it->second == kv.second)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool sameEscapes(const llvm::DenseMap<const VarDecl *, Esc> &a,
+                 const llvm::DenseMap<const VarDecl *, Esc> &b) {
+  if (a.size() != b.size()) {
+    return false;
+  }
+  for (const auto &kv : a) {
+    const auto it = b.find(kv.first);
+    if (it == b.end() || !(it->second == kv.second)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool sameUninit(const llvm::DenseSet<const VarDecl *> &a,
+                const llvm::DenseSet<const VarDecl *> &b) {
+  if (a.size() != b.size()) {
+    return false;
+  }
+  for (const VarDecl *v : a) {
+    if (!b.contains(v)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 bool sameState(const State &a, const State &b) {
   if (a.ptrs.size() != b.ptrs.size() || a.ints.size() != b.ints.size() ||
       a.arrs.size() != b.arrs.size() || a.nulls.size() != b.nulls.size() ||
-      a.fps.size() != b.fps.size() || a.freed.size() != b.freed.size()) {
+      a.fps.size() != b.fps.size() || a.freed.size() != b.freed.size() ||
+      a.origins.size() != b.origins.size() || a.escapes.size() != b.escapes.size() ||
+      a.uninit.size() != b.uninit.size()) {
     return false;
   }
   for (const auto &kv : a.ptrs) {
@@ -968,7 +1030,9 @@ bool sameState(const State &a, const State &b) {
       return false;
     }
   }
-  return sameFacts(a.nulls, b.nulls) && sameFacts(a.fps, b.fps) && sameFreed(a.freed, b.freed);
+  return sameFacts(a.nulls, b.nulls) && sameFacts(a.fps, b.fps) && sameFreed(a.freed, b.freed) &&
+         sameOrigins(a.origins, b.origins) && sameEscapes(a.escapes, b.escapes) &&
+         sameUninit(a.uninit, b.uninit);
 }
 
 bool transparentCast(clang::CastKind k) {
@@ -1044,8 +1108,17 @@ const Stmt *peelStmt(const Stmt *s) {
 
 class Lattice {
 public:
-  Lattice(const FunctionDecl *fn, ASTContext &ctx, Reporter &reporter, const SourceManager &sm)
-      : ctx(ctx), reporter(reporter), sm(sm), fn(fn) {
+  Lattice(const FunctionDecl *fn,
+          ASTContext &ctx,
+          Reporter &reporter,
+          const SourceManager &sm,
+          ProgramFacts *facts)
+      : ctx(ctx), reporter(reporter), sm(sm), fn(fn), facts(facts) {
+    if (fn->getDeclName().isIdentifier()) {
+      caller = fn->getName().str();
+    } else if (fn->getDeclName()) {
+      caller = fn->getNameAsString();
+    }
     if (fn->getBody()) {
       walkScope(fn->getBody(), nullptr);
     }
@@ -1058,6 +1131,11 @@ public:
     ready.assign(n, 0);
     reach.assign(n, 0);
     queued.assign(n, 0);
+    emitting = false;
+    callIds.clear();
+    if (facts && fn->getBody()) {
+      indexCalls(fn->getBody());
+    }
     std::vector<const CFGBlock *> work;
     auto enqueue = [&](const CFGBlock *b) {
       if (!b) {
@@ -1104,6 +1182,7 @@ public:
     if (gaveUp) {
       return;
     }
+    emitting = true;
     for (const CFGBlock *b : cfg) {
       if (!b || !reach[b->getBlockID()] || !ready[b->getBlockID()]) {
         continue;
@@ -1133,6 +1212,11 @@ private:
   State *st = nullptr;
   bool inFiniteTest = false;
   bool suppressFreed = false;
+  ProgramFacts *facts = nullptr;
+  bool emitting = false;
+  const VarDecl *suppressVar = nullptr;
+  std::string caller;
+  llvm::DenseMap<const clang::CallExpr *, uint32_t> callIds;
   std::vector<State> outs;
   std::vector<char> ready;
   std::vector<char> reach;
@@ -1674,13 +1758,82 @@ private:
       return;
     }
     const VarDecl *vd = plainVar(peel(ptr));
-    if (!vd) {
+    if (vd) {
+      auto it = st->nulls.find(vd);
+      if (it != st->nulls.end() && it->second == NullFact::Must) {
+        emitRule(loc, kNull, "dereference of a null pointer", vd);
+      }
+    }
+    if (emitting) {
+      noteReturnUse(ptr, loc, RetUse::Kind::Deref, 0);
+    }
+  }
+
+  void noteReturnUse(const Expr *ptr, SourceLocation loc, RetUse::Kind kind, int64_t index) {
+    if (!facts || !emitting || !ptr) {
       return;
     }
-    auto it = st->nulls.find(vd);
-    if (it != st->nulls.end() && it->second == NullFact::Must) {
-      emitRule(loc, kNull, "dereference of a null pointer", vd);
+    Origin origin;
+    bool found = false;
+    if (const VarDecl *vd = plainVar(peel(ptr))) {
+      const auto it = st->origins.find(vd->getCanonicalDecl());
+      if (it != st->origins.end()) {
+        origin = it->second;
+        found = true;
+      }
+    } else if (const auto *call = llvm::dyn_cast<clang::CallExpr>(ptr->IgnoreParenImpCasts())) {
+      if (!llvm::isa<clang::CXXOperatorCallExpr>(call)) {
+        const auto it = callIds.find(call);
+        if (it != callIds.end()) {
+          origin.call = it->second;
+          found = true;
+        }
+      }
     }
+    if (!found || origin.call == 0) {
+      return;
+    }
+    RetUse use;
+    use.kind = kind;
+    use.call = origin.call;
+    use.off = origin.off;
+    use.index = index;
+    if (const auto site = reporter.locate(sm, loc)) {
+      use.at = *site;
+    }
+    use.caller = caller;
+    if (const VarDecl *vd = plainVar(peel(ptr))) {
+      if (vd->getDeclName().isIdentifier()) {
+        use.name = vd->getName().str();
+      }
+    }
+    facts->noteRetUse(std::move(use));
+  }
+
+  void noteEscapedRead(const VarDecl *vd, SourceLocation loc) {
+    if (!emitting || !facts || !vd) {
+      return;
+    }
+    vd = vd->getCanonicalDecl();
+    if (suppressVar && suppressVar->getCanonicalDecl() == vd) {
+      return;
+    }
+    const auto it = st->escapes.find(vd);
+    if (it == st->escapes.end() || it->second.calls.empty()) {
+      return;
+    }
+    LaterRead later;
+    for (size_t i = 0; i < it->second.calls.size() && i < it->second.args.size(); ++i) {
+      later.deps.emplace_back(it->second.calls[i], it->second.args[i]);
+    }
+    if (const auto site = reporter.locate(sm, loc)) {
+      later.at = *site;
+    }
+    later.caller = caller;
+    if (vd->getDeclName().isIdentifier()) {
+      later.name = vd->getName().str();
+    }
+    facts->noteLater(std::move(later));
   }
 
   void noteFreedUse(const VarDecl *vd, SourceLocation loc) {
@@ -1927,20 +2080,75 @@ private:
     st->nulls.erase(vd);
     st->fps.erase(vd);
     st->freed.erase(vd);
+    st->origins.erase(vd);
+    st->escapes.erase(vd);
+    st->uninit.erase(vd);
+  }
+
+  const VarDecl *addressedArg(const Expr *arg) const {
+    const Expr *e = peel(arg);
+    if (const auto *uo = llvm::dyn_cast_or_null<UnaryOperator>(e)) {
+      if (uo->getOpcode() == clang::UO_AddrOf) {
+        return plainVar(uo->getSubExpr());
+      }
+    }
+    if (const auto *c = llvm::dyn_cast_or_null<CastExpr>(e)) {
+      if (c->getCastKind() == clang::CK_ArrayToPointerDecay) {
+        return plainVar(c->getSubExpr());
+      }
+    }
+    return nullptr;
+  }
+
+  // A known write or an opaque body may initialize the object. A missing body
+  // stays in the dependency list and is decided at finish, when that body exists.
+  bool keepsUninit(const clang::CallExpr *call, unsigned arg) const {
+    if (!facts || !call || llvm::isa<clang::CXXOperatorCallExpr>(call)) {
+      return false;
+    }
+    const FunctionDecl *callee = call->getDirectCallee();
+    if (!callee) {
+      return false;
+    }
+    const std::string key = functionKey(callee, sm);
+    const ProgramFacts::ParamEffect effect = facts->effectOf(key, arg);
+    return effect == ProgramFacts::ParamEffect::Missing ||
+           effect == ProgramFacts::ParamEffect::Untouched;
   }
 
   // A call may write through a pointer argument. &local escapes, so the local is no longer proven.
+  // An uninitialized object stays uninitialized only when every callee is known not to touch it.
   void forgetEscaped(const clang::CallExpr *call) {
     if (!call) {
       return;
     }
+    unsigned index = 0;
     for (const Expr *arg : call->arguments()) {
-      const Expr *e = peel(arg);
-      const auto *uo = llvm::dyn_cast_or_null<UnaryOperator>(e);
-      if (!uo || uo->getOpcode() != clang::UO_AddrOf) {
+      const unsigned argIndex = index++;
+      const VarDecl *obj = addressedArg(arg);
+      if (!obj) {
         continue;
       }
-      forget(plainVar(uo->getSubExpr()));
+      obj = obj->getCanonicalDecl();
+      const bool track = st->uninit.contains(obj) || st->escapes.contains(obj);
+      Esc saved;
+      if (track) {
+        const auto it = st->escapes.find(obj);
+        if (it != st->escapes.end()) {
+          saved = it->second;
+        }
+      }
+      forget(obj);
+      if (!track || !facts || !keepsUninit(call, argIndex)) {
+        continue;
+      }
+      const auto id = callIds.find(call);
+      if (id == callIds.end() || saved.calls.size() >= 4) {
+        continue;
+      }
+      saved.calls.push_back(id->second);
+      saved.args.push_back(argIndex);
+      st->escapes[obj] = std::move(saved);
     }
   }
 
@@ -2060,19 +2268,19 @@ private:
   }
 
   void checkSub(const ArraySubscriptExpr *sub) {
-    auto b = boundOf(sub->getBase());
-    if (!b) {
-      return;
-    }
     auto vals = evalInt(sub->getIdx());
-    if (!vals) {
-      return;
-    }
     SourceLocation at = sub->getIdx()->getExprLoc();
     if (at.isInvalid()) {
       at = sub->getBeginLoc();
     }
-    checkVals(*b, *vals, at);
+    if (auto b = boundOf(sub->getBase())) {
+      if (vals) {
+        checkVals(*b, *vals, at);
+      }
+    }
+    if (emitting && vals && vals->size() == 1 && (*vals)[0].getSignificantBits() <= 63) {
+      noteReturnUse(sub->getBase(), at, RetUse::Kind::Index, (*vals)[0].getSExtValue());
+    }
   }
 
   void checkDeref(const UnaryOperator *uo) {
@@ -2112,6 +2320,7 @@ private:
       if (!finite) {
         scan(call->getCallee());
       }
+      recordCall(call);
       return;
     }
     if (const auto *sub = llvm::dyn_cast<ArraySubscriptExpr>(e)) {
@@ -2148,14 +2357,180 @@ private:
     } else if (const VarDecl *vd = plainVar(e)) {
       noteFreedUse(vd, e->getExprLoc());
       noteFpUse(e, e->getExprLoc());
+      noteEscapedRead(vd, e->getExprLoc());
     } else {
       noteFpUse(e, e->getExprLoc());
+    }
+    const VarDecl *heldSuppress = suppressVar;
+    bool restoreSuppress = false;
+    if (const auto *uo = llvm::dyn_cast<UnaryOperator>(e)) {
+      if (uo->getOpcode() == clang::UO_AddrOf) {
+        suppressVar = addressedObject(uo->getSubExpr());
+        restoreSuppress = true;
+      }
     }
     for (const Stmt *c : e->children()) {
       if (const auto *ce = llvm::dyn_cast_or_null<Expr>(c)) {
         scan(ce);
       }
     }
+    if (restoreSuppress) {
+      suppressVar = heldSuppress;
+    }
+  }
+
+  const VarDecl *addressedObject(const Expr *e) const {
+    e = e ? e->IgnoreParenImpCasts() : nullptr;
+    if (!e) {
+      return nullptr;
+    }
+    if (const auto *as = llvm::dyn_cast<ArraySubscriptExpr>(e)) {
+      const Expr *base = as->getBase()->IgnoreParenImpCasts();
+      if (const auto *c = llvm::dyn_cast<CastExpr>(base)) {
+        if (c->getCastKind() == clang::CK_ArrayToPointerDecay) {
+          base = c->getSubExpr()->IgnoreParenImpCasts();
+        } else {
+          return nullptr;
+        }
+      } else if (base->getType().isNull() || !base->getType()->isArrayType()) {
+        return nullptr;
+      }
+      return plainVar(base);
+    }
+    if (const auto *me = llvm::dyn_cast<MemberExpr>(e)) {
+      if (me->isArrow()) {
+        return nullptr;
+      }
+      return plainVar(me->getBase());
+    }
+    return plainVar(e);
+  }
+
+  const VarDecl *storedObject(const Expr *lhs) const {
+    lhs = lhs ? lhs->IgnoreParenImpCasts() : nullptr;
+    if (!lhs) {
+      return nullptr;
+    }
+    if (const VarDecl *vd = plainVar(lhs)) {
+      return vd;
+    }
+    if (const auto *as = llvm::dyn_cast<ArraySubscriptExpr>(lhs)) {
+      const Expr *base = as->getBase()->IgnoreParenImpCasts();
+      if (const auto *c = llvm::dyn_cast<CastExpr>(base)) {
+        if (c->getCastKind() == clang::CK_ArrayToPointerDecay) {
+          base = c->getSubExpr()->IgnoreParenImpCasts();
+        } else {
+          return nullptr;
+        }
+      } else if (base->getType().isNull() || !base->getType()->isArrayType()) {
+        return nullptr;
+      }
+      return plainVar(base);
+    }
+    if (const auto *me = llvm::dyn_cast<MemberExpr>(lhs)) {
+      if (!me->isArrow()) {
+        return plainVar(me->getBase());
+      }
+    }
+    return nullptr;
+  }
+
+  bool startsUninit(const VarDecl *vd) const {
+    if (!vd || vd->getInit() || vd->isImplicit() || llvm::isa<ParmVarDecl>(vd) ||
+        !vd->hasLocalStorage() || vd->isStaticLocal()) {
+      return false;
+    }
+    QualType t = vd->getType();
+    if (t.isNull()) {
+      return false;
+    }
+    if (const auto *rd = t->getAsCXXRecordDecl()) {
+      if (rd->hasNonTrivialDefaultConstructor()) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  void clearInit(const VarDecl *vd) {
+    if (!vd) {
+      return;
+    }
+    vd = vd->getCanonicalDecl();
+    st->uninit.erase(vd);
+    st->escapes.erase(vd);
+  }
+
+  void recordCall(const clang::CallExpr *call) {
+    if (!emitting || !facts || !call || llvm::isa<clang::CXXOperatorCallExpr>(call)) {
+      return;
+    }
+    const auto idIt = callIds.find(call);
+    const FunctionDecl *callee = call->getDirectCallee();
+    if (idIt == callIds.end() || !callee) {
+      return;
+    }
+    CallNote note;
+    note.callee = functionKey(callee, sm);
+    if (note.callee.empty()) {
+      return;
+    }
+    if (const auto site = reporter.locate(sm, call->getBeginLoc())) {
+      note.at = *site;
+    }
+    note.caller = caller;
+    const unsigned n = std::min(call->getNumArgs(), callee->getNumParams());
+    for (unsigned i = 0; i < n; ++i) {
+      const Expr *arg = call->getArg(i);
+      const QualType pt = callee->getParamDecl(i)->getType();
+      if (pt.isNull() || !pt->isPointerType()) {
+        continue;
+      }
+      CallArg fact;
+      fact.index = i;
+      bool any = false;
+      if (isNullConst(arg)) {
+        fact.nullMust = true;
+        any = true;
+      } else if (const VarDecl *vd = plainVar(peel(arg))) {
+        const auto it = st->nulls.find(vd);
+        if (it != st->nulls.end() && it->second == NullFact::Must) {
+          fact.nullMust = true;
+          any = true;
+          if (vd->getDeclName().isIdentifier()) {
+            fact.name = vd->getName().str();
+          }
+        }
+      }
+      if (const auto b = boundOf(arg)) {
+        if (b->type) {
+          const auto off = norm(b->off);
+          if (off && !off->isNegative() && off->getSignificantBits() <= 63) {
+            fact.bound = true;
+            fact.size = arrayCount(b->type);
+            fact.off = off->getSExtValue();
+            any = true;
+            if (fact.name.empty() && b->base && b->base->getDeclName().isIdentifier()) {
+              fact.name = b->base->getName().str();
+            }
+          }
+        }
+      }
+      if (const VarDecl *obj = addressedArg(arg)) {
+        const VarDecl *canon = obj->getCanonicalDecl();
+        if (st->uninit.contains(canon) || st->escapes.contains(canon)) {
+          fact.uninit = true;
+          any = true;
+          if (fact.name.empty() && canon->getDeclName().isIdentifier()) {
+            fact.name = canon->getName().str();
+          }
+        }
+      }
+      if (any) {
+        note.args.push_back(std::move(fact));
+      }
+    }
+    facts->noteCall(idIt->second, std::move(note));
   }
 
   bool baseOutlives(const Expr *base, const VarList &held) const {
@@ -2213,9 +2588,150 @@ private:
     }
   }
 
+  void indexCalls(const Stmt *s) {
+    if (!s || !facts) {
+      return;
+    }
+    if (const auto *call = llvm::dyn_cast<clang::CallExpr>(s)) {
+      if (!llvm::isa<clang::CXXOperatorCallExpr>(call)) {
+        if (const FunctionDecl *callee = call->getDirectCallee()) {
+          if (!functionKey(callee, sm).empty()) {
+            callIds.try_emplace(call, facts->nextId());
+          }
+        }
+      }
+    }
+    for (const Stmt *c : s->children()) {
+      indexCalls(c);
+    }
+  }
+
+  bool addOff(int64_t &off, int64_t delta) const {
+    if (delta == 0) {
+      return true;
+    }
+    if (delta > 0) {
+      if (off > std::numeric_limits<int64_t>::max() - delta) {
+        return false;
+      }
+    } else if (delta == std::numeric_limits<int64_t>::min() ||
+               off < std::numeric_limits<int64_t>::min() - delta) {
+      return false;
+    }
+    off += delta;
+    return true;
+  }
+
+  std::optional<Origin> originOf(const Expr *e) {
+    if (!e) {
+      return std::nullopt;
+    }
+    e = peel(e);
+    int64_t extra = 0;
+    if (const auto *bo = llvm::dyn_cast_or_null<BinaryOperator>(e)) {
+      const auto op = bo->getOpcode();
+      if (op == clang::BO_Add || op == clang::BO_Sub) {
+        const Expr *ptrSide = nullptr;
+        const Expr *intSide = nullptr;
+        auto pointerish = [](const Expr *x) {
+          return x && !x->getType().isNull() &&
+                 (x->getType()->isPointerType() || x->getType()->isArrayType());
+        };
+        if (pointerish(bo->getLHS())) {
+          ptrSide = bo->getLHS();
+          intSide = bo->getRHS();
+        } else if (op == clang::BO_Add && pointerish(bo->getRHS())) {
+          ptrSide = bo->getRHS();
+          intSide = bo->getLHS();
+        }
+        if (!ptrSide) {
+          return std::nullopt;
+        }
+        auto vals = evalInt(intSide);
+        if (!vals || vals->size() != 1 || (*vals)[0].getSignificantBits() > 63) {
+          return std::nullopt;
+        }
+        if (op == clang::BO_Sub &&
+            (*vals)[0].getSExtValue() == std::numeric_limits<int64_t>::min()) {
+          return std::nullopt;
+        }
+        extra = (*vals)[0].getSExtValue();
+        if (op == clang::BO_Sub) {
+          extra = -extra;
+        }
+        e = peel(ptrSide);
+      }
+    }
+    Origin found;
+    bool ok = false;
+    const Expr *base = e ? e->IgnoreParenImpCasts() : nullptr;
+    if (const auto *call = llvm::dyn_cast_or_null<clang::CallExpr>(base)) {
+      if (!llvm::isa<clang::CXXOperatorCallExpr>(call)) {
+        const auto it = callIds.find(call);
+        if (it != callIds.end()) {
+          found.call = it->second;
+          ok = true;
+        }
+      }
+    } else if (const VarDecl *src = plainVar(e)) {
+      const auto it = st->origins.find(src);
+      if (it != st->origins.end()) {
+        found = it->second;
+        ok = true;
+      }
+    }
+    if (!ok || found.call == 0 || !addOff(found.off, extra)) {
+      return std::nullopt;
+    }
+    return found;
+  }
+
+  // A store initializes the named object. A store through a pointer also
+  // initializes every automatic that pointer is known to hold.
+  void clearWritten(const Expr *lhs) {
+    if (const VarDecl *obj = storedObject(lhs)) {
+      clearInit(obj);
+    }
+    lhs = lhs ? lhs->IgnoreParenImpCasts() : nullptr;
+    if (!lhs) {
+      return;
+    }
+    const Expr *through = nullptr;
+    if (const auto *uo = llvm::dyn_cast<UnaryOperator>(lhs)) {
+      if (uo->getOpcode() == clang::UO_Deref) {
+        through = uo->getSubExpr();
+      }
+    } else if (const auto *me = llvm::dyn_cast<MemberExpr>(lhs)) {
+      if (me->isArrow()) {
+        through = me->getBase();
+      }
+    } else if (const auto *as = llvm::dyn_cast<ArraySubscriptExpr>(lhs)) {
+      const Expr *base = as->getBase();
+      const Expr *peeled = peel(base);
+      const bool decay =
+          peeled && llvm::isa<CastExpr>(peeled) &&
+          llvm::cast<CastExpr>(peeled)->getCastKind() == clang::CK_ArrayToPointerDecay;
+      const Expr *raw = base->IgnoreParenImpCasts();
+      const bool realArray = raw && !raw->getType().isNull() && raw->getType()->isArrayType();
+      if (!decay && !realArray) {
+        through = base;
+      }
+    }
+    if (!through) {
+      return;
+    }
+    for (const VarDecl *held : autosOf(through)) {
+      clearInit(held);
+    }
+  }
+
   void trackWrite(const VarDecl *vd, const Expr *rhs, bool emit, SourceLocation loc, bool init) {
     vd = vd->getCanonicalDecl();
-    if (vd->getType()->isReferenceType()) {
+    const bool reference = !vd->getType().isNull() && vd->getType()->isReferenceType();
+    if (!reference && (!init || vd->getInit())) {
+      clearInit(vd);
+    }
+    if (reference) {
       if (!init) {
         return;
       }
@@ -2247,6 +2763,13 @@ private:
     VarList held = rhs ? autosOf(rhs) : VarList{};
     if (vd->hasLocalStorage()) {
       trackPointer(vd, rhs, false);
+    }
+    if (vd->hasLocalStorage() || llvm::isa<ParmVarDecl>(vd)) {
+      if (auto origin = originOf(rhs)) {
+        st->origins[vd] = *origin;
+      } else {
+        st->origins.erase(vd);
+      }
     }
     if (emit && !vd->isImplicit() && !held.empty() && slotOutlives(vd, held)) {
       flagDangling(held, loc);
@@ -2285,6 +2808,12 @@ private:
         st->arrs.erase(vd);
       } else {
         ar->second.off = *n;
+      }
+    }
+    if (!vd->getType().isNull() && vd->getType()->isPointerType()) {
+      const auto it = st->origins.find(vd);
+      if (it != st->origins.end() && !addOff(it->second.off, dec ? static_cast<int64_t>(-1) : 1)) {
+        st->origins.erase(vd);
       }
     }
   }
@@ -2333,18 +2862,31 @@ private:
     }
     if (vd->getType()->isPointerType() &&
         (op == clang::BO_AddAssign || op == clang::BO_SubAssign)) {
-      auto ar = st->arrs.find(vd);
       auto delta = evalInt(bo->getRHS());
-      if (ar == st->arrs.end() || !delta || delta->size() != 1) {
-        st->arrs.erase(vd);
-        return;
-      }
-      auto n = norm(op == clang::BO_SubAssign ? (ar->second.off - (*delta)[0])
-                                              : (ar->second.off + (*delta)[0]));
-      if (!n) {
+      const bool one = delta && delta->size() == 1;
+      auto ar = st->arrs.find(vd);
+      if (ar == st->arrs.end() || !one) {
         st->arrs.erase(vd);
       } else {
-        ar->second.off = *n;
+        auto n = norm(op == clang::BO_SubAssign ? (ar->second.off - (*delta)[0])
+                                                : (ar->second.off + (*delta)[0]));
+        if (!n) {
+          st->arrs.erase(vd);
+        } else {
+          ar->second.off = *n;
+        }
+      }
+      const auto it = st->origins.find(vd);
+      if (it != st->origins.end()) {
+        if (!one || (*delta)[0].getSignificantBits() > 63) {
+          st->origins.erase(vd);
+        } else {
+          const int64_t d = (*delta)[0].getSExtValue();
+          const bool negMin = op == clang::BO_SubAssign && d == std::numeric_limits<int64_t>::min();
+          if (negMin || !addOff(it->second.off, op == clang::BO_SubAssign ? -d : d)) {
+            st->origins.erase(vd);
+          }
+        }
       }
     }
   }
@@ -2361,6 +2903,9 @@ private:
         const auto *vd = llvm::dyn_cast<VarDecl>(d);
         if (!vd) {
           continue;
+        }
+        if (startsUninit(vd)) {
+          st->uninit.insert(vd->getCanonicalDecl());
         }
         if (emit && vd->getInit()) {
           scan(vd->getInit());
@@ -2384,17 +2929,23 @@ private:
           scan(bo->getLHS());
           scan(bo->getRHS());
         }
+        clearWritten(bo->getLHS());
         applyCompound(bo, emit);
         return;
       }
       if (bo->isAssignmentOp()) {
+        const VarDecl *stored = storedObject(bo->getLHS());
         if (emit) {
           scan(bo->getRHS());
           if (!plainVar(bo->getLHS())) {
+            const VarDecl *held = suppressVar;
+            suppressVar = stored;
             scan(bo->getLHS());
+            suppressVar = held;
           }
           noteAssignOverlap(bo);
         }
+        clearWritten(bo->getLHS());
         if (const VarDecl *vd = plainVar(bo->getLHS())) {
           trackWrite(vd, bo->getRHS(), emit, bo->getOperatorLoc(), false);
         } else if (emit) {
@@ -2408,6 +2959,7 @@ private:
         if (emit) {
           scan(uo->getSubExpr());
         }
+        clearWritten(uo->getSubExpr());
         applyInc(uo, emit);
         return;
       }
@@ -2713,6 +3265,60 @@ private:
         out.freed.insert(vd);
       }
     }
+    for (const auto &kv : preds[0].origins) {
+      bool all = true;
+      for (size_t i = 1; i < preds.size(); ++i) {
+        const auto it = preds[i].origins.find(kv.first);
+        if (it == preds[i].origins.end() || !(it->second == kv.second)) {
+          all = false;
+          break;
+        }
+      }
+      if (all) {
+        out.origins[kv.first] = kv.second;
+      }
+    }
+    for (const auto &kv : preds[0].escapes) {
+      Esc acc = kv.second;
+      bool all = true;
+      for (size_t i = 1; i < preds.size() && all; ++i) {
+        const auto it = preds[i].escapes.find(kv.first);
+        if (it == preds[i].escapes.end()) {
+          all = false;
+          break;
+        }
+        Esc kept;
+        for (size_t k = 0; k < acc.calls.size() && k < acc.args.size(); ++k) {
+          bool found = false;
+          for (size_t j = 0; j < it->second.calls.size() && j < it->second.args.size(); ++j) {
+            if (acc.calls[k] == it->second.calls[j] && acc.args[k] == it->second.args[j]) {
+              found = true;
+              break;
+            }
+          }
+          if (found) {
+            kept.calls.push_back(acc.calls[k]);
+            kept.args.push_back(acc.args[k]);
+          }
+        }
+        acc = std::move(kept);
+      }
+      if (all && !acc.calls.empty()) {
+        out.escapes[kv.first] = std::move(acc);
+      }
+    }
+    for (const VarDecl *vd : preds[0].uninit) {
+      bool all = true;
+      for (size_t i = 1; i < preds.size(); ++i) {
+        if (!preds[i].uninit.contains(vd)) {
+          all = false;
+          break;
+        }
+      }
+      if (all) {
+        out.uninit.insert(vd);
+      }
+    }
     return out;
   }
 };
@@ -2727,7 +3333,7 @@ bool systemBody(const FunctionDecl *fn, const SourceManager &sm) {
 
 class Pass : public clang::ast_matchers::MatchFinder::MatchCallback {
 public:
-  explicit Pass(Reporter &reporter) : reporter(reporter) {}
+  Pass(Reporter &reporter, ProgramFacts &facts) : reporter(reporter), facts(&facts) {}
 
   void run(const clang::ast_matchers::MatchFinder::MatchResult &result) override {
     const auto *fn = result.Nodes.getNodeAs<FunctionDecl>("fn");
@@ -2759,12 +3365,19 @@ public:
       return;
     }
     checkUninit(*fn, *cfg, *ac, reporter, sm);
-    Lattice lattice(fn, *result.Context, reporter, sm);
+    if (facts) {
+      const std::string key = functionKey(fn, sm);
+      if (!key.empty()) {
+        facts->putSummary(key, summarizeFunction(*fn, *cfg, *result.Context, sm));
+      }
+    }
+    Lattice lattice(fn, *result.Context, reporter, sm, facts);
     lattice.run(*cfg);
   }
 
 private:
   Reporter &reporter;
+  ProgramFacts *facts = nullptr;
 };
 
 } // namespace
@@ -2775,7 +3388,8 @@ void DataflowCheck::run(const clang::ast_matchers::MatchFinder::MatchResult &) {
 
 void attachDataflowPass(clang::ast_matchers::MatchFinder &finder,
                         Reporter &reporter,
-                        std::unique_ptr<clang::ast_matchers::MatchFinder::MatchCallback> &slot) {
-  slot = std::make_unique<Pass>(reporter);
+                        std::unique_ptr<clang::ast_matchers::MatchFinder::MatchCallback> &slot,
+                        ProgramFacts &facts) {
+  slot = std::make_unique<Pass>(reporter, facts);
   finder.addMatcher(functionDecl(isDefinition(), unless(isImplicit())).bind("fn"), slot.get());
 }

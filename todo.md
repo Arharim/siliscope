@@ -1,6 +1,6 @@
 # План работ
 
-Снимок после межпроцедурного dataflow. Каталог — 192 правила. Suite: 304. `embedded-cpp`: 157 включено, 96 с чекером, 61 без. `embedded-c`: 149 / 80 / 69. Живых чекеров 101. Pump, те же 11 `.cpp`: 4576 срабатываний, дельта +26 относительно `out/pump-syntax.txt` и дельта 0 относительно `out/pump-policies.txt`. no-checker 61. Stderr совпал с прошлым: 0 fatal, 6 ошибок clang. Лог этого прогона: `out/pump-interproc.txt`. Замороженные `out/pump-syntax.txt`, `out/pump-dataflow.txt`, `out/pump-callgraph.txt`, `out/pump-dataflow2.txt` и `out/pump-policies.txt` не трогали, в git они не входят.
+Снимок после таблицы символов. Каталог — 192 правила. Suite: 334. `embedded-cpp`: 157 включено, 97 с чекером, 60 без. `embedded-c`: 149 / 83 / 66. Живых чекеров 107. Pump, те же 11 `.cpp`: 4576 срабатываний, дельта +26 относительно `out/pump-syntax.txt` и дельта 0 относительно `out/pump-interproc.txt`. no-checker 60. Stderr совпал с прошлым: 0 fatal, 6 ошибок clang, 3884 предупреждения. Лог этого прогона: `out/pump-symbols.txt`. Замороженные `out/pump-syntax.txt`, `out/pump-dataflow.txt`, `out/pump-callgraph.txt`, `out/pump-dataflow2.txt`, `out/pump-policies.txt` и `out/pump-interproc.txt` не трогали, в git они не входят.
 
 Каждый срез: фикстуры, suite, `--list`, прогон тех же 11 файлов pump. Дельту считать так: `python3 tools/diff_report.py out/pump-syntax.txt НОВЫЙ`. Сырой лог в разбор не тащить. `out/pump-syntax.txt` не подменять следующим прогоном. `just fw` для замера шума не использовать. Шум FreeRTOS, CMSIS и SEGGER оставляем: правила не ослабляем и отдельный путь для вендора не заводим. `ruleset/INDEX.md` и `ruleset/coverage.md` руками не правим. Коммит по просьбе, один срез за раз.
 
@@ -86,12 +86,14 @@ Baseline и подавление шире `--allow rule:name` в эту очер
 
 ### 10. Таблица символов на весь запуск
 
-Драйвер уже принимает несколько файлов. Граф вызовов эту таблицу не заменяет. На неё садятся:
+Сделано. Четыре правила, один проход на весь запуск. Граф вызовов эту таблицу не заменяет. Ноль определений в запуске молчит. Два внешних определения в разных файлах запуска — дефект. Предварительное `int g;` и настоящее `int g = 1` в одном файле считаются одним. Тело заголовка, включённое из двух файлов, даёт одно диагностическое место.
 
-- `ss.fn.single-definition`
-- `ss.fn.header-decl`
-- `ss.fn.param-names-consistent`
-- `ss.decl.extern-in-one-header`
+- `ss.fn.single-definition`: имя с внешней связностью определено больше одного раза. `inline`, шаблон и C `inline` без `extern` могут повторяться. Слабая связь считается определением. Правило включено в `embedded-c` и `embedded-cpp`. Сообщение: «this symbol is defined more than once».
+- `ss.fn.header-decl`: только C, из `embedded-cpp` исключено. Определение в исходнике без объявления снаружи этого файла. `main`, `_init`, `_fini` и обработчик прерывания заголовок не требуют. Сообщение: «declare this in a header».
+- `ss.fn.param-names-consistent`: advisory, только профиль `strict`. Имя параметра в определении сверяется с именованным объявлением. Пустое имя в объявлении эту позицию не держит. Сообщение: «parameter name does not match the declaration».
+- `ss.decl.extern-in-one-header`: только C, только объекты, из `embedded-cpp` исключено. `extern`, написанный в `.c`, отмечается всегда. Один заголовок молчит. Два разных заголовка — дефект. Сообщение: «declare this object in one header».
+
+`--allow` называет функцию или объект. На pump дельта 0 относительно лога после межпроцедурного dataflow. В `embedded-cpp` из четырёх включено только `single-definition`, и на этих 11 файлах оно молчит. Живых чекеров 107 из 192. В `embedded-cpp` 97 из 157. Сторож no-checker по-прежнему `ss.conv.signed-unsigned-mix`.
 
 ### 11. Остальные types, затем syntax
 

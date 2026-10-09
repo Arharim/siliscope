@@ -293,6 +293,8 @@ class Runner:
             "ss.mem.no-flexible-array",
             "ss.fn.prototype",
             "ss.fn.static-internal",
+            "ss.fn.header-decl",
+            "ss.decl.extern-in-one-header",
             "ss.pre.source-includes-own-header",
         ):
             self.check(f"embedded-cpp drops {rid}", absent(cpp_rows, rid), f"{rid} is enabled")
@@ -301,6 +303,8 @@ class Runner:
             "ss.mem.no-flexible-array",
             "ss.fn.prototype",
             "ss.fn.static-internal",
+            "ss.fn.header-decl",
+            "ss.decl.extern-in-one-header",
             "ss.pre.source-includes-own-header",
         }
         cpp_only = {

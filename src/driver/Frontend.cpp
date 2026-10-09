@@ -8,6 +8,7 @@
 #include "siliscope/Profile.h"
 #include "siliscope/Registry.h"
 #include "siliscope/Report.h"
+#include "siliscope/Symbols.h"
 
 #include "clang/AST/ASTConsumer.h"
 #include "clang/AST/Attr.h"
@@ -114,8 +115,9 @@ public:
                 Probe *probe,
                 const Profile &profile,
                 ProgramCallGraph &calls,
-                ProgramFacts &facts)
-      : reporter(reporter), probe(probe), calls(calls), facts(facts) {
+                ProgramFacts &facts,
+                ProgramSymbols &symbols)
+      : reporter(reporter), probe(probe), calls(calls), facts(facts), symbols(symbols) {
     const CheckSpec *specs = checkSpecs();
     for (unsigned i = 0; i < checkSpecCount(); ++i) {
       if (!profile.isEnabled(specs[i].id)) {
@@ -132,6 +134,9 @@ public:
       if (checks.back()->wantsCallGraph()) {
         watchCallGraph = true;
       }
+      if (checks.back()->wantsSymbols()) {
+        watchSymbols = true;
+      }
     }
   }
 
@@ -144,6 +149,9 @@ public:
     }
     if (watchCallGraph) {
       attachCallGraph(finder, calls, reporter, callGraph);
+    }
+    if (watchSymbols) {
+      attachSymbols(finder, symbols, reporter, symbolPass);
     }
     std::vector<std::unique_ptr<ASTConsumer>> cs;
     cs.push_back(finder.newASTConsumer());
@@ -158,11 +166,14 @@ private:
   Probe *probe;
   ProgramCallGraph &calls;
   ProgramFacts &facts;
+  ProgramSymbols &symbols;
   bool watchPreprocessor = false;
   bool watchDataflow = false;
   bool watchCallGraph = false;
+  bool watchSymbols = false;
   std::unique_ptr<MatchFinder::MatchCallback> dataflow;
   std::unique_ptr<MatchFinder::MatchCallback> callGraph;
+  std::unique_ptr<MatchFinder::MatchCallback> symbolPass;
   std::vector<std::unique_ptr<Check>> checks;
   MatchFinder finder;
 };
@@ -173,12 +184,13 @@ public:
       : reporter(reporter), probe(probe), profile(profile) {}
 
   std::unique_ptr<FrontendAction> create() override {
-    return std::make_unique<AnalyzeAction>(reporter, probe, profile, calls, facts);
+    return std::make_unique<AnalyzeAction>(reporter, probe, profile, calls, facts, symbols);
   }
 
   void finish(Reporter &out) const {
     facts.finish(out);
     calls.finish(out);
+    symbols.finish(out);
   }
 
 private:
@@ -187,6 +199,7 @@ private:
   const Profile &profile;
   ProgramCallGraph calls;
   ProgramFacts facts;
+  ProgramSymbols symbols;
 };
 
 std::unique_ptr<CompilationDatabase> loadCompilations(const FrontendOptions &opt,

@@ -73,6 +73,7 @@ if(SILISCOPE_ENABLE_CLANG)
     src/checks/Distinct.cpp
     src/checks/DeclConst.cpp
     src/checks/StaticInternal.cpp
+    src/checks/Symbols.cpp
     src/checks/NoUnusedParams.cpp
     src/checks/NoSignedBitwise.cpp
     src/checks/ShiftRange.cpp

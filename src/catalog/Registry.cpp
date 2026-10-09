@@ -75,6 +75,7 @@
 #include "siliscope/StringConst.h"
 #include "siliscope/SwitchFallthroughComment.h"
 #include "siliscope/SwitchWellFormed.h"
+#include "siliscope/Symbols.h"
 #include "siliscope/USuffix.h"
 #include "siliscope/Unreachable.h"
 #include "siliscope/VirtualDtor.h"
@@ -134,6 +135,7 @@ static const CheckSpec kSpecs[] = {
     {"ss.ctrl.unreachable", makeCheck<UnreachableCheck>},
     {"ss.decl.const", makeCheck<DeclConstCheck>},
     {"ss.decl.distinct", makeCheck<DistinctCheck>},
+    {"ss.decl.extern-in-one-header", makeCheck<SymbolCheck>},
     {"ss.decl.no-shadow", makeCheck<NoShadowCheck>},
     {"ss.decl.ptr-null", makeCheck<PtrNullCheck>},
     {"ss.emb.cs-balanced", makeCheck<CsBalancedCheck>},
@@ -151,12 +153,15 @@ static const CheckSpec kSpecs[] = {
     {"ss.expr.string-const", makeCheck<StringConstCheck>},
     {"ss.expr.uninit", makeCheck<DataflowCheck>},
     {"ss.fn.check-return", makeCheck<CheckReturnCheck>},
+    {"ss.fn.header-decl", makeCheck<SymbolCheck>},
     {"ss.fn.no-block-scope", makeCheck<NoBlockScopeCheck>},
     {"ss.fn.no-stdarg", makeCheck<NoStdargCheck>},
     {"ss.fn.no-unused-params", makeCheck<NoUnusedParamsCheck>},
     {"ss.fn.noreturn-does-not-return", makeCheck<NoreturnCheck>},
+    {"ss.fn.param-names-consistent", makeCheck<SymbolCheck>},
     {"ss.fn.prototype", makeCheck<PrototypeCheck>},
     {"ss.fn.return-all-paths", makeCheck<ReturnAllPathsCheck>},
+    {"ss.fn.single-definition", makeCheck<SymbolCheck>},
     {"ss.fn.static-internal", makeCheck<StaticInternalCheck>},
     {"ss.libc.copy-fits-dest", makeCheck<DataflowCheck>},
     {"ss.libc.no-abort-system", makeCheck<NoAbortSystemCheck>},

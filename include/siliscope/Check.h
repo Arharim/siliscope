@@ -16,6 +16,9 @@ public:
   // Recursion, ISR calls, logs in an ISR, blocking inside a critical section,
   // and heap-after-init share one cross-TU call graph.
   virtual bool wantsCallGraph() const { return false; }
+  // One external definition, a C header declaration, parameter names, and a
+  // single extern header share one table of the whole run.
+  virtual bool wantsSymbols() const { return false; }
 
 protected:
   Reporter &reporter;

@@ -116,6 +116,12 @@ Live checkers (see `src/catalog/Registry.cpp` and `just test`):
   reaches it from a function named with `--allow ss.mem.no-heap-after-init:NAME`
 - Types / decls: ISR no FP, check-return, no-shadow, ptr-null, distinct
   names, const, file-local `static`
+- Symbols across one run: an external function or object is defined once.
+  An inline function, a template, and a C `inline` without `extern` may
+  repeat, and a name with no definition in the run stays quiet. A C
+  definition in a source file needs a declaration in a header. Parameter
+  names match the other declaration. A shared object is declared `extern`
+  in one header, not in each source file
 - Conversions: signed bitwise, shift amount, `U` suffix, stripping
   const/volatile, pointer/integer casts, floating equality, implicit narrowing
 - C++ subset: no exceptions, no RTTI (`typeid`, `dynamic_cast`), no C-style

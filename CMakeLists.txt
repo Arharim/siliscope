@@ -82,6 +82,14 @@ if(SILISCOPE_ENABLE_CLANG)
     src/checks/NoPtrInt.cpp
     src/checks/NoFpEq.cpp
     src/checks/NoSilentNarrow.cpp
+    src/checks/SignedUnsignedMix.cpp
+    src/checks/NoUnsignedWrap.cpp
+    src/checks/NoUnaryMinusUnsigned.cpp
+    src/checks/NoObjectPtrCast.cpp
+    src/checks/NoFnPtrCast.cpp
+    src/checks/NoFpNarrow.cpp
+    src/checks/FpToIntExplicit.cpp
+    src/checks/NoIntToEnum.cpp
     src/checks/SwitchWellFormed.cpp
     src/checks/SwitchFallthroughComment.cpp
     src/checks/EmptyLoopComment.cpp

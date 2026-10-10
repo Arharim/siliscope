@@ -123,7 +123,17 @@ Live checkers (see `src/catalog/Registry.cpp` and `just test`):
   names match the other declaration. A shared object is declared `extern`
   in one header, not in each source file
 - Conversions: signed bitwise, shift amount, `U` suffix, stripping
-  const/volatile, pointer/integer casts, floating equality, implicit narrowing
+  const/volatile, pointer/integer casts, floating equality, implicit narrowing.
+  A signed and an unsigned integer in one arithmetic or relational expression
+  after integer promotion. An unsigned constant `+`, `-`, or `*` that wraps,
+  unless a comment on that line or the comment line above says mask. Unary
+  minus on a value that is still unsigned after promotion. A cast between
+  unrelated object pointers; `void *`, a character pointer, `std::byte *`, a
+  packed record, and a base or derived class stay quiet. A function-pointer
+  cast to a different type. An implicit narrowing of a floating value. A
+  float-to-integer conversion, suppressed in one helper with
+  `--allow ss.conv.fp-to-int-explicit:NAME`. An integer turned into an enum,
+  suppressed in one function with `--allow ss.conv.no-int-to-enum:NAME`
 - C++ subset: no exceptions, no RTTI (`typeid`, `dynamic_cast`), no C-style
   or functional cast, `nullptr`, no heap-backed standard containers,
   `override` or `final` on an override, a virtual, protected, or deleted

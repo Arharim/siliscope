@@ -7,7 +7,7 @@ static unsigned ok(void) {
   const unsigned char byte = 1;
   const unsigned from_macro = WIDTH;
   const unsigned addr = ADDR;
-  return value + (unsigned)plain + byte + from_macro + addr;
+  return value + (unsigned)plain + (unsigned)byte + from_macro + addr;
 }
 
 _Static_assert((WIDTH & (WIDTH - 1u)) == 0u, "power of two");

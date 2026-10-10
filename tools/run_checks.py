@@ -280,8 +280,8 @@ class Runner:
         )
         self.check(
             "embedded-cpp still has rules without a checker",
-            present(cpp_rows, "ss.conv.signed-unsigned-mix", "no-checker"),
-            "ss.conv.signed-unsigned-mix missing",
+            present(cpp_rows, "ss.ptr.no-ptr-arith", "no-checker"),
+            "ss.ptr.no-ptr-arith missing",
         )
         self.check(
             "embedded-cpp keeps shared checker",

@@ -9,6 +9,7 @@
 #include "siliscope/Distinct.h"
 #include "siliscope/EmptyLoopComment.h"
 #include "siliscope/EnumClass.h"
+#include "siliscope/FpToIntExplicit.h"
 #include "siliscope/IfElseFinal.h"
 #include "siliscope/InitMembers.h"
 #include "siliscope/IrqMaskBalanced.h"
@@ -26,17 +27,21 @@
 #include "siliscope/NoDefaultArgs.h"
 #include "siliscope/NoExceptions.h"
 #include "siliscope/NoFlexibleArray.h"
+#include "siliscope/NoFnPtrCast.h"
 #include "siliscope/NoFpEq.h"
+#include "siliscope/NoFpNarrow.h"
 #include "siliscope/NoFriend.h"
 #include "siliscope/NoGoto.h"
 #include "siliscope/NoHeap.h"
 #include "siliscope/NoHeapStl.h"
 #include "siliscope/NoImplicitConversion.h"
 #include "siliscope/NoIncInExpr.h"
+#include "siliscope/NoIntToEnum.h"
 #include "siliscope/NoLogInIsr.h"
 #include "siliscope/NoLogicalRhs.h"
 #include "siliscope/NoMoveConst.h"
 #include "siliscope/NoNestedTernary.h"
+#include "siliscope/NoObjectPtrCast.h"
 #include "siliscope/NoOctal.h"
 #include "siliscope/NoPtrInt.h"
 #include "siliscope/NoQsort.h"
@@ -55,7 +60,9 @@
 #include "siliscope/NoThrowDtor.h"
 #include "siliscope/NoThrowSpec.h"
 #include "siliscope/NoThrowingSwap.h"
+#include "siliscope/NoUnaryMinusUnsigned.h"
 #include "siliscope/NoUnboundedString.h"
+#include "siliscope/NoUnsignedWrap.h"
 #include "siliscope/NoUnusedParams.h"
 #include "siliscope/NoUsingDirective.h"
 #include "siliscope/NoUsingInHeader.h"
@@ -70,6 +77,7 @@
 #include "siliscope/PtrNull.h"
 #include "siliscope/ReturnAllPaths.h"
 #include "siliscope/ShiftRange.h"
+#include "siliscope/SignedUnsignedMix.h"
 #include "siliscope/SpecialMembers.h"
 #include "siliscope/StaticInternal.h"
 #include "siliscope/StringConst.h"
@@ -89,14 +97,22 @@ static std::unique_ptr<Check> makeCheck(Reporter &reporter) {
 
 static const CheckSpec kSpecs[] = {
     {"ss.conc.no-block-in-cs", makeCheck<NoBlockInCsCheck>},
+    {"ss.conv.fp-to-int-explicit", makeCheck<FpToIntExplicitCheck>},
     {"ss.conv.no-cv-away", makeCheck<NoCvAwayCheck>},
     {"ss.conv.no-div-zero", makeCheck<DataflowCheck>},
+    {"ss.conv.no-fn-ptr-cast", makeCheck<NoFnPtrCastCheck>},
     {"ss.conv.no-fp-eq", makeCheck<NoFpEqCheck>},
+    {"ss.conv.no-fp-narrow", makeCheck<NoFpNarrowCheck>},
+    {"ss.conv.no-int-to-enum", makeCheck<NoIntToEnumCheck>},
+    {"ss.conv.no-object-ptr-cast", makeCheck<NoObjectPtrCastCheck>},
     {"ss.conv.no-ptr-int", makeCheck<NoPtrIntCheck>},
     {"ss.conv.no-signed-bitwise", makeCheck<NoSignedBitwiseCheck>},
     {"ss.conv.no-signed-overflow", makeCheck<DataflowCheck>},
     {"ss.conv.no-silent-narrow", makeCheck<NoSilentNarrowCheck>},
+    {"ss.conv.no-unary-minus-unsigned", makeCheck<NoUnaryMinusUnsignedCheck>},
+    {"ss.conv.no-unsigned-wrap-const", makeCheck<NoUnsignedWrapCheck>},
     {"ss.conv.shift-range", makeCheck<ShiftRangeCheck>},
+    {"ss.conv.signed-unsigned-mix", makeCheck<SignedUnsignedMixCheck>},
     {"ss.conv.u-suffix", makeCheck<USuffixCheck>},
     {"ss.cpp.enum-class", makeCheck<EnumClassCheck>},
     {"ss.cpp.init-members", makeCheck<InitMembersCheck>},

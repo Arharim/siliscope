@@ -1,6 +1,6 @@
 # План работ
 
-Снимок после таблицы символов. Каталог — 192 правила. Suite: 334. `embedded-cpp`: 157 включено, 97 с чекером, 60 без. `embedded-c`: 149 / 83 / 66. Живых чекеров 107. Pump, те же 11 `.cpp`: 4576 срабатываний, дельта +26 относительно `out/pump-syntax.txt` и дельта 0 относительно `out/pump-interproc.txt`. no-checker 60. Stderr совпал с прошлым: 0 fatal, 6 ошибок clang, 3884 предупреждения. Лог этого прогона: `out/pump-symbols.txt`. Замороженные `out/pump-syntax.txt`, `out/pump-dataflow.txt`, `out/pump-callgraph.txt`, `out/pump-dataflow2.txt`, `out/pump-policies.txt` и `out/pump-interproc.txt` не трогали, в git они не входят.
+Снимок после остатка конверсий. Каталог — 192 правила. Suite: 359. `embedded-cpp`: 157 включено, 105 с чекером, 52 без. `embedded-c`: 149 / 91 / 58. Живых чекеров 115. Pump, те же 11 `.cpp`: 4838 срабатываний, дельта +288 относительно `out/pump-syntax.txt` и дельта +262 относительно `out/pump-symbols.txt`. no-checker 52. Stderr совпал с прошлым: 0 fatal, 6 ошибок clang, 3884 предупреждения. Лог этого прогона: `out/pump-conv.txt`. Замороженные `out/pump-syntax.txt`, `out/pump-dataflow.txt`, `out/pump-callgraph.txt`, `out/pump-dataflow2.txt`, `out/pump-policies.txt`, `out/pump-interproc.txt` и `out/pump-symbols.txt` не трогали, в git они не входят.
 
 Каждый срез: фикстуры, suite, `--list`, прогон тех же 11 файлов pump. Дельту считать так: `python3 tools/diff_report.py out/pump-syntax.txt НОВЫЙ`. Сырой лог в разбор не тащить. `out/pump-syntax.txt` не подменять следующим прогоном. `just fw` для замера шума не использовать. Шум FreeRTOS, CMSIS и SEGGER оставляем: правила не ослабляем и отдельный путь для вендора не заводим. `ruleset/INDEX.md` и `ruleset/coverage.md` руками не правим. Коммит по просьбе, один срез за раз.
 
@@ -97,9 +97,21 @@ Baseline и подавление шире `--allow rule:name` в эту очер
 
 ### 11. Остальные types, затем syntax
 
-Сначала типы и узкие проверки, которые ещё default on:
+Остаток `ss.conv.*` сделан. Восемь правил, каждое своим проходом. `no-mixed-categories` остаётся выключенным до профиля `strict`. Сторож no-checker теперь `ss.ptr.no-ptr-arith`.
 
-- Остаток `ss.conv.*`: `signed-unsigned-mix`, `no-unsigned-wrap-const`, `no-unary-minus-unsigned`, `no-object-ptr-cast`, `no-fn-ptr-cast`, `no-fp-narrow`, `fp-to-int-explicit`, `no-int-to-enum`. `no-mixed-categories` остаётся выключенным до профиля `strict`.
+- `ss.conv.signed-unsigned-mix`: после целочисленных продвижений знаковый и беззнаковый тип встречаются в одном арифметическом или сравнивающем выражении. Узкий беззнаковый тип, который становится `int`, молчит. Сдвиг сюда не входит. Сообщение: «signed and unsigned integers meet in this expression».
+- `ss.conv.no-unsigned-wrap-const`: константные `+`, `-` и `*` беззнакового типа переполняются. Комментарий со словом mask на этой строке или на предыдущей комментарной строке оставляет выражение тихим. Сообщение: «unsigned constant wraps».
+- `ss.conv.no-unary-minus-unsigned`: унарный минус у значения, которое после продвижения всё ещё беззнаковое. Сообщение: «do not negate an unsigned value».
+- `ss.conv.no-object-ptr-cast`: явное приведение между неродственными указателями на объекты. `void *`, указатель на символ, `std::byte *`, упакованная структура, база и наследник молчат. Сообщение: «do not cast between unrelated object pointers».
+- `ss.conv.no-fn-ptr-cast`: указатель на функцию приводится к другому типу. Та же сигнатура, `nullptr` и отбрасывающий `(void)` молчат. Сообщение: «do not convert a function pointer to another type».
+- `ss.conv.no-fp-narrow`: неявная потеря точности плавающего типа. Явное приведение молчит. Сообщение: «do not drop floating precision implicitly».
+- `ss.conv.fp-to-int-explicit`: float становится целым, и неявно, и явным приведением. `--allow` называет функцию-помощник. Сообщение: «convert a float to an integer in a named helper».
+- `ss.conv.no-int-to-enum`: целое становится перечислением. Имя перечислителя молчит. `--allow` называет функцию. Сообщение: «do not convert an integer to an enum».
+
+На pump дельта +262 относительно лога после таблицы символов: 206 смесь знакового с беззнаковым, 28 float в целый, 23 целое в enum, 4 чужих указателя на объекты, 1 неявное сужение float. Переполнение константы, унарный минус и приведение указателя на функцию на этих 11 файлах молчат. Живых чекеров 115 из 192. В `embedded-cpp` 105 из 157.
+
+Дальше в этом шаге, всё ещё default on и без чекера:
+
 - Указатели и размер кадра: `no-ptr-arith`, `no-void-arith`, `array-arg`, `max-indirection`, `sizeof-array-param`, `no-large-frame`. `no-fn-pointer` остаётся advisory.
 - Объявления, условия, инициализация: `decl.no-unused`, `decl.min-scope`, `decl.align-same`, `boolean-condition`, `no-fp-loop-counter`, `aggregate-init`, `inline-is-static`.
 - Libc: `memcmp-not-for-c-strings`, `ctype-uchar-or-eof`.

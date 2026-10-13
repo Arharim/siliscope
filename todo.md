@@ -1,6 +1,6 @@
 # План работ
 
-Снимок после остатка конверсий. Каталог — 192 правила. Suite: 359. `embedded-cpp`: 157 включено, 105 с чекером, 52 без. `embedded-c`: 149 / 91 / 58. Живых чекеров 115. Pump, те же 11 `.cpp`: 4838 срабатываний, дельта +288 относительно `out/pump-syntax.txt` и дельта +262 относительно `out/pump-symbols.txt`. no-checker 52. Stderr совпал с прошлым: 0 fatal, 6 ошибок clang, 3884 предупреждения. Лог этого прогона: `out/pump-conv.txt`. Замороженные `out/pump-syntax.txt`, `out/pump-dataflow.txt`, `out/pump-callgraph.txt`, `out/pump-dataflow2.txt`, `out/pump-policies.txt`, `out/pump-interproc.txt` и `out/pump-symbols.txt` не трогали, в git они не входят.
+Снимок после указателей и размера кадра. Каталог — 192 правила. Suite: 377. `embedded-cpp`: 157 включено, 108 с чекером, 49 без. `embedded-c`: 149 / 97 / 52. Живых чекеров 121. Pump, те же 11 `.cpp`: 4866 срабатываний, дельта +316 относительно `out/pump-syntax.txt` и дельта +28 относительно `out/pump-conv.txt`. no-checker 49. Stderr совпал с прошлым: 0 fatal, 6 ошибок clang, 3884 предупреждения. Лог этого прогона: `out/pump-ptr.txt`. Замороженные `out/pump-syntax.txt`, `out/pump-dataflow.txt`, `out/pump-callgraph.txt`, `out/pump-dataflow2.txt`, `out/pump-policies.txt`, `out/pump-interproc.txt`, `out/pump-symbols.txt` и `out/pump-conv.txt` не трогали, в git они не входят.
 
 Каждый срез: фикстуры, suite, `--list`, прогон тех же 11 файлов pump. Дельту считать так: `python3 tools/diff_report.py out/pump-syntax.txt НОВЫЙ`. Сырой лог в разбор не тащить. `out/pump-syntax.txt` не подменять следующим прогоном. `just fw` для замера шума не использовать. Шум FreeRTOS, CMSIS и SEGGER оставляем: правила не ослабляем и отдельный путь для вендора не заводим. `ruleset/INDEX.md` и `ruleset/coverage.md` руками не правим. Коммит по просьбе, один срез за раз.
 
@@ -110,9 +110,21 @@ Baseline и подавление шире `--allow rule:name` в эту очер
 
 На pump дельта +262 относительно лога после таблицы символов: 206 смесь знакового с беззнаковым, 28 float в целый, 23 целое в enum, 4 чужих указателя на объекты, 1 неявное сужение float. Переполнение константы, унарный минус и приведение указателя на функцию на этих 11 файлах молчат. Живых чекеров 115 из 192. В `embedded-cpp` 105 из 157.
 
+Указатели и размер кадра сделаны. Шесть правил. `no-fn-pointer` остаётся advisory. Сторож no-checker теперь `ss.decl.no-unused`.
+
+- `ss.ptr.no-ptr-arith`: `p + n`, `p - n`, `+=`, `-=`, `++` и `--` на указателе. Индексация `a[i]`, `p[i]` и `&a[i]` остаётся разрешённой формой. Вычитание двух указателей и их сравнение остаются у `ss.ptr.same-array`. Range-for по массиву — сахар компилятора, оба арифметических правила его пропускают. Сообщение: «do not do pointer arithmetic; index an array».
+- `ss.ptr.no-void-arith`: только C, из `embedded-cpp` исключено. Арифметика на `void *`. `void **` идёт в обычное правило. Сообщение: «do not do arithmetic on a void pointer».
+- `ss.ptr.array-arg`: только C. Прямой вызов с параметром `T a[N]` требует массив, чья внешняя постоянная граница не меньше N, включая строковый литерал вместе с нулём. Указатель, `&arr[0]` и неполный массив длину не доказывают. Сообщение: «pass an array of at least the declared length».
+- `ss.ptr.max-indirection`: глубже `T **` — дефект. Массив и ссылка уровень не добавляют. Потолок зашит: два. Сообщение: «more than two pointer levels».
+- `ss.mem.sizeof-array-param`: только C, из `embedded-cpp` исключено. `sizeof` параметра, который схлопнулся в указатель. `sizeof(*p)`, `sizeof(p[0])` и `sizeof(int)` молчат. Сообщение: «sizeof of a decayed array parameter is the pointer size».
+- `ss.mem.no-large-frame`: сумма автоматических локальных строго больше 512 байт. `static` не считается. Ровно 512 молчит. `--allow ss.mem.no-large-frame:NAME` называет функцию. Сообщение: «this function's locals exceed 512 bytes».
+
+`&a[N]` — адрес, поэтому `ss.ptr.no-deref-one-past` и `ss.mem.bounds` на таком индексе молчат. `a[N]`, `*(a + N)` и последующее `*p` по-прежнему отмечаются. В `ok_ret` возврат стал `return p`: `return &p[1]` ловил `ss.mem.no-dangling`.
+
+На pump дельта +28 относительно лога после конверсий, пропавших диагностик нет. Все 28 — `ss.ptr.no-ptr-arith`: 20 в `usb_task.cpp`, 8 в `settings.hpp`. Глубина указателей и размер кадра на этих 11 файлах молчат. Три правила только для C в `embedded-cpp` не входят. Живых чекеров 121 из 192. В `embedded-cpp` 108 из 157. В `embedded-c` 97 из 149. В `strict` 120 из 175.
+
 Дальше в этом шаге, всё ещё default on и без чекера:
 
-- Указатели и размер кадра: `no-ptr-arith`, `no-void-arith`, `array-arg`, `max-indirection`, `sizeof-array-param`, `no-large-frame`. `no-fn-pointer` остаётся advisory.
 - Объявления, условия, инициализация: `decl.no-unused`, `decl.min-scope`, `decl.align-same`, `boolean-condition`, `no-fp-loop-counter`, `aggregate-init`, `inline-is-static`.
 - Libc: `memcmp-not-for-c-strings`, `ctype-uchar-or-eof`.
 - Типы: `fixed-width`, `bool`, `bitfield`, `enum-init`, `no-bool-math`, `explicit`, `no-restrict`, `array-size`. `no-union` и `no-fp-unless-needed` остаются advisory; сплошного запрета union нет.

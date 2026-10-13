@@ -8,4 +8,4 @@ static int use(void) {
   return p[2];
 }
 
-static const int *shift(const int *p) { return p + 1; }
+static const int *shift(const int *p) { return p; }

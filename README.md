@@ -166,5 +166,13 @@ Live checkers (see `src/catalog/Registry.cpp` and `just test`):
   A proven null, an uninitialized address, and a constant index follow a
   direct call when that callee's body is in the run. A missing body, a call
   through a pointer, and a cycle stay opaque
+- Pointers and stack frames: no `p + n`, `p - n`, `p += n`, or `++` / `--` on a
+  pointer. `a[i]` and `&a[i]` stay the indexing form, and pointer subtraction
+  stays with the same-array rule. No arithmetic on `void *` (C). A parameter
+  declared `T a[N]` is called with a constant array of at least N elements.
+  A declaration nests at most two pointer levels. `sizeof` on a parameter
+  that decayed to a pointer is the pointer size. Automatic locals that sum
+  past 512 bytes are quiet in one function with
+  `--allow ss.mem.no-large-frame:NAME`
 
 Not in this release: the rest of `ss.conv.*`, review-only catalog rows.

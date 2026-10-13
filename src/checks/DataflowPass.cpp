@@ -7,6 +7,7 @@
 #include "clang/AST/Decl.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/ExprCXX.h"
+#include "clang/AST/ParentMapContext.h"
 #include "clang/AST/Stmt.h"
 #include "clang/AST/StmtCXX.h"
 #include "clang/ASTMatchers/ASTMatchers.h"
@@ -2267,15 +2268,37 @@ private:
     }
   }
 
+  // &a[n] names an address. A CFG element may be the subscript alone, so the
+  // parent is what says the element is not loaded.
+  bool formsAddress(const ArraySubscriptExpr *sub) const {
+    clang::DynTypedNode node = clang::DynTypedNode::create(*sub);
+    for (int depth = 0; depth < 8; ++depth) {
+      const auto parents = ctx.getParents(node);
+      if (parents.empty()) {
+        return false;
+      }
+      node = parents[0];
+      if (node.get<clang::ParenExpr>() || node.get<clang::ImplicitCastExpr>() ||
+          node.get<clang::FullExpr>()) {
+        continue;
+      }
+      const auto *uo = node.get<clang::UnaryOperator>();
+      return uo && uo->getOpcode() == clang::UO_AddrOf;
+    }
+    return false;
+  }
+
   void checkSub(const ArraySubscriptExpr *sub) {
     auto vals = evalInt(sub->getIdx());
     SourceLocation at = sub->getIdx()->getExprLoc();
     if (at.isInvalid()) {
       at = sub->getBeginLoc();
     }
-    if (auto b = boundOf(sub->getBase())) {
-      if (vals) {
-        checkVals(*b, *vals, at);
+    if (!formsAddress(sub)) {
+      if (auto b = boundOf(sub->getBase())) {
+        if (vals) {
+          checkVals(*b, *vals, at);
+        }
       }
     }
     if (emitting && vals && vals->size() == 1 && (*vals)[0].getSignificantBits() <= 63) {

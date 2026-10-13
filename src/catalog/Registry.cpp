@@ -1,5 +1,6 @@
 #include "siliscope/Registry.h"
 
+#include "siliscope/ArrayArg.h"
 #include "siliscope/Braces.h"
 #include "siliscope/Check.h"
 #include "siliscope/CheckReturn.h"
@@ -15,6 +16,7 @@
 #include "siliscope/IrqMaskBalanced.h"
 #include "siliscope/IsrNoFp.h"
 #include "siliscope/IsrNotCalled.h"
+#include "siliscope/MaxIndirection.h"
 #include "siliscope/NoAbortSystem.h"
 #include "siliscope/NoAssignInCond.h"
 #include "siliscope/NoAtoi.h"
@@ -37,12 +39,14 @@
 #include "siliscope/NoImplicitConversion.h"
 #include "siliscope/NoIncInExpr.h"
 #include "siliscope/NoIntToEnum.h"
+#include "siliscope/NoLargeFrame.h"
 #include "siliscope/NoLogInIsr.h"
 #include "siliscope/NoLogicalRhs.h"
 #include "siliscope/NoMoveConst.h"
 #include "siliscope/NoNestedTernary.h"
 #include "siliscope/NoObjectPtrCast.h"
 #include "siliscope/NoOctal.h"
+#include "siliscope/NoPtrArith.h"
 #include "siliscope/NoPtrInt.h"
 #include "siliscope/NoQsort.h"
 #include "siliscope/NoRand.h"
@@ -68,6 +72,7 @@
 #include "siliscope/NoUsingInHeader.h"
 #include "siliscope/NoVLA.h"
 #include "siliscope/NoVectorBool.h"
+#include "siliscope/NoVoidArith.h"
 #include "siliscope/Noreturn.h"
 #include "siliscope/Nullptr.h"
 #include "siliscope/Override.h"
@@ -78,6 +83,7 @@
 #include "siliscope/ReturnAllPaths.h"
 #include "siliscope/ShiftRange.h"
 #include "siliscope/SignedUnsignedMix.h"
+#include "siliscope/SizeofArrayParam.h"
 #include "siliscope/SpecialMembers.h"
 #include "siliscope/StaticInternal.h"
 #include "siliscope/StringConst.h"
@@ -192,10 +198,12 @@ static const CheckSpec kSpecs[] = {
     {"ss.mem.no-dangling", makeCheck<DataflowCheck>},
     {"ss.mem.no-flexible-array", makeCheck<NoFlexibleArrayCheck>},
     {"ss.mem.no-heap-after-init", makeCheck<NoHeapCheck>},
+    {"ss.mem.no-large-frame", makeCheck<NoLargeFrameCheck>},
     {"ss.mem.no-null-deref", makeCheck<DataflowCheck>},
     {"ss.mem.no-overlap-copy", makeCheck<DataflowCheck>},
     {"ss.mem.no-use-after-free", makeCheck<DataflowCheck>},
     {"ss.mem.no-vla", makeCheck<NoVLACheck>},
+    {"ss.mem.sizeof-array-param", makeCheck<SizeofArrayParamCheck>},
     {"ss.mem.string-room-for-nul", makeCheck<DataflowCheck>},
     {"ss.pre.comment-tokens", makeCheck<PreprocessorCheck>},
     {"ss.pre.ifdef-same-file", makeCheck<PreprocessorCheck>},
@@ -209,7 +217,11 @@ static const CheckSpec kSpecs[] = {
     {"ss.pre.no-unused-include", makeCheck<PreprocessorCheck>},
     {"ss.pre.prefer-inline", makeCheck<PreprocessorCheck>},
     {"ss.pre.source-includes-own-header", makeCheck<PreprocessorCheck>},
+    {"ss.ptr.array-arg", makeCheck<ArrayArgCheck>},
+    {"ss.ptr.max-indirection", makeCheck<MaxIndirectionCheck>},
     {"ss.ptr.no-deref-one-past", makeCheck<DataflowCheck>},
+    {"ss.ptr.no-ptr-arith", makeCheck<NoPtrArithCheck>},
+    {"ss.ptr.no-void-arith", makeCheck<NoVoidArithCheck>},
     {"ss.ptr.same-array", makeCheck<DataflowCheck>},
 };
 

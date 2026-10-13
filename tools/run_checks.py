@@ -280,8 +280,8 @@ class Runner:
         )
         self.check(
             "embedded-cpp still has rules without a checker",
-            present(cpp_rows, "ss.ptr.no-ptr-arith", "no-checker"),
-            "ss.ptr.no-ptr-arith missing",
+            present(cpp_rows, "ss.decl.no-unused", "no-checker"),
+            "ss.decl.no-unused missing",
         )
         self.check(
             "embedded-cpp keeps shared checker",
@@ -291,21 +291,27 @@ class Runner:
         for rid in (
             "ss.mem.no-vla",
             "ss.mem.no-flexible-array",
+            "ss.mem.sizeof-array-param",
             "ss.fn.prototype",
             "ss.fn.static-internal",
             "ss.fn.header-decl",
             "ss.decl.extern-in-one-header",
             "ss.pre.source-includes-own-header",
+            "ss.ptr.no-void-arith",
+            "ss.ptr.array-arg",
         ):
             self.check(f"embedded-cpp drops {rid}", absent(cpp_rows, rid), f"{rid} is enabled")
         c_only = {
             "ss.mem.no-vla",
             "ss.mem.no-flexible-array",
+            "ss.mem.sizeof-array-param",
             "ss.fn.prototype",
             "ss.fn.static-internal",
             "ss.fn.header-decl",
             "ss.decl.extern-in-one-header",
             "ss.pre.source-includes-own-header",
+            "ss.ptr.no-void-arith",
+            "ss.ptr.array-arg",
         }
         cpp_only = {
             "ss.cpp.enum-class",

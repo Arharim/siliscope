@@ -3,7 +3,7 @@ static int inside(void) {
   int x;
   a[0] = 1;
   a[1] = 2;
-  x = a < a + 4;
+  x = a < &a[4];
   if (x) {
     return a[1];
   }

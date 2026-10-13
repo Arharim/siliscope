@@ -38,6 +38,12 @@ if(SILISCOPE_ENABLE_CLANG)
     src/checks/NoAssignInCond.cpp
     src/checks/NoOctal.cpp
     src/checks/NoVLA.cpp
+    src/checks/NoLargeFrame.cpp
+    src/checks/SizeofArrayParam.cpp
+    src/checks/NoPtrArith.cpp
+    src/checks/NoVoidArith.cpp
+    src/checks/ArrayArg.cpp
+    src/checks/MaxIndirection.cpp
     src/checks/NoStdarg.cpp
     src/checks/NoSignal.cpp
     src/checks/NoAtoi.cpp

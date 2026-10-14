@@ -280,8 +280,8 @@ class Runner:
         )
         self.check(
             "embedded-cpp still has rules without a checker",
-            present(cpp_rows, "ss.libc.memcmp-not-for-c-strings", "no-checker"),
-            "ss.libc.memcmp-not-for-c-strings missing",
+            present(cpp_rows, "ss.type.fixed-width", "no-checker"),
+            "ss.type.fixed-width missing",
         )
         self.check(
             "embedded-cpp keeps shared checker",

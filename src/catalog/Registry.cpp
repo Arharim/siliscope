@@ -8,6 +8,7 @@
 #include "siliscope/Check.h"
 #include "siliscope/CheckReturn.h"
 #include "siliscope/CsBalanced.h"
+#include "siliscope/CtypeArg.h"
 #include "siliscope/DataflowCheck.h"
 #include "siliscope/DeclConst.h"
 #include "siliscope/Distinct.h"
@@ -21,6 +22,7 @@
 #include "siliscope/IsrNoFp.h"
 #include "siliscope/IsrNotCalled.h"
 #include "siliscope/MaxIndirection.h"
+#include "siliscope/MemcmpString.h"
 #include "siliscope/MinScope.h"
 #include "siliscope/NoAbortSystem.h"
 #include "siliscope/NoAssignInCond.h"
@@ -200,6 +202,8 @@ static const CheckSpec kSpecs[] = {
     {"ss.fn.single-definition", makeCheck<SymbolCheck>},
     {"ss.fn.static-internal", makeCheck<StaticInternalCheck>},
     {"ss.libc.copy-fits-dest", makeCheck<DataflowCheck>},
+    {"ss.libc.ctype-uchar-or-eof", makeCheck<CtypeArgCheck>},
+    {"ss.libc.memcmp-not-for-c-strings", makeCheck<MemcmpStringCheck>},
     {"ss.libc.no-abort-system", makeCheck<NoAbortSystemCheck>},
     {"ss.libc.no-atoi", makeCheck<NoAtoiCheck>},
     {"ss.libc.no-qsort-bsearch", makeCheck<NoQsortCheck>},

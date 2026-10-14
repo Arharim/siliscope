@@ -58,6 +58,8 @@ if(SILISCOPE_ENABLE_CLANG)
     src/checks/NoQsort.cpp
     src/checks/NoRand.cpp
     src/checks/NoSetlocale.cpp
+    src/checks/MemcmpString.cpp
+    src/checks/CtypeArg.cpp
     src/checks/NoComma.cpp
     src/checks/NoFlexibleArray.cpp
     src/checks/NoBlockScope.cpp

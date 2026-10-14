@@ -184,5 +184,13 @@ Live checkers (see `src/catalog/Registry.cpp` and `just test`):
   function that is not `static`. A file that contains only static functions
   stays quiet. `--allow` names the symbol, or the enclosing function for a
   condition or a loop
+- C strings and ctype: `memcmp` on a plain `char` or `signed char` buffer
+  belongs with `strcmp` / `strncmp`. An `unsigned char` record, a struct, and
+  a `void *` stay a packed layout. A cast to `void *` does not hide the
+  buffer. `isdigit`, `toupper`, and the other one-argument `<ctype.h>`
+  functions take an `unsigned char` value or EOF (`-1`). A `signed char`, or
+  a plain `char` when `char` is signed, is the defect. A constant in range
+  and a cast to `unsigned char` stay quiet. An `int` stays quiet, because
+  that is where EOF lives. `--allow` names the enclosing function
 
 Not in this release: the rest of `ss.conv.*`, review-only catalog rows.

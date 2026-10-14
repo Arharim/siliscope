@@ -1,6 +1,6 @@
 # План работ
 
-Снимок после объявлений, условий и инициализации. Каталог — 192 правила. Suite: 396. `embedded-cpp`: 157 включено, 114 с чекером, 43 без. `embedded-c`: 149 / 104 / 45. Живых чекеров 128. Pump, те же 11 `.cpp`: 4956 срабатываний, дельта +406 относительно `out/pump-syntax.txt` и дельта +90 относительно `out/pump-ptr.txt`. no-checker 43. Stderr совпал с прошлым: 0 fatal, 6 ошибок clang, 3884 предупреждения. Лог этого прогона: `out/pump-decl.txt`. Замороженные `out/pump-syntax.txt`, `out/pump-dataflow.txt`, `out/pump-callgraph.txt`, `out/pump-dataflow2.txt`, `out/pump-policies.txt`, `out/pump-interproc.txt`, `out/pump-symbols.txt`, `out/pump-conv.txt` и `out/pump-ptr.txt` не трогали, в git они не входят.
+Снимок после libc: memcmp строк и аргумента ctype. Каталог — 192 правила. Suite: 401. `embedded-cpp`: 157 включено, 116 с чекером, 41 без. `embedded-c`: 149 / 106 / 43. Живых чекеров 130. Pump, те же 11 `.cpp`: 4956 срабатываний, дельта +406 относительно `out/pump-syntax.txt` и дельта 0 относительно `out/pump-decl.txt`. no-checker 41. Stderr совпал с прошлым: 0 fatal, 6 ошибок clang, 3884 предупреждения. Лог этого прогона: `out/pump-libc.txt`. Замороженные `out/pump-syntax.txt`, `out/pump-dataflow.txt`, `out/pump-callgraph.txt`, `out/pump-dataflow2.txt`, `out/pump-policies.txt`, `out/pump-interproc.txt`, `out/pump-symbols.txt`, `out/pump-conv.txt`, `out/pump-ptr.txt` и `out/pump-decl.txt` не трогали, в git они не входят.
 
 Каждый срез: фикстуры, suite, `--list`, прогон тех же 11 файлов pump. Дельту считать так: `python3 tools/diff_report.py out/pump-syntax.txt НОВЫЙ`. Сырой лог в разбор не тащить. `out/pump-syntax.txt` не подменять следующим прогоном. `just fw` для замера шума не использовать. Шум FreeRTOS, CMSIS и SEGGER оставляем: правила не ослабляем и отдельный путь для вендора не заводим. `ruleset/INDEX.md` и `ruleset/coverage.md` руками не правим. Коммит по просьбе, один срез за раз.
 
@@ -135,9 +135,15 @@ Baseline и подавление шире `--allow rule:name` в эту очер
 
 На pump дельта +90 относительно лога после указателей, пропавших диагностик нет. 47 условий не булевы, 32 узких области (23 локальные, 9 файловые), 9 неполных агрегатов, 1 вещественный счётчик, 1 неиспользуемый объект. Выравнивание на этих 11 файлах молчит. `inline-is-static` в `embedded-cpp` не входит. Больше всего в `usb_task.cpp` (41) и `pump_task.cpp` (28). Живых чекеров 128 из 192. В `embedded-cpp` 114 из 157. В `embedded-c` 104 из 149. В `strict` 127 из 175.
 
+Libc для строк и ctype сделан. Два правила. Сторож no-checker теперь `ss.type.fixed-width`.
+
+- `ss.libc.memcmp-not-for-c-strings`: `memcmp` по буферу `char` или `signed char`. `unsigned char`, структура и `void *` остаются упакованной раскладкой. Приведение к `void *` тип буфера не прячет. Сообщение: «do not memcmp a C string».
+- `ss.libc.ctype-uchar-or-eof`: одноаргументные `isdigit`, `toupper` и остальные функции `<ctype.h>`. Дефект — `signed char`, а при знаковом `char` ещё и обычный `char`. `int` молчит: там живёт EOF. Константа от 0 до `UCHAR_MAX` или значение `-1`, а также приведение к `unsigned char`, молчат. Приведение `signed char` к `int` отмечается. Сообщение: «pass unsigned char or EOF to ctype».
+
+На pump дельта 0 относительно лога после объявлений, пропавших диагностик нет. Оба правила на этих 11 файлах молчат. `memcmp` структуры через `void *` в `settings.hpp` остаётся тихим. Живых чекеров 130 из 192. В `embedded-cpp` 116 из 157. В `embedded-c` 106 из 149. В `strict` 129 из 175.
+
 Дальше в этом шаге, всё ещё default on и без чекера:
 
-- Libc: `memcmp-not-for-c-strings`, `ctype-uchar-or-eof`.
 - Типы: `fixed-width`, `bool`, `bitfield`, `enum-init`, `no-bool-math`, `explicit`, `no-restrict`, `array-size`. `no-union` и `no-fp-unless-needed` остаются advisory; сплошного запрета union нет.
 
 Потом syntax, который ещё default on и без чекера: `isr-marked`, `layout-static-assert`, `localize-extensions`, `no-errno-host`, `no-trigraphs`, `init-side-effect-free`, `decl.no-reserved`, `decl.one-per-line`. Advisory (`max-if-nesting`, `named-loop-limit`, `max-length`, `max-params`, `parens`, `named-constants`, `no-time`, `no-tgmath-fenv`, `seq-cst-or-documented`) — после default on. Десять `ss.style.*` — в самом конце, только вместе с профилем `style`.

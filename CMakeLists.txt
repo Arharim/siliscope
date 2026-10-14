@@ -68,6 +68,14 @@ if(SILISCOPE_ENABLE_CLANG)
     src/checks/EnumInit.cpp
     src/checks/ArraySize.cpp
     src/checks/NoBoolMath.cpp
+    src/checks/IsrMarked.cpp
+    src/checks/LayoutStaticAssert.cpp
+    src/checks/LocalizeExtensions.cpp
+    src/checks/NoErrnoHost.cpp
+    src/checks/NoTrigraphs.cpp
+    src/checks/InitSideEffect.cpp
+    src/checks/NoReserved.cpp
+    src/checks/OnePerLine.cpp
     src/checks/NoComma.cpp
     src/checks/NoFlexibleArray.cpp
     src/checks/NoBlockScope.cpp

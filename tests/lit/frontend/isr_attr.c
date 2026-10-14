@@ -8,4 +8,8 @@ struct hw_reg {
   unsigned data;
 } __attribute__((packed));
 
+_Static_assert(sizeof(struct hw_reg) == 8U, "size");
+_Static_assert(__builtin_offsetof(struct hw_reg, ctrl) == 0U, "ctrl");
+_Static_assert(__builtin_offsetof(struct hw_reg, data) == 4U, "data");
+
 void systick_isr(void) {}

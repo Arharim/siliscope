@@ -1,3 +1,4 @@
+/* ss-run: allow=ss.emb.localize-extensions:annotated expect=clean */
 static void commented(int value) {
   switch (value) {
   case 1:

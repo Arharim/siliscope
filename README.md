@@ -203,5 +203,16 @@ Live checkers (see `src/catalog/Registry.cpp` and `just test`):
   initializer that fixes the bound stay quiet. A boolean is not a counter.
   `--allow` names the symbol, or the enclosing function for a cast or an
   operator
+- Syntax: a vector entry carries the interrupt attribute, or a CMSIS
+  `*_IRQHandler` / system `*_Handler` name. A house `*_isr` without the
+  attribute is a defect. `#pragma`, `__attribute__`, `__declspec`, and inline
+  asm in the main file stay in the hardware layer. `errno`, locale, and a
+  host file call stay out. A packed struct has a static assert of its size
+  and of each field offset. Trigraphs and digraphs are unused. An initializer
+  list does not increment, call, or assign. A name does not start with `__`
+  or `_` plus an uppercase letter, and an external definition does not reuse
+  a libc name. One declaration statement names one identifier. `--allow`
+  names the symbol, or the enclosing function for a call, an operator, or an
+  extension inside a function
 
 Not in this release: the rest of `ss.conv.*`, review-only catalog rows.

@@ -1,3 +1,4 @@
+/* ss-run: allow=ss.emb.localize-extensions:kept expect=clean */
 static int value;
 
 typedef int units;

@@ -280,8 +280,8 @@ class Runner:
         )
         self.check(
             "embedded-cpp still has rules without a checker",
-            present(cpp_rows, "ss.emb.isr-marked", "no-checker"),
-            "ss.emb.isr-marked missing",
+            present(cpp_rows, "ss.conv.no-assign-as-value", "no-checker"),
+            "ss.conv.no-assign-as-value missing",
         )
         self.check(
             "embedded-cpp keeps shared checker",
@@ -418,7 +418,18 @@ class Runner:
 
     def check_probe(self) -> None:
         rc, out, err = self.invoke(
-            ["--ruleset-dir", "ruleset", "--probe", "--target", "arm-none-eabi", str(PROBE.relative_to(ROOT))]
+            [
+                "--ruleset-dir",
+                "ruleset",
+                "--probe",
+                "--target",
+                "arm-none-eabi",
+                "--allow",
+                "ss.emb.localize-extensions:systick_isr",
+                "--allow",
+                "ss.emb.localize-extensions:hw_reg",
+                str(PROBE.relative_to(ROOT)),
+            ]
         )
 
         def field(name: str) -> int | None:

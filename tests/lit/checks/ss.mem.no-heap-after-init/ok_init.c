@@ -1,4 +1,4 @@
-/* ss-run: allow=ss.mem.no-heap-after-init:board_init expect=clean */
+/* ss-run: allow=ss.mem.no-heap-after-init:board_init allow=ss.emb.localize-extensions:board_init expect=clean */
 void *malloc(unsigned int n);
 void free(void *p);
 

@@ -6,7 +6,7 @@ struct Point {
 
 struct Reg {
   volatile unsigned value;
-} __attribute__((packed));
+};
 
 struct Box {
   explicit Box(int raw) : value_(raw) {}

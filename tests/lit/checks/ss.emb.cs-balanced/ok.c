@@ -1,3 +1,4 @@
+/* ss-run: allow=ss.decl.no-reserved:__disable_irq allow=ss.decl.no-reserved:__get_PRIMASK allow=ss.decl.no-reserved:__set_PRIMASK expect=clean */
 void taskENTER_CRITICAL(void);
 void taskEXIT_CRITICAL(void);
 void __disable_irq(void);

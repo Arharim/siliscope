@@ -1,3 +1,4 @@
+/* ss-run: allow=ss.emb.localize-extensions:nvic_isr expect=clean */
 #if defined(__GNUC__) // GNU interrupt attribute
 void nvic_isr(void) __attribute__((interrupt));
 #endif

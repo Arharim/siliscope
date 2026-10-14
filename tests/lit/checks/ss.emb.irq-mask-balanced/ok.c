@@ -1,3 +1,4 @@
+/* ss-run: allow=ss.decl.no-reserved:__get_PRIMASK allow=ss.decl.no-reserved:__set_PRIMASK allow=ss.decl.no-reserved:__disable_irq allow=ss.decl.no-reserved:__get_BASEPRI allow=ss.decl.no-reserved:__set_BASEPRI expect=clean */
 unsigned __get_PRIMASK(void);
 void __set_PRIMASK(unsigned m);
 void __disable_irq(void);

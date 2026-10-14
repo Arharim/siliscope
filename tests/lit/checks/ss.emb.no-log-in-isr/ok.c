@@ -1,3 +1,4 @@
+/* ss-run: allow=ss.emb.localize-extensions:nvic_isr expect=clean */
 void log_printf(const char *msg);
 
 static volatile int flag;

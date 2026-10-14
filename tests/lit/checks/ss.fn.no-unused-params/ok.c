@@ -1,3 +1,4 @@
+/* ss-run: allow=ss.emb.localize-extensions:attr_unused expect=clean */
 static int add(int a, int b) {
   return a + b;
 }

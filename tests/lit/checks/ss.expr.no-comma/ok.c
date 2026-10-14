@@ -3,7 +3,8 @@ static int g(int a, int b) {
 }
 
 static void f(void) {
-  int x, y;
+  int x;
+  int y;
   x = 1;
   y = 2;
   (void)g(x, y);

@@ -23,10 +23,14 @@
 #include "siliscope/FpToIntExplicit.h"
 #include "siliscope/IfElseFinal.h"
 #include "siliscope/InitMembers.h"
+#include "siliscope/InitSideEffect.h"
 #include "siliscope/InlineIsStatic.h"
 #include "siliscope/IrqMaskBalanced.h"
+#include "siliscope/IsrMarked.h"
 #include "siliscope/IsrNoFp.h"
 #include "siliscope/IsrNotCalled.h"
+#include "siliscope/LayoutStaticAssert.h"
+#include "siliscope/LocalizeExtensions.h"
 #include "siliscope/MaxIndirection.h"
 #include "siliscope/MemcmpString.h"
 #include "siliscope/MinScope.h"
@@ -41,6 +45,7 @@
 #include "siliscope/NoContinue.h"
 #include "siliscope/NoCvAway.h"
 #include "siliscope/NoDefaultArgs.h"
+#include "siliscope/NoErrnoHost.h"
 #include "siliscope/NoExceptions.h"
 #include "siliscope/NoFlexibleArray.h"
 #include "siliscope/NoFnPtrCast.h"
@@ -66,6 +71,7 @@
 #include "siliscope/NoQsort.h"
 #include "siliscope/NoRand.h"
 #include "siliscope/NoRecursion.h"
+#include "siliscope/NoReserved.h"
 #include "siliscope/NoRestrict.h"
 #include "siliscope/NoRtti.h"
 #include "siliscope/NoSetjmp.h"
@@ -80,6 +86,7 @@
 #include "siliscope/NoThrowDtor.h"
 #include "siliscope/NoThrowSpec.h"
 #include "siliscope/NoThrowingSwap.h"
+#include "siliscope/NoTrigraphs.h"
 #include "siliscope/NoUnaryMinusUnsigned.h"
 #include "siliscope/NoUnboundedString.h"
 #include "siliscope/NoUnsignedWrap.h"
@@ -92,6 +99,7 @@
 #include "siliscope/NoVoidArith.h"
 #include "siliscope/Noreturn.h"
 #include "siliscope/Nullptr.h"
+#include "siliscope/OnePerLine.h"
 #include "siliscope/Override.h"
 #include "siliscope/PreprocessorCheck.h"
 #include "siliscope/PrivateData.h"
@@ -179,21 +187,29 @@ static const CheckSpec kSpecs[] = {
     {"ss.decl.distinct", makeCheck<DistinctCheck>},
     {"ss.decl.extern-in-one-header", makeCheck<SymbolCheck>},
     {"ss.decl.min-scope", makeCheck<MinScopeCheck>},
+    {"ss.decl.no-reserved", makeCheck<NoReservedCheck>},
     {"ss.decl.no-shadow", makeCheck<NoShadowCheck>},
     {"ss.decl.no-unused", makeCheck<NoUnusedCheck>},
+    {"ss.decl.one-per-line", makeCheck<OnePerLineCheck>},
     {"ss.decl.ptr-null", makeCheck<PtrNullCheck>},
     {"ss.emb.cs-balanced", makeCheck<CsBalancedCheck>},
     {"ss.emb.irq-mask-balanced", makeCheck<IrqMaskBalancedCheck>},
+    {"ss.emb.isr-marked", makeCheck<IsrMarkedCheck>},
     {"ss.emb.isr-no-fp", makeCheck<IsrNoFpCheck>},
     {"ss.emb.isr-not-called", makeCheck<IsrNotCalledCheck>},
+    {"ss.emb.layout-static-assert", makeCheck<LayoutStaticAssertCheck>},
+    {"ss.emb.localize-extensions", makeCheck<LocalizeExtensionsCheck>},
+    {"ss.emb.no-errno-host", makeCheck<NoErrnoHostCheck>},
     {"ss.emb.no-log-in-isr", makeCheck<NoLogInIsrCheck>},
     {"ss.expr.aggregate-init", makeCheck<AggregateInitCheck>},
     {"ss.expr.fp-must-be-finite", makeCheck<DataflowCheck>},
+    {"ss.expr.init-side-effect-free", makeCheck<InitSideEffectCheck>},
     {"ss.expr.no-comma", makeCheck<NoCommaCheck>},
     {"ss.expr.no-inc-in-expr", makeCheck<NoIncInExprCheck>},
     {"ss.expr.no-logical-rhs-side-effect", makeCheck<NoLogicalRhsCheck>},
     {"ss.expr.no-octal", makeCheck<NoOctalCheck>},
     {"ss.expr.no-sizeof-side-effect", makeCheck<NoSizeofSideEffectCheck>},
+    {"ss.expr.no-trigraphs", makeCheck<NoTrigraphsCheck>},
     {"ss.expr.no-unseq", makeCheck<DataflowCheck>},
     {"ss.expr.string-const", makeCheck<StringConstCheck>},
     {"ss.expr.uninit", makeCheck<DataflowCheck>},

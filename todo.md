@@ -1,6 +1,6 @@
 # План работ
 
-Снимок после libc: memcmp строк и аргумента ctype. Каталог — 192 правила. Suite: 401. `embedded-cpp`: 157 включено, 116 с чекером, 41 без. `embedded-c`: 149 / 106 / 43. Живых чекеров 130. Pump, те же 11 `.cpp`: 4956 срабатываний, дельта +406 относительно `out/pump-syntax.txt` и дельта 0 относительно `out/pump-decl.txt`. no-checker 41. Stderr совпал с прошлым: 0 fatal, 6 ошибок clang, 3884 предупреждения. Лог этого прогона: `out/pump-libc.txt`. Замороженные `out/pump-syntax.txt`, `out/pump-dataflow.txt`, `out/pump-callgraph.txt`, `out/pump-dataflow2.txt`, `out/pump-policies.txt`, `out/pump-interproc.txt`, `out/pump-symbols.txt`, `out/pump-conv.txt`, `out/pump-ptr.txt` и `out/pump-decl.txt` не трогали, в git они не входят.
+Снимок после типов: фиксированная ширина, bool, битовые поля, перечисления и размер массива. Каталог — 192 правила. Suite: 417. `embedded-cpp`: 157 включено, 122 с чекером, 35 без. `embedded-c`: 149 / 114 / 35. Живых чекеров 138. Pump, те же 11 `.cpp`: 4984 срабатываний, дельта +434 относительно `out/pump-syntax.txt` и дельта +28 относительно `out/pump-libc.txt`. no-checker 35. Stderr совпал с прошлым: 0 fatal, 6 ошибок clang, 3884 предупреждения. Лог этого прогона: `out/pump-types.txt`. Замороженные `out/pump-syntax.txt`, `out/pump-dataflow.txt`, `out/pump-callgraph.txt`, `out/pump-dataflow2.txt`, `out/pump-policies.txt`, `out/pump-interproc.txt`, `out/pump-symbols.txt`, `out/pump-conv.txt`, `out/pump-ptr.txt`, `out/pump-decl.txt` и `out/pump-libc.txt` не трогали, в git они не входят.
 
 Каждый срез: фикстуры, suite, `--list`, прогон тех же 11 файлов pump. Дельту считать так: `python3 tools/diff_report.py out/pump-syntax.txt НОВЫЙ`. Сырой лог в разбор не тащить. `out/pump-syntax.txt` не подменять следующим прогоном. `just fw` для замера шума не использовать. Шум FreeRTOS, CMSIS и SEGGER оставляем: правила не ослабляем и отдельный путь для вендора не заводим. `ruleset/INDEX.md` и `ruleset/coverage.md` руками не правим. Коммит по просьбе, один срез за раз.
 
@@ -142,11 +142,20 @@ Libc для строк и ctype сделан. Два правила. Сторо�
 
 На pump дельта 0 относительно лога после объявлений, пропавших диагностик нет. Оба правила на этих 11 файлах молчат. `memcmp` структуры через `void *` в `settings.hpp` остаётся тихим. Живых чекеров 130 из 192. В `embedded-cpp` 116 из 157. В `embedded-c` 106 из 149. В `strict` 129 из 175.
 
-Дальше в этом шаге, всё ещё default on и без чекера:
+Типы сделаны. Восемь правил. `no-union` и `no-fp-unless-needed` остаются advisory: сплошного запрета union нет. `explicit` и `no-restrict` только C и из `embedded-cpp` исключены. Сторож no-checker теперь `ss.emb.isr-marked`.
 
-- Типы: `fixed-width`, `bool`, `bitfield`, `enum-init`, `no-bool-math`, `explicit`, `no-restrict`, `array-size`. `no-union` и `no-fp-unless-needed` остаются advisory; сплошного запрета union нет.
+- `ss.type.fixed-width`: написанные `short` и `long`, включая `typedef long`. Имя вроде `int64_t` молчит, даже если на ARM оно раскрывается в `long`. Арифметика, сдвиг и инкремент обычного `char` — целое использование. `signed char`, `unsigned char`, строка и символьный литерал молчат. Сообщения: «use a fixed-width integer instead of short or long», «keep char for character data».
+- `ss.type.bool`: явный каст в `bool` или `_Bool`. Неявное `if (n)` остаётся у `ss.ctrl.boolean-condition`. Сообщение: «use a comparison instead of a cast to bool».
+- `ss.type.explicit`: только C. Пропущенный тип, включая функцию `static value(void)`. Сообщение: «specify the type explicitly».
+- `ss.type.no-restrict`: только C. Квалификатор `restrict` на указателе, массиве или в явном касте. Сообщение: «do not use restrict».
+- `ss.type.bitfield`: обычный `int` и знаковое поле шириной 1. `unsigned`, `bool` и явный `signed` шире одного бита молчат. Сообщения: «give this bit-field an explicit signed or unsigned type», «a single-bit field shall not be signed».
+- `ss.type.enum-init`: ни одного инициализатора, только первый или все. Совпадающие значения отмечаются отдельно, даже если список инициализирован целиком. Сообщения: «initialize none, only the first, or every enumerator», «enumerator values collide».
+- `ss.type.array-size`: массив без размера. Параметр `T a[]` и массив, чей размер задаёт инициализатор, молчат. Гибкий член тоже без размера. Сообщение: «specify the array size».
+- `ss.type.no-bool-math`: `++`, `--` и арифметика, где операнд — `bool`. В C сравнение имеет тип `int` и молчит. В C++ сравнение — `bool`, и `n + (a < b)` отмечается. Сообщение: «do not do arithmetic on a boolean».
 
-Потом syntax, который ещё default on и без чекера: `isr-marked`, `layout-static-assert`, `localize-extensions`, `no-errno-host`, `no-trigraphs`, `init-side-effect-free`, `decl.no-reserved`, `decl.one-per-line`. Advisory (`max-if-nesting`, `named-loop-limit`, `max-length`, `max-params`, `parens`, `named-constants`, `no-time`, `no-tgmath-fenv`, `seq-cst-or-documented`) — после default on. Десять `ss.style.*` — в самом конце, только вместе с профилем `style`.
+`--allow` называет символ, а у каста и оператора — функцию. На pump дельта +28 относительно лога после libc, пропавших диагностик нет. 26 — `ss.type.enum-init` (24 столкновения, 2 смешанных списка) и 2 — `ss.type.fixed-width`: `typedef long BaseType_t` и `typedef unsigned long UBaseType_t` в `portmacro.h`. `bool`, `bitfield`, `array-size` и `no-bool-math` на этих 11 файлах молчат. `explicit` и `no-restrict` в `embedded-cpp` не входят. Больше всего столкновений в `at32f403a_407_adc.h` (22): коды ADC12 и ADC3 повторяют одни числа. Живых чекеров 138 из 192. В `embedded-cpp` 122 из 157. В `embedded-c` 114 из 149. В `strict` 137 из 175.
+
+Дальше syntax, который ещё default on и без чекера: `isr-marked`, `layout-static-assert`, `localize-extensions`, `no-errno-host`, `no-trigraphs`, `init-side-effect-free`, `decl.no-reserved`, `decl.one-per-line`. Advisory (`max-if-nesting`, `named-loop-limit`, `max-length`, `max-params`, `parens`, `named-constants`, `no-time`, `no-tgmath-fenv`, `seq-cst-or-documented`) — после default on. Десять `ss.style.*` — в самом конце, только вместе с профилем `style`.
 
 ### 12. Остаток cfg
 

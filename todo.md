@@ -1,6 +1,6 @@
 # План работ
 
-Снимок после указателей и размера кадра. Каталог — 192 правила. Suite: 377. `embedded-cpp`: 157 включено, 108 с чекером, 49 без. `embedded-c`: 149 / 97 / 52. Живых чекеров 121. Pump, те же 11 `.cpp`: 4866 срабатываний, дельта +316 относительно `out/pump-syntax.txt` и дельта +28 относительно `out/pump-conv.txt`. no-checker 49. Stderr совпал с прошлым: 0 fatal, 6 ошибок clang, 3884 предупреждения. Лог этого прогона: `out/pump-ptr.txt`. Замороженные `out/pump-syntax.txt`, `out/pump-dataflow.txt`, `out/pump-callgraph.txt`, `out/pump-dataflow2.txt`, `out/pump-policies.txt`, `out/pump-interproc.txt`, `out/pump-symbols.txt` и `out/pump-conv.txt` не трогали, в git они не входят.
+Снимок после объявлений, условий и инициализации. Каталог — 192 правила. Suite: 396. `embedded-cpp`: 157 включено, 114 с чекером, 43 без. `embedded-c`: 149 / 104 / 45. Живых чекеров 128. Pump, те же 11 `.cpp`: 4956 срабатываний, дельта +406 относительно `out/pump-syntax.txt` и дельта +90 относительно `out/pump-ptr.txt`. no-checker 43. Stderr совпал с прошлым: 0 fatal, 6 ошибок clang, 3884 предупреждения. Лог этого прогона: `out/pump-decl.txt`. Замороженные `out/pump-syntax.txt`, `out/pump-dataflow.txt`, `out/pump-callgraph.txt`, `out/pump-dataflow2.txt`, `out/pump-policies.txt`, `out/pump-interproc.txt`, `out/pump-symbols.txt`, `out/pump-conv.txt` и `out/pump-ptr.txt` не трогали, в git они не входят.
 
 Каждый срез: фикстуры, suite, `--list`, прогон тех же 11 файлов pump. Дельту считать так: `python3 tools/diff_report.py out/pump-syntax.txt НОВЫЙ`. Сырой лог в разбор не тащить. `out/pump-syntax.txt` не подменять следующим прогоном. `just fw` для замера шума не использовать. Шум FreeRTOS, CMSIS и SEGGER оставляем: правила не ослабляем и отдельный путь для вендора не заводим. `ruleset/INDEX.md` и `ruleset/coverage.md` руками не правим. Коммит по просьбе, один срез за раз.
 
@@ -123,9 +123,20 @@ Baseline и подавление шире `--allow rule:name` в эту очер
 
 На pump дельта +28 относительно лога после конверсий, пропавших диагностик нет. Все 28 — `ss.ptr.no-ptr-arith`: 20 в `usb_task.cpp`, 8 в `settings.hpp`. Глубина указателей и размер кадра на этих 11 файлах молчат. Три правила только для C в `embedded-cpp` не входят. Живых чекеров 121 из 192. В `embedded-cpp` 108 из 157. В `embedded-c` 97 из 149. В `strict` 120 из 175.
 
+Объявления, условия и инициализация сделаны. Семь правил. `inline-is-static` только C и из `embedded-cpp` исключено. Сторож no-checker теперь `ss.libc.memcmp-not-for-c-strings`.
+
+- `ss.decl.no-unused`: статическая функция, объект файловой области или typedef, которыми этот файл не пользуется. Статическая функция отмечается, только если в том же файле есть функция с внешней связностью. Файл из одних статических функций молчит. Заголовок, включённый в файл, молчит. Сообщения: «this static function is never used», «this file-scope object is never used», «this typedef is never used».
+- `ss.decl.min-scope`: объект файловой области с внутренней связностью, который использует одна функция, и локальная с тривиальным инициализатором, которой пользуется только более узкий блок. Сообщения: «declare this object in the function that uses it», «declare this where it is used».
+- `ss.decl.align-same`: у объявлений объекта разный `_Alignas` / `alignas`. Унаследованная копия, которую Clang ставит на определение, не считается написанным выравниванием. Сообщение: «alignment differs across declarations».
+- `ss.ctrl.boolean-condition`: условие `if`, `while`, `for` и `do` — булево значение или сравнение. `if (n)` и `while (1)` отмечаются. `--allow` называет функцию. Сообщение: «condition should be a boolean or a comparison».
+- `ss.ctrl.no-fp-loop-counter`: счётчик цикла имеет целый тип. Это ошибка. Сообщение: «a loop counter shall have integer type».
+- `ss.expr.aggregate-init`: неполная инициализация, designated-массив без размера и плоский список вместо вложенных скобок. Пустой `{}` — полная инициализация. Сообщения: «initialize every element of this aggregate», «state the size of this designated array», «enclose this nested aggregate in braces».
+- `ss.fn.inline-is-static`: только C. `inline` без `static` в этом файле. Тело из заголовка молчит. Сообщение: «make this inline function static».
+
+На pump дельта +90 относительно лога после указателей, пропавших диагностик нет. 47 условий не булевы, 32 узких области (23 локальные, 9 файловые), 9 неполных агрегатов, 1 вещественный счётчик, 1 неиспользуемый объект. Выравнивание на этих 11 файлах молчит. `inline-is-static` в `embedded-cpp` не входит. Больше всего в `usb_task.cpp` (41) и `pump_task.cpp` (28). Живых чекеров 128 из 192. В `embedded-cpp` 114 из 157. В `embedded-c` 104 из 149. В `strict` 127 из 175.
+
 Дальше в этом шаге, всё ещё default on и без чекера:
 
-- Объявления, условия, инициализация: `decl.no-unused`, `decl.min-scope`, `decl.align-same`, `boolean-condition`, `no-fp-loop-counter`, `aggregate-init`, `inline-is-static`.
 - Libc: `memcmp-not-for-c-strings`, `ctype-uchar-or-eof`.
 - Типы: `fixed-width`, `bool`, `bitfield`, `enum-init`, `no-bool-math`, `explicit`, `no-restrict`, `array-size`. `no-union` и `no-fp-unless-needed` остаются advisory; сплошного запрета union нет.
 

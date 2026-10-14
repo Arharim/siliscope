@@ -192,5 +192,16 @@ Live checkers (see `src/catalog/Registry.cpp` and `just test`):
   a plain `char` when `char` is signed, is the defect. A constant in range
   and a cast to `unsigned char` stay quiet. An `int` stays quiet, because
   that is where EOF lives. `--allow` names the enclosing function
+- Types: `short` and `long` are not a width contract, and a typedef such as
+  `int64_t` stays the fixed-width name. Arithmetic on plain `char` is integer
+  data; a string and a character literal stay character data. A cast to
+  `bool` or `_Bool` belongs as a comparison. In C, a declaration names its
+  type, and `restrict` does not appear. A plain `int` bit-field names
+  `signed` or `unsigned`, and a one-bit field is not signed. An enumerator
+  list initializes none, only the first, or every value, and two values do
+  not collide. An array names its bound; a parameter `T a[]` and an
+  initializer that fixes the bound stay quiet. A boolean is not a counter.
+  `--allow` names the symbol, or the enclosing function for a cast or an
+  operator
 
 Not in this release: the rest of `ss.conv.*`, review-only catalog rows.

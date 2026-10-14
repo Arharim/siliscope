@@ -1,5 +1,5 @@
-void *memcpy(void *dst, const void *src, unsigned long n);
-void *memset(void *dst, int value, unsigned long n);
+void *memcpy(void *dst, const void *src, unsigned n);
+void *memset(void *dst, int value, unsigned n);
 
 static void fits(void) {
   char dst[8];

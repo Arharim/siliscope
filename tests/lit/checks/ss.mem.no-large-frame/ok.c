@@ -3,5 +3,5 @@ static int edge(void) {
   static char big[600];
   buf[0] = 0;
   big[0] = 1;
-  return buf[0] + big[0];
+  return buf[0] != big[0];
 }

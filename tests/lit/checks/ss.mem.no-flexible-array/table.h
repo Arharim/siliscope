@@ -1,6 +1,6 @@
 #ifndef TABLE_H
 #define TABLE_H
 
-extern int table[];
+extern int table[4];
 
 #endif

@@ -280,8 +280,8 @@ class Runner:
         )
         self.check(
             "embedded-cpp still has rules without a checker",
-            present(cpp_rows, "ss.type.fixed-width", "no-checker"),
-            "ss.type.fixed-width missing",
+            present(cpp_rows, "ss.emb.isr-marked", "no-checker"),
+            "ss.emb.isr-marked missing",
         )
         self.check(
             "embedded-cpp keeps shared checker",
@@ -314,6 +314,8 @@ class Runner:
             "ss.ptr.no-void-arith",
             "ss.ptr.array-arg",
             "ss.fn.inline-is-static",
+            "ss.type.explicit",
+            "ss.type.no-restrict",
         }
         cpp_only = {
             "ss.cpp.enum-class",

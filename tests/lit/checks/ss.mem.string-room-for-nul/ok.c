@@ -1,4 +1,4 @@
-char *strncpy(char *dst, const char *src, unsigned long n);
+char *strncpy(char *dst, const char *src, unsigned n);
 
 static void fits(void) {
   char dst[8];

@@ -60,6 +60,14 @@ if(SILISCOPE_ENABLE_CLANG)
     src/checks/NoSetlocale.cpp
     src/checks/MemcmpString.cpp
     src/checks/CtypeArg.cpp
+    src/checks/FixedWidth.cpp
+    src/checks/BoolType.cpp
+    src/checks/ExplicitType.cpp
+    src/checks/NoRestrict.cpp
+    src/checks/BitField.cpp
+    src/checks/EnumInit.cpp
+    src/checks/ArraySize.cpp
+    src/checks/NoBoolMath.cpp
     src/checks/NoComma.cpp
     src/checks/NoFlexibleArray.cpp
     src/checks/NoBlockScope.cpp

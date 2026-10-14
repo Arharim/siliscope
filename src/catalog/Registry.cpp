@@ -3,6 +3,9 @@
 #include "siliscope/AggregateInit.h"
 #include "siliscope/AlignSame.h"
 #include "siliscope/ArrayArg.h"
+#include "siliscope/ArraySize.h"
+#include "siliscope/BitField.h"
+#include "siliscope/BoolType.h"
 #include "siliscope/BooleanCondition.h"
 #include "siliscope/Braces.h"
 #include "siliscope/Check.h"
@@ -14,6 +17,9 @@
 #include "siliscope/Distinct.h"
 #include "siliscope/EmptyLoopComment.h"
 #include "siliscope/EnumClass.h"
+#include "siliscope/EnumInit.h"
+#include "siliscope/ExplicitType.h"
+#include "siliscope/FixedWidth.h"
 #include "siliscope/FpToIntExplicit.h"
 #include "siliscope/IfElseFinal.h"
 #include "siliscope/InitMembers.h"
@@ -29,6 +35,7 @@
 #include "siliscope/NoAtoi.h"
 #include "siliscope/NoBlockInCs.h"
 #include "siliscope/NoBlockScope.h"
+#include "siliscope/NoBoolMath.h"
 #include "siliscope/NoCStyleCast.h"
 #include "siliscope/NoComma.h"
 #include "siliscope/NoContinue.h"
@@ -59,6 +66,7 @@
 #include "siliscope/NoQsort.h"
 #include "siliscope/NoRand.h"
 #include "siliscope/NoRecursion.h"
+#include "siliscope/NoRestrict.h"
 #include "siliscope/NoRtti.h"
 #include "siliscope/NoSetjmp.h"
 #include "siliscope/NoSetlocale.h"
@@ -241,6 +249,14 @@ static const CheckSpec kSpecs[] = {
     {"ss.ptr.no-ptr-arith", makeCheck<NoPtrArithCheck>},
     {"ss.ptr.no-void-arith", makeCheck<NoVoidArithCheck>},
     {"ss.ptr.same-array", makeCheck<DataflowCheck>},
+    {"ss.type.array-size", makeCheck<ArraySizeCheck>},
+    {"ss.type.bitfield", makeCheck<BitFieldCheck>},
+    {"ss.type.bool", makeCheck<BoolTypeCheck>},
+    {"ss.type.enum-init", makeCheck<EnumInitCheck>},
+    {"ss.type.explicit", makeCheck<ExplicitTypeCheck>},
+    {"ss.type.fixed-width", makeCheck<FixedWidthCheck>},
+    {"ss.type.no-bool-math", makeCheck<NoBoolMathCheck>},
+    {"ss.type.no-restrict", makeCheck<NoRestrictCheck>},
 };
 
 const CheckSpec *checkSpecs() {

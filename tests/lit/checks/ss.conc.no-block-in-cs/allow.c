@@ -8,3 +8,8 @@ static void f(void) {
   vTaskDelay(1U);
   taskEXIT_CRITICAL();
 }
+
+int main(void) {
+  f();
+  return 0;
+}

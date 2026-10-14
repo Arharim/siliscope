@@ -11,7 +11,7 @@ static void balanced(void) {
 
 static void both_returns(int x) {
   taskENTER_CRITICAL();
-  if (x) {
+  if (x != 0) {
     taskEXIT_CRITICAL();
     return;
   }
@@ -29,4 +29,12 @@ static void nested(void) {
   taskENTER_CRITICAL();
   taskEXIT_CRITICAL();
   taskEXIT_CRITICAL();
+}
+
+int main(void) {
+  balanced();
+  both_returns(0);
+  irq_pair();
+  nested();
+  return 0;
 }

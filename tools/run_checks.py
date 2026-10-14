@@ -280,8 +280,8 @@ class Runner:
         )
         self.check(
             "embedded-cpp still has rules without a checker",
-            present(cpp_rows, "ss.decl.no-unused", "no-checker"),
-            "ss.decl.no-unused missing",
+            present(cpp_rows, "ss.libc.memcmp-not-for-c-strings", "no-checker"),
+            "ss.libc.memcmp-not-for-c-strings missing",
         )
         self.check(
             "embedded-cpp keeps shared checker",
@@ -299,6 +299,7 @@ class Runner:
             "ss.pre.source-includes-own-header",
             "ss.ptr.no-void-arith",
             "ss.ptr.array-arg",
+            "ss.fn.inline-is-static",
         ):
             self.check(f"embedded-cpp drops {rid}", absent(cpp_rows, rid), f"{rid} is enabled")
         c_only = {
@@ -312,6 +313,7 @@ class Runner:
             "ss.pre.source-includes-own-header",
             "ss.ptr.no-void-arith",
             "ss.ptr.array-arg",
+            "ss.fn.inline-is-static",
         }
         cpp_only = {
             "ss.cpp.enum-class",

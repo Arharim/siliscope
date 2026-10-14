@@ -1,3 +1,4 @@
+/* ss-run: allow=ss.ctrl.boolean-condition:truthy expect=clean */
 static int check(const int *p) {
   if (p == 0) {
     return 0;

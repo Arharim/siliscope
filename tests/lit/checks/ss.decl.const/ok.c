@@ -1,5 +1,3 @@
-static int g;
-
 static void writes(int *p) {
   *p = 1;
 }
@@ -18,7 +16,9 @@ static void loop(int n) {
 }
 
 static void ptr_write(void) {
+  int g;
   int *q = &g;
+  g = 0;
   *q = 0;
   q = &g;
 }

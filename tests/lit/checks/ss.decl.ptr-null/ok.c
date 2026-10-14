@@ -14,4 +14,13 @@ static void f(const int *param) {
   (void)q;
   (void)fp;
   (void)local_static;
+  (void)file_scope;
+  (void)file_static;
+  (void)g;
+}
+
+static void also(void) {
+  (void)file_scope;
+  (void)file_static;
+  (void)g;
 }

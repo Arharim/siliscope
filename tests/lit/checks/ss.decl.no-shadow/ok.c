@@ -1,7 +1,7 @@
 static int g;
 
 static void f(int a) {
-  const int b = a;
+  const int b = a + g;
   {
     const int c = b;
     (void)c;
@@ -13,7 +13,7 @@ static void f(int a) {
 }
 
 static void h(int a) {
-  const int b = a;
+  const int b = a + g;
   (void)b;
 }
 

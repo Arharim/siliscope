@@ -3,8 +3,7 @@
 
 static int g;
 
-static void helper(void) {
-}
+static void helper(void) { g = 1; }
 
 void USART1_IRQHandler(void) {
 }

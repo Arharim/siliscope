@@ -8,4 +8,7 @@ void systick_isr(void) {
   helper();
 }
 
-void thread(void) { worker(); }
+void thread(void) {
+  flag = 0;
+  worker();
+}

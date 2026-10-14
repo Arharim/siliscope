@@ -11,3 +11,9 @@ static void copy(void) {
   char buf[] = "copy";
   buf[0] = 'C';
 }
+
+int main(void) {
+  ok();
+  copy();
+  return 0;
+}

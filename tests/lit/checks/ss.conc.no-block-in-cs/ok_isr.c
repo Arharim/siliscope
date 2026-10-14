@@ -7,3 +7,8 @@ static void f(void) {
   xQueueReceiveFromISR(0, 0, 0);
   taskEXIT_CRITICAL();
 }
+
+int main(void) {
+  f();
+  return 0;
+}

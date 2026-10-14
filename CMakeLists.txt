@@ -44,6 +44,13 @@ if(SILISCOPE_ENABLE_CLANG)
     src/checks/NoVoidArith.cpp
     src/checks/ArrayArg.cpp
     src/checks/MaxIndirection.cpp
+    src/checks/NoUnused.cpp
+    src/checks/MinScope.cpp
+    src/checks/AlignSame.cpp
+    src/checks/BooleanCondition.cpp
+    src/checks/NoFpLoopCounter.cpp
+    src/checks/AggregateInit.cpp
+    src/checks/InlineIsStatic.cpp
     src/checks/NoStdarg.cpp
     src/checks/NoSignal.cpp
     src/checks/NoAtoi.cpp

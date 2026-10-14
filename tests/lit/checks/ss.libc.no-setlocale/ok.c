@@ -1,6 +1,6 @@
 static void f(void) {
   int i = 0;
-  if (i) {
+  if (i != 0) {
     i = 1;
   }
 }

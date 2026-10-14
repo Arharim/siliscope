@@ -4,7 +4,7 @@ static int inside(void) {
   a[0] = 1;
   a[1] = 2;
   x = a < &a[4];
-  if (x) {
+  if (x != 0) {
     return a[1];
   }
   return a[0];

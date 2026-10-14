@@ -1,3 +1,4 @@
+/* ss-run: allow=ss.ctrl.boolean-condition:get expect=clean */
 static int get(const int *p);
 
 static int use(void) {

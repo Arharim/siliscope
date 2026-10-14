@@ -5,3 +5,5 @@ constexpr int value = 1;
 using tool::value;
 
 int read() { return value; }
+
+int also() { return value; }

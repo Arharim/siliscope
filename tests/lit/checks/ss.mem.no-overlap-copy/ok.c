@@ -21,3 +21,8 @@ static void copies(void) {
   t.b = 4;
   s = t;
 }
+
+int main(void) {
+  copies();
+  return 0;
+}

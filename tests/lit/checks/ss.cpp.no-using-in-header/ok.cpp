@@ -6,6 +6,8 @@ constexpr int value = 1;
 }
 using tool::value;
 
+int also() { return value; }
+
 int read(const Derived *item) {
   if (item == nullptr) {
     return 0;

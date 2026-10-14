@@ -174,5 +174,15 @@ Live checkers (see `src/catalog/Registry.cpp` and `just test`):
   that decayed to a pointer is the pointer size. Automatic locals that sum
   past 512 bytes are quiet in one function with
   `--allow ss.mem.no-large-frame:NAME`
+- Declarations, conditions, and initialization: a static function, file-scope
+  object, or typedef that this file never uses; a file-scope object used from
+  only one function, or a local that can move into a tighter block; an object
+  whose declarations disagree on `_Alignas` / `alignas`; an `if`, `while`,
+  `for`, or `do` test that is not a boolean or a comparison; a floating loop
+  counter; an aggregate that leaves an element out, omits the size of a
+  designated array, or flattens a nested brace list; and, in C, an `inline`
+  function that is not `static`. A file that contains only static functions
+  stays quiet. `--allow` names the symbol, or the enclosing function for a
+  condition or a loop
 
 Not in this release: the rest of `ss.conv.*`, review-only catalog rows.

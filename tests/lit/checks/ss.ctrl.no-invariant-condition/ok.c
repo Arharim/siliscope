@@ -1,5 +1,6 @@
+/* ss-run: allow=ss.ctrl.boolean-condition:skip allow=ss.ctrl.boolean-condition:once allow=ss.ctrl.boolean-condition:documented expect=clean */
 static int live(int x) {
-  if (x) {
+  if (x != 0) {
     return 1;
   }
   return 0;

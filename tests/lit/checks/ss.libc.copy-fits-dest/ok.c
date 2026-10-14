@@ -8,3 +8,8 @@ static void fits(void) {
   (void)memset(dst, 0, 8U);
   (void)memcpy(dst, src, 4U);
 }
+
+int main(void) {
+  fits();
+  return 0;
+}

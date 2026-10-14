@@ -6,3 +6,8 @@ static void f(int x) {
   a = x && x;
   (void)a;
 }
+
+int main(void) {
+  f(1);
+  return 0;
+}

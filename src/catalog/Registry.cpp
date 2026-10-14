@@ -1,6 +1,9 @@
 #include "siliscope/Registry.h"
 
+#include "siliscope/AggregateInit.h"
+#include "siliscope/AlignSame.h"
 #include "siliscope/ArrayArg.h"
+#include "siliscope/BooleanCondition.h"
 #include "siliscope/Braces.h"
 #include "siliscope/Check.h"
 #include "siliscope/CheckReturn.h"
@@ -13,10 +16,12 @@
 #include "siliscope/FpToIntExplicit.h"
 #include "siliscope/IfElseFinal.h"
 #include "siliscope/InitMembers.h"
+#include "siliscope/InlineIsStatic.h"
 #include "siliscope/IrqMaskBalanced.h"
 #include "siliscope/IsrNoFp.h"
 #include "siliscope/IsrNotCalled.h"
 #include "siliscope/MaxIndirection.h"
+#include "siliscope/MinScope.h"
 #include "siliscope/NoAbortSystem.h"
 #include "siliscope/NoAssignInCond.h"
 #include "siliscope/NoAtoi.h"
@@ -31,6 +36,7 @@
 #include "siliscope/NoFlexibleArray.h"
 #include "siliscope/NoFnPtrCast.h"
 #include "siliscope/NoFpEq.h"
+#include "siliscope/NoFpLoopCounter.h"
 #include "siliscope/NoFpNarrow.h"
 #include "siliscope/NoFriend.h"
 #include "siliscope/NoGoto.h"
@@ -67,6 +73,7 @@
 #include "siliscope/NoUnaryMinusUnsigned.h"
 #include "siliscope/NoUnboundedString.h"
 #include "siliscope/NoUnsignedWrap.h"
+#include "siliscope/NoUnused.h"
 #include "siliscope/NoUnusedParams.h"
 #include "siliscope/NoUsingDirective.h"
 #include "siliscope/NoUsingInHeader.h"
@@ -142,11 +149,13 @@ static const CheckSpec kSpecs[] = {
     {"ss.cpp.special-members", makeCheck<SpecialMembersCheck>},
     {"ss.cpp.virtual-dtor", makeCheck<VirtualDtorCheck>},
     {"ss.ctrl.braces", makeCheck<BracesCheck>},
+    {"ss.ctrl.boolean-condition", makeCheck<BooleanConditionCheck>},
     {"ss.ctrl.empty-loop-comment", makeCheck<EmptyLoopCommentCheck>},
     {"ss.ctrl.if-else-final", makeCheck<IfElseFinalCheck>},
     {"ss.ctrl.loop-bound", makeCheck<DataflowCheck>},
     {"ss.ctrl.no-assignment-in-condition", makeCheck<NoAssignInCondCheck>},
     {"ss.ctrl.no-continue", makeCheck<NoContinueCheck>},
+    {"ss.ctrl.no-fp-loop-counter", makeCheck<NoFpLoopCounterCheck>},
     {"ss.ctrl.no-goto", makeCheck<NoGotoCheck>},
     {"ss.ctrl.no-invariant-condition", makeCheck<DataflowCheck>},
     {"ss.ctrl.no-nested-ternary", makeCheck<NoNestedTernaryCheck>},
@@ -155,16 +164,20 @@ static const CheckSpec kSpecs[] = {
     {"ss.ctrl.switch-fallthrough-comment", makeCheck<SwitchFallthroughCommentCheck>},
     {"ss.ctrl.switch-well-formed", makeCheck<SwitchWellFormedCheck>},
     {"ss.ctrl.unreachable", makeCheck<UnreachableCheck>},
+    {"ss.decl.align-same", makeCheck<AlignSameCheck>},
     {"ss.decl.const", makeCheck<DeclConstCheck>},
     {"ss.decl.distinct", makeCheck<DistinctCheck>},
     {"ss.decl.extern-in-one-header", makeCheck<SymbolCheck>},
+    {"ss.decl.min-scope", makeCheck<MinScopeCheck>},
     {"ss.decl.no-shadow", makeCheck<NoShadowCheck>},
+    {"ss.decl.no-unused", makeCheck<NoUnusedCheck>},
     {"ss.decl.ptr-null", makeCheck<PtrNullCheck>},
     {"ss.emb.cs-balanced", makeCheck<CsBalancedCheck>},
     {"ss.emb.irq-mask-balanced", makeCheck<IrqMaskBalancedCheck>},
     {"ss.emb.isr-no-fp", makeCheck<IsrNoFpCheck>},
     {"ss.emb.isr-not-called", makeCheck<IsrNotCalledCheck>},
     {"ss.emb.no-log-in-isr", makeCheck<NoLogInIsrCheck>},
+    {"ss.expr.aggregate-init", makeCheck<AggregateInitCheck>},
     {"ss.expr.fp-must-be-finite", makeCheck<DataflowCheck>},
     {"ss.expr.no-comma", makeCheck<NoCommaCheck>},
     {"ss.expr.no-inc-in-expr", makeCheck<NoIncInExprCheck>},
@@ -176,6 +189,7 @@ static const CheckSpec kSpecs[] = {
     {"ss.expr.uninit", makeCheck<DataflowCheck>},
     {"ss.fn.check-return", makeCheck<CheckReturnCheck>},
     {"ss.fn.header-decl", makeCheck<SymbolCheck>},
+    {"ss.fn.inline-is-static", makeCheck<InlineIsStaticCheck>},
     {"ss.fn.no-block-scope", makeCheck<NoBlockScopeCheck>},
     {"ss.fn.no-stdarg", makeCheck<NoStdargCheck>},
     {"ss.fn.no-unused-params", makeCheck<NoUnusedParamsCheck>},

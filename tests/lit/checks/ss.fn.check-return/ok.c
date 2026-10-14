@@ -6,10 +6,13 @@ static void ok(void) {
   (void)x;
   (void)work();
   silent();
-  if (work()) {
+  if (work() != 0) {
   }
 }
 
-static int ret(void) {
-  return work();
+static int ret(void) { return work(); }
+
+int main(void) {
+  ok();
+  return ret();
 }

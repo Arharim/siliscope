@@ -1,3 +1,4 @@
+/* ss-run: allow=ss.ctrl.boolean-condition:down allow=ss.ctrl.boolean-condition:once expect=clean */
 static void counted(int n) {
   int i;
   int s;

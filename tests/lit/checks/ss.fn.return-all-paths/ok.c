@@ -3,7 +3,7 @@ static int f(void) {
 }
 
 static int g(int x) {
-  if (x) {
+  if (x != 0) {
     return 1;
   }
   return 0;

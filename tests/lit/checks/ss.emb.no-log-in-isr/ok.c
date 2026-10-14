@@ -14,6 +14,9 @@ void USART1_IRQHandler(void) {
   flag = 1;
 }
 
-static void thread(void) {
-  log_printf("boot");
+static void thread(void) { log_printf("boot"); }
+
+int main(void) {
+  thread();
+  return 0;
 }

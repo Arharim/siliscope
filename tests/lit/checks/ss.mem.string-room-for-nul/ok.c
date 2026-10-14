@@ -5,3 +5,8 @@ static void fits(void) {
   dst[0] = 0;
   (void)strncpy(dst, "ab", 4U);
 }
+
+int main(void) {
+  fits();
+  return 0;
+}

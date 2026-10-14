@@ -2,7 +2,7 @@
 void *malloc(unsigned int n);
 void free(void *p);
 
-static void board_init(void) {
+static void board_init(void) __attribute__((unused)) {
   void *const p = malloc(4U);
   free(p);
 }

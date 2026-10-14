@@ -12,3 +12,8 @@ static void thread(void) {
   volatile float x = 1.0F;
   x = x + 1.0F;
 }
+
+int main(void) {
+  thread();
+  return 0;
+}

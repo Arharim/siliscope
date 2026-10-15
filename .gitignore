@@ -37,6 +37,9 @@ htmlcov/
 # clangd index
 .cache/
 
+# Local Grok config (machine paths). Not part of the project.
+.grok/
+
 # OS / editor
 Thumbs.db
 Desktop.ini

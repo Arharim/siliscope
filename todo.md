@@ -1,6 +1,6 @@
 # План работ
 
-Снимок после advisory syntax: вложенный if глубже двух уровней, голая граница цикла, тело длиннее 80 строк, больше восьми параметров, скобки в strict, число без имени в условии, задержке, размере буфера или поле протокола, time.h, tgmath.h и fenv.h, порядок атомика без комментария. Каталог — 192 правила. Suite: 454. `embedded-cpp`: 157 включено, 137 с чекером, 20 без. `embedded-c`: 149 / 130 / 19. `strict`: 176 / 154 / 22. Живых чекеров 155. Pump, те же 11 `.cpp`: 5383 срабатывания, дельта +833 относительно `out/pump-syntax.txt` и дельта +376 относительно `out/pump-syntax-rules.txt`. no-checker 20. Stderr совпал с прошлым: 0 fatal, 6 ошибок clang, 3884 предупреждения. Лог этого прогона: `out/pump-advisory.txt`. Замороженные `out/pump-syntax.txt`, `out/pump-syntax-rules.txt`, `out/pump-dataflow.txt`, `out/pump-callgraph.txt`, `out/pump-dataflow2.txt`, `out/pump-policies.txt`, `out/pump-interproc.txt`, `out/pump-symbols.txt`, `out/pump-conv.txt`, `out/pump-ptr.txt`, `out/pump-decl.txt`, `out/pump-libc.txt` и `out/pump-types.txt` не трогали, в git они не входят.
+Снимок после остатка cfg: один счётчик у `for`, оператор без эффекта, метка без goto, функция сложнее 15 путей. Каталог — 192 правила. Suite: 462. `embedded-cpp`: 157 включено, 141 с чекером, 16 без. `embedded-c`: 149 / 134 / 15. `strict`: 176 / 158 / 18. Живых чекеров 159. Pump, те же 11 `.cpp`: 5398 срабатываний, дельта +848 относительно `out/pump-syntax.txt` и дельта +15 относительно `out/pump-advisory.txt`. no-checker 16. Stderr совпал с прошлым: 0 fatal, 6 ошибок clang, 3884 предупреждения. Лог этого прогона: `out/pump-cfg.txt`. Замороженные `out/pump-syntax.txt`, `out/pump-syntax-rules.txt`, `out/pump-advisory.txt`, `out/pump-dataflow.txt`, `out/pump-callgraph.txt`, `out/pump-dataflow2.txt`, `out/pump-policies.txt`, `out/pump-interproc.txt`, `out/pump-symbols.txt`, `out/pump-conv.txt`, `out/pump-ptr.txt`, `out/pump-decl.txt`, `out/pump-libc.txt` и `out/pump-types.txt` не трогали, в git они не входят.
 
 Каждый срез: фикстуры, suite, `--list`, прогон тех же 11 файлов pump. Дельту считать так: `python3 tools/diff_report.py out/pump-syntax.txt НОВЫЙ`. Сырой лог в разбор не тащить. `out/pump-syntax.txt` не подменять следующим прогоном. `just fw` для замера шума не использовать. Шум FreeRTOS, CMSIS и SEGGER оставляем: правила не ослабляем и отдельный путь для вендора не заводим. `ruleset/INDEX.md` и `ruleset/coverage.md` руками не правим. Коммит по просьбе, один срез за раз.
 
@@ -182,11 +182,18 @@ Advisory syntax сделан. Девять правил. `parens` включён
 
 `--allow` называет символ, а у условия, цикла, вызова и оператора — функцию. У include — имя заголовка (`time.h`, `fenv.h`, `tgmath.h`). На pump дельта +376 относительно лога после синтаксиса, пропавших диагностик нет. 324 — `ss.expr.named-constants` (границы в заголовках AT32 и FreeRTOS и размеры буферов в своих `.cpp`), 30 — `ss.ctrl.max-if-nesting`, 18 — `ss.ctrl.named-loop-limit`, 4 — `ss.fn.max-length` в `pump_task.cpp` и `usb_task.cpp`. `max-params`, `parens`, `no-time`, `no-tgmath-fenv` и `seq-cst-or-documented` на этих 11 файлах молчат. Живых чекеров 155 из 192. В `embedded-cpp` 137 из 157. В `embedded-c` 130 из 149. В `strict` 154 из 176.
 
-Дальше шаг 12, остаток cfg: `for-well-formed`, `no-dead-code`, `no-unused-label`, `cyclomatic`. `single-break-in-loop` остаётся позже.
-
 ### 12. Остаток cfg
 
-`for-well-formed`, `no-dead-code`, `no-unused-label`, `cyclomatic`. `single-break-in-loop` advisory, после них. `ss.fn.single-exit` остаётся `default: off`: единственный `return` внизу функции не требуем.
+Остаток cfg сделан. Четыре правила. `single-break-in-loop` остаётся позже. `ss.fn.single-exit` остаётся `default: off`: единственный `return` внизу функции не требуем. Сторож no-checker теперь `ss.ctrl.single-break-in-loop`.
+
+- `ss.ctrl.for-well-formed`: у `for` с условием один счётчик, переменная или поле одной переменной. Он читается в условии и меняется только в третьей части заголовка. Запись в теле или в условии — дефект. Присваивание или `++`/`--` другого объекта в условии — второе сообщение. `for (;;)` счётчика не имеет. Сообщения: «give this for one counter, changed only in the for-clause», «do not assign in this for condition».
+- `ss.ctrl.no-dead-code`: оператор-выражение без эффекта. Приведение к `void` — намеренный сброс. Обращение к `volatile` и вызов остаются. Недостижимый код по-прежнему у `ss.ctrl.unreachable`. Сообщение: «remove this effect-free statement».
+- `ss.fn.no-unused-label`: метка, на которую нет `goto`, вычисляемого `goto` и `asm goto`. Метка `case` — не `LabelDecl`. Сообщение: «this label is unused».
+- `ss.fn.cyclomatic`: 1 плюс каждый `if`, `for`, range-for, `while`, `do`, `case`, `catch`, `&&`, `||` и `?:`. `default` и `else` путь не добавляют. `sizeof`, `noexcept`, `typeid`, `_Generic`, `requires` и лямбда не входят в пути объемлющей функции. Написанный инициализатор конструктора входит. Порог 15, отдельной настройки нет. Сообщение: «keep this function to 15 independent paths».
+
+`--allow` называет функцию. На pump дельта +15 относительно лога после advisory syntax, пропавших диагностик нет. Все 15 — `ss.fn.cyclomatic`: 10 в `usb_task.cpp`, 2 в `pump_task.cpp` (1171 и 1737), по одному в `can_task.cpp:273`, `esp32_uart_task.cpp:431` и `exp_pump_task.cpp:213`. `for-well-formed`, `no-dead-code` и `no-unused-label` на этих 11 файлах молчат. Живых чекеров 159 из 192. В `embedded-cpp` 141 из 157. В `embedded-c` 134 из 149. В `strict` 158 из 176.
+
+Дальше шаг 13, девять review-подсказок.
 
 ### 13. Review-подсказки
 

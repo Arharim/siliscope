@@ -284,3 +284,13 @@ Not linked yet:
   `ss.conc.no-recursive-mutex` (C++ profile), `ss.conv.no-mixed-categories`
   (strict), `ss.expr.float-literal-suffix` (strict),
   `ss.expr.literal-suffix-case` (default off)
+
+## License
+
+siliscope is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. The text is in `LICENSE`. Copyright (C) 2026 Arharim.
+
+There is no warranty. The firmware siliscope analyzes is a separate work and
+is not covered by this license.

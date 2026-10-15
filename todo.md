@@ -1,10 +1,10 @@
 # План работ
 
-Снимок после review-подсказок: общий объект без истории синхронизации, обратный порядок захватов, read-modify-write volatile-скаляра, запись 1 после проверки на ноль, дырка в таблице векторов, блокировка или вечный цикл в обработчике, непроверенный параметр опубликованной функции, аппаратная структура без раскладки, pun через второй член union в strict. Каталог — 192 правила. Suite: 480. `embedded-cpp`: 157 включено, 149 с чекером, 8 без. `embedded-c`: 149 / 142 / 7. `strict`: 176 / 167 / 9. Живых чекеров 168. Pump, те же 11 `.cpp`: 5788 срабатываний, дельта +1238 относительно `out/pump-syntax.txt` и дельта +390 относительно `out/pump-cfg.txt`. no-checker 8. Stderr совпал с прошлым: 0 fatal, 6 ошибок clang, 3884 предупреждения. Лог этого прогона: `out/pump-review.txt`. Замороженные `out/pump-syntax.txt`, `out/pump-syntax-rules.txt`, `out/pump-advisory.txt`, `out/pump-cfg.txt`, `out/pump-dataflow.txt`, `out/pump-callgraph.txt`, `out/pump-dataflow2.txt`, `out/pump-policies.txt`, `out/pump-interproc.txt`, `out/pump-symbols.txt`, `out/pump-conv.txt`, `out/pump-ptr.txt`, `out/pump-decl.txt`, `out/pump-libc.txt` и `out/pump-types.txt` не трогали, в git они не входят.
+Снимок после разбора отчёта: сохранённый лог принимает ту же находку, файл или одно правило в файле глушатся отдельно. Каталог — 192 правила. Suite: 493. `embedded-cpp`: 157 включено, 149 с чекером, 8 без. `embedded-c`: 149 / 142 / 7. `strict`: 176 / 167 / 9. Живых чекеров 168. Pump, те же 11 `.cpp`: 5788 срабатываний, дельта 0 относительно `out/pump-review.txt` и дельта +1238 относительно `out/pump-syntax.txt`. С `--baseline out/pump-review.txt` напечатано 0, снято 5788, из baseline не встретилось 0. no-checker 8. Stderr совпал с прошлым: 0 fatal, 6 ошибок clang, 3884 предупреждения. Лог обычного прогона: `out/pump-step14.txt`. Лог с baseline: `out/pump-baseline.txt`. Замороженные `out/pump-syntax.txt`, `out/pump-syntax-rules.txt`, `out/pump-advisory.txt`, `out/pump-cfg.txt`, `out/pump-review.txt`, `out/pump-dataflow.txt`, `out/pump-callgraph.txt`, `out/pump-dataflow2.txt`, `out/pump-policies.txt`, `out/pump-interproc.txt`, `out/pump-symbols.txt`, `out/pump-conv.txt`, `out/pump-ptr.txt`, `out/pump-decl.txt`, `out/pump-libc.txt` и `out/pump-types.txt` не трогали, в git они не входят.
 
 Каждый срез: фикстуры, suite, `--list`, прогон тех же 11 файлов pump. Дельту считать так: `python3 tools/diff_report.py out/pump-syntax.txt НОВЫЙ`. Сырой лог в разбор не тащить. `out/pump-syntax.txt` не подменять следующим прогоном. `just fw` для замера шума не использовать. Шум FreeRTOS, CMSIS и SEGGER оставляем: правила не ослабляем и отдельный путь для вендора не заводим. `ruleset/INDEX.md` и `ruleset/coverage.md` руками не правим. Коммит по просьбе, один срез за раз.
 
-Baseline и подавление шире `--allow rule:name` в эту очередь не входят, пока отчёт ещё меряют, а не разбирают. Место сравнения двух логов — шаг 4. Место настоящего baseline — шаг 14.
+Сравнение двух логов делает `tools/diff_report.py`, это шаг 4. Принятие сохранённого отчёта и подавление по файлу — шаг 14, сделано.
 
 ## Уже закрыто
 
@@ -209,11 +209,19 @@ Review-подсказки сделаны. Девять правил. Это за
 
 `--allow` называет объект, запись, таблицу векторов или функцию. На pump дельта +390 относительно лога после cfg, пропавших диагностик нет. 375 — `ss.type.hw-layout` в заголовках AT32 (60 в `at32f403a_407_emac.h`, 46 в `at32f403a_407_bpr.h`, 29 в `at32f403a_407_flash.h`). 14 — `ss.fn.check-params` у функций из проектных заголовков: 11 нулевых указателей, 3 индекса. 1 — `ss.conc.no-volatile-mutex`, обновление `can_rx_cap_tail` в `CAN1_RX1_IRQHandler` (`can_task.cpp:246`). `no-data-race`, `lock-order`, `decl.volatile`, `default-isr` и `isr-body` на этих 11 файлах молчат. `no-representation-pun` профиль `embedded-cpp` не включает. Живых чекеров 168 из 192. В `embedded-cpp` 149 из 157. В `embedded-c` 142 из 149. В `strict` 167 из 176.
 
-Дальше шаг 14, разбор отчёта.
-
 ### 14. Разбор отчёта
 
-Когда граф уже есть и отчёт начинают разбирать, а не только считать. Baseline / diff и подавление шире, чем `--allow rule:name`: файл или сохранённый набор. Правила при этом не ослабляем и особый путь для FreeRTOS, CMSIS и SEGGER не появляется.
+Разбор отчёта сделан. Новых правил нет. Живых чекеров по-прежнему 168. Сторож no-checker остаётся `ss.ctrl.single-break-in-loop`.
+
+- `--suppress <file>`: все находки в этом файле. Путь совпадает целиком или как хвост на границе каталога. `inc/foo.h` подходит к длинному абсолютному пути, `task.cpp` не подходит к `can_task.cpp`. Каталог со слэшем на конце отклоняется.
+- `--suppress <rule>:<file>`: одно правило в этом файле. Остальные правила в нём остаются.
+- `--baseline <report>`: находка, которая в сохранённом логе уже стоит на том же файле, строке, столбце, серьёзности, тексте и правиле. Сдвинутый столбец остаётся. `findings:` считает только напечатанное. `suppressed:` — сколько снято. `baseline-missing:` — сколько строк сохранённого лога в этом прогоне не встретилось. Код выхода по-прежнему смотрит на оставшиеся находки и на ошибки разбора.
+
+`tools/diff_report.py` по-прежнему сравнивает два лога и эти две сводки находками не считает. Правила профиля остаются как были, каталог вендора сам не пропускается.
+
+На pump обычный прогон совпал с логом после review: 5788, дельта 0, пропавших диагностик нет. С `--baseline out/pump-review.txt` напечатано 0, снято 5788, пропавших из baseline 0. Stderr тот же: 0 fatal, 6 ошибок clang, 3884 предупреждения. Эти шесть — прежнее сужение в `esp32_uart_task.cpp` и `usb_task.cpp`, поэтому процесс завершается с кодом 1. Лог обычного прогона: `out/pump-step14.txt`. Лог с baseline: `out/pump-baseline.txt`.
+
+Очередь на этом закрыта.
 
 ## Вне очереди
 

@@ -3,6 +3,8 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <unordered_map>
+#include <vector>
 
 namespace clang {
 class SourceLocation;
@@ -37,6 +39,13 @@ public:
   void printSummary() const;
   bool allows(const char *id, const char *name) const;
 
+  // `--suppress <path>` or `--suppress <rule>:<path>`. A path matches the
+  // diagnostic file in full, or as a suffix at a directory boundary.
+  bool addSuppress(const std::string &text, std::string &err);
+  // A saved siliscope report. A finding already listed at the same file,
+  // line, column, severity, message, and rule is not printed again.
+  bool loadBaseline(const std::string &path, std::string &err);
+
 private:
   struct SeenDiag {
     std::string file;
@@ -47,8 +56,33 @@ private:
     bool operator<(const SeenDiag &other) const;
   };
 
+  struct SuppressSpec {
+    std::string rule; // empty: every rule in the file
+    std::string path;
+  };
+
+  struct BaselineEntry {
+    std::string file;
+    unsigned line = 0;
+    unsigned col = 0;
+    std::string severity;
+    std::string msg;
+    std::string id;
+    bool used = false;
+  };
+
+  bool drop(const SeenDiag &key, const char *severity);
+  bool claimBaseline(const SeenDiag &key, const char *severity);
+
   const Profile *profile;
   unsigned findings = 0;
+  unsigned suppressed = 0;
+  bool filter_active = false;
+  bool baseline_active = false;
+  std::vector<SuppressSpec> suppress;
+  std::vector<BaselineEntry> baseline;
+  // line, column, severity, message, and rule. The file is matched after.
+  std::unordered_map<std::string, std::vector<unsigned>> baseline_at;
   // One run checks a header again in every translation unit.
   std::set<SeenDiag> seen;
 };

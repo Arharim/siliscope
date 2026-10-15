@@ -8,9 +8,10 @@ whole diagnostic, so a moved column or a rewritten message shows up.
 
   python3 tools/diff_report.py previous.txt current.txt
 
-Summary lines (``findings:`` and ``no-checker:``) are checked against the
-parsed diagnostics and are not themselves findings. The exit status is 0
-when both logs parse, including when the delta is not zero.
+Summary lines (``findings:``, ``no-checker:``, ``suppressed:``, and
+``baseline-missing:``) are not themselves findings. ``findings:`` is checked
+against the parsed diagnostics. The exit status is 0 when both logs parse,
+including when the delta is not zero.
 """
 
 from __future__ import annotations
@@ -27,6 +28,8 @@ DIAG = re.compile(
 )
 FINDINGS = re.compile(r"^findings: (\d+)\s*$")
 NO_CHECKER = re.compile(r"^no-checker: (\d+)\s*$")
+SUPPRESSED = re.compile(r"^suppressed: (\d+)\s*$")
+BASELINE_MISSING = re.compile(r"^baseline-missing: (\d+)\s*$")
 
 SAMPLES = 4
 TOP_FILES = 8
@@ -54,6 +57,8 @@ class Report:
             missing = NO_CHECKER.fullmatch(line)
             if missing:
                 self.no_checker = int(missing.group(1))
+                continue
+            if SUPPRESSED.fullmatch(line) or BASELINE_MISSING.fullmatch(line):
                 continue
             diag = DIAG.fullmatch(line)
             if not diag:

@@ -33,6 +33,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from threading import Lock
@@ -451,6 +452,156 @@ class Runner:
         )
         self.check("probe isr_attr", good, f"rc={rc}\n{out}\n{err}")
 
+    def check_report_filter(self) -> None:
+        goto = "tests/lit/checks/ss.ctrl.no-goto/bad.c"
+        jump = "tests/lit/checks/ss.ctrl.no-setjmp/bad.c"
+        base = ["--ruleset-dir", "ruleset", "--profile", "embedded-c", "--target", "arm-none-eabi"]
+
+        def field(text: str, key: str) -> int | None:
+            for line in text.splitlines():
+                if line.startswith(key + ": "):
+                    try:
+                        return int(line.split()[1])
+                    except (IndexError, ValueError):
+                        return None
+            return None
+
+        rc, out, err = self.invoke([*base, goto])
+        saved_findings = findings_of(out)
+        self.check(
+            "baseline source has goto",
+            rc != 0 and "[ss.ctrl.no-goto]" in out and saved_findings is not None and saved_findings > 0,
+            f"rc={rc}\n{out}\n{err}",
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            saved = Path(tmp) / "saved.txt"
+            saved.write_text(out, encoding="utf-8")
+            rc, kept, err = self.invoke([*base, "--baseline", str(saved), goto])
+            self.check(
+                "baseline hides the saved finding",
+                rc == 0
+                and findings_of(kept) == 0
+                and "[ss.ctrl.no-goto]" not in kept
+                and field(kept, "suppressed") == saved_findings
+                and field(kept, "baseline-missing") == 0,
+                f"rc={rc}\n{kept}\n{err}",
+            )
+
+            diag = re.compile(
+                r"^(?P<file>.*):(?P<line>\d+):(?P<col>\d+): "
+                r"(?P<sev>error|warning|advisory|style): (?P<rest>.*)$"
+            )
+            shifted: list[str] = []
+            for line in out.splitlines():
+                parsed = diag.fullmatch(line)
+                if parsed and parsed.group("rest").endswith("[ss.ctrl.no-goto]"):
+                    shifted.append(
+                        f"{parsed.group('file')}:{parsed.group('line')}:99: "
+                        f"{parsed.group('sev')}: {parsed.group('rest')}"
+                    )
+                else:
+                    shifted.append(line)
+            moved = Path(tmp) / "moved.txt"
+            moved.write_text("\n".join(shifted) + "\n", encoding="utf-8")
+            rc, fresh, err = self.invoke([*base, "--baseline", str(moved), goto])
+            self.check(
+                "baseline keeps a finding whose column moved",
+                rc != 0
+                and "[ss.ctrl.no-goto]" in fresh
+                and findings_of(fresh) == 1
+                and field(fresh, "baseline-missing") == 1,
+                f"rc={rc}\n{fresh}\n{err}",
+            )
+
+            rc, quiet, err = self.invoke([*base, "--suppress", goto, goto])
+            self.check(
+                "suppress file hides that file",
+                rc == 0 and findings_of(quiet) == 0 and field(quiet, "suppressed") == saved_findings,
+                f"rc={rc}\n{quiet}\n{err}",
+            )
+            rc, one, err = self.invoke([*base, "--suppress", f"ss.ctrl.no-goto:{goto}", goto])
+            self.check(
+                "suppress rule hides that rule in the file",
+                rc != 0
+                and "[ss.ctrl.no-goto]" not in one
+                and findings_of(one) == saved_findings - 1
+                and field(one, "suppressed") == 1,
+                f"rc={rc}\n{one}\n{err}",
+            )
+            rc, other, err = self.invoke([*base, "--suppress", f"ss.ctrl.braces:{goto}", goto])
+            self.check(
+                "suppress of another rule leaves goto",
+                rc != 0
+                and "[ss.ctrl.no-goto]" in other
+                and findings_of(other) == saved_findings
+                and field(other, "suppressed") == 0,
+                f"rc={rc}\n{other}\n{err}",
+            )
+            rc, wide, err = self.invoke(
+                [*base, "--suppress", "goto/bad.c", "--suppress", "setjmp/bad.c", goto, jump]
+            )
+            self.check(
+                "a shorter path suffix does not match",
+                rc != 0 and "[ss.ctrl.no-goto]" in wide and "[ss.ctrl.no-setjmp]" in wide,
+                f"rc={rc}\n{wide}\n{err}",
+            )
+            rc, half, err = self.invoke([*base, "--suppress", goto, goto, jump])
+            self.check(
+                "suppress one file leaves the other",
+                rc != 0 and "[ss.ctrl.no-goto]" not in half and "[ss.ctrl.no-setjmp]" in half,
+                f"rc={rc}\n{half}\n{err}",
+            )
+
+            rc, bad, err = self.invoke([*base, "--suppress", goto + "/", goto])
+            self.check(
+                "suppress rejects a directory",
+                rc == 2 and "error: --suppress" in err,
+                f"rc={rc}\n{bad}\n{err}",
+            )
+            rc, bare, err = self.invoke([*base, "--suppress", "ss.ctrl.no-goto", goto])
+            self.check(
+                "suppress rejects a bare rule",
+                rc == 2 and "error: --suppress" in err,
+                f"rc={rc}\n{bare}\n{err}",
+            )
+            rc, missing, err = self.invoke([*base, "--baseline", str(Path(tmp) / "no-such.txt"), goto])
+            self.check(
+                "missing baseline is an error",
+                rc == 2 and "cannot read baseline" in err,
+                f"rc={rc}\n{missing}\n{err}",
+            )
+            junk = Path(tmp) / "junk.txt"
+            junk.write_text("not a report\n", encoding="utf-8")
+            rc, unrecognized, err = self.invoke([*base, "--baseline", str(junk), goto])
+            self.check(
+                "baseline rejects an unrecognized line",
+                rc == 2 and "unrecognized line" in err,
+                f"rc={rc}\n{unrecognized}\n{err}",
+            )
+
+            left = Path(tmp) / "left.txt"
+            right = Path(tmp) / "right.txt"
+            left.write_text(
+                "findings: 0\nsuppressed: 2\nbaseline-missing: 1\nno-checker: 7\n",
+                encoding="utf-8",
+            )
+            right.write_text(
+                "foo.c:1:1: warning: do not use goto [ss.ctrl.no-goto]\n"
+                "findings: 1\nsuppressed: 0\nbaseline-missing: 0\nno-checker: 7\n",
+                encoding="utf-8",
+            )
+            proc = subprocess.run(
+                [sys.executable, "tools/diff_report.py", str(left), str(right)],
+                cwd=ROOT,
+                text=True,
+                capture_output=True,
+            )
+            self.check(
+                "diff_report accepts suppressed summary lines",
+                proc.returncode == 0 and "added: 1" in proc.stdout and "unrecognized" not in proc.stderr,
+                f"rc={proc.returncode}\n{proc.stdout}\n{proc.stderr}",
+            )
+
 
 def collect_cases(filters: list[str]) -> list[tuple[Path, str, dict]]:
     cases: list[tuple[Path, str, dict]] = []
@@ -488,6 +639,7 @@ def main() -> int:
     if not filters:
         runner.check_profiles()
         runner.check_probe()
+        runner.check_report_filter()
     if runner.failures:
         print(f"{runner.passed} passed, {len(runner.failures)} failed")
         for item in runner.failures:

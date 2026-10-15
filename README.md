@@ -85,6 +85,16 @@ follows findings and parse errors. `no-checker` is the catalog gap, not a
 defect in the source. `just test` builds once and checks that each `bad.c`
 emits its `[ss.*]` id. A file that fails to parse does not count as a hit.
 
+`--suppress <file>` drops every finding in that file. `--suppress <rule>:<file>`
+drops one rule there. The path matches the diagnostic file in full, or as a
+suffix at a directory boundary, so `inc/foo.h` matches a longer absolute path
+and `task.cpp` does not match `can_task.cpp`. `--baseline <report>` drops a
+finding the saved log already lists at the same file, line, column, severity,
+message, and rule. What remains is still printed, and the exit status still
+follows those findings. The summary then adds `suppressed:` and, for a
+baseline, `baseline-missing:`. The accepted set is those sites. The profile
+keeps every rule, and no directory is skipped by name.
+
 ```text
 just rules
 just fmt

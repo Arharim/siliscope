@@ -22,6 +22,10 @@ void print_usage(std::FILE *out) {
              "  --target <triple>      e.g. arm-none-eabi (also injected into -p jobs)\n"
              "  -extra-arg <arg>       extra Clang frontend argument (repeatable)\n"
              "  --allow <rule>:<name>  do not flag this identifier (repeatable)\n"
+             "  --suppress <file>      drop findings in this file (repeatable)\n"
+             "  --suppress <rule>:<file>\n"
+             "                         drop one rule in that file\n"
+             "  --baseline <report>    drop findings already listed in a saved report\n"
              "  --list                 enabled rules, and which have a checker\n"
              "  --probe                print AST probe (functions, interrupt, packed)\n"
              "  --version              print version and frontend status\n"
@@ -60,6 +64,14 @@ int main(int argc, char **argv) {
         return 2;
       }
       fe.allow.emplace_back(spec.substr(0, colon), spec.substr(colon + 1));
+    } else if (std::strcmp(a, "--suppress") == 0 && i + 1 < argc) {
+      fe.suppress.emplace_back(argv[++i]);
+    } else if (std::strcmp(a, "--baseline") == 0 && i + 1 < argc) {
+      if (!fe.baseline.empty()) {
+        std::fputs("error: --baseline given twice\n", stderr);
+        return 2;
+      }
+      fe.baseline = argv[++i];
     } else if (std::strcmp(a, "--probe") == 0) {
       fe.probe = true;
     } else if (std::strcmp(a, "--list") == 0) {

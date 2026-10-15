@@ -453,6 +453,18 @@ int runFrontend(const FrontendOptions &opt) {
     profile.addAllow(a.first, a.second);
   }
 
+  Reporter reporter(profile);
+  for (const std::string &spec : opt.suppress) {
+    if (!reporter.addSuppress(spec, err)) {
+      llvm::errs() << "error: " << err << "\n";
+      return 2;
+    }
+  }
+  if (!opt.baseline.empty() && !reporter.loadBaseline(opt.baseline, err)) {
+    llvm::errs() << "error: " << err << "\n";
+    return 2;
+  }
+
   if (opt.list) {
     return printRuleList(profile);
   }
@@ -464,7 +476,6 @@ int runFrontend(const FrontendOptions &opt) {
   }
 
   Probe probe;
-  Reporter reporter(profile);
   ClangTool tool(*db, opt.sources);
   if (!opt.compile_commands_dir.empty()) {
     const std::string tgt = "--target=" + opt.target;

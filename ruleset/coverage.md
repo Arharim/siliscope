@@ -105,9 +105,9 @@ numbers. Each class is either a `ss.*` checker or an explicit "not in scope".
 These ideas showed up in the research docs and we **rejected** them for MCU
 firmware, or they are not a source checker:
 
-- Ban every `union` as an error (register maps need overlays) — advisory only
-- Ban every function pointer (vector tables) — advisory only
-- Force a single `return` at the bottom — early return is clearer
+- Ban every `union` as an error (register maps need overlays) – advisory only
+- Ban every function pointer (vector tables) – advisory only
+- Force a single `return` at the bottom – early return is clearer
 - Host POSIX/Win APIs, format-string exploits on a desktop libc
 - Full language "essential type" algebra as a named foreign model
 - Require C++ exceptions, RAII-with-heap, or "no static storage"

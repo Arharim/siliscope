@@ -3,7 +3,7 @@
 Static checker for C/C++ firmware (bare-metal / small RTOS). Clang LibTooling
 frontend, own rule ids (`ss.<topic>.<name>`). Catalog: [`ruleset/`](ruleset/).
 
-**0.2.0** — working analyzer, not a complete catalog. 168 checkers are wired.
+**0.2.0** – working analyzer, not a complete catalog. 168 checkers are wired.
 The YAML catalog lists 192 rules. `--list` is the live count for a profile.
 Not a MISRA/CERT clone and not a certified tool.
 

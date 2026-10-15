@@ -1,4 +1,4 @@
-# siliscope — common commands. `just` lists recipes.
+# siliscope – common commands. `just` lists recipes.
 
 build_dir := "build"
 cxx := if os() == "windows" {

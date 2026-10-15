@@ -1,6 +1,6 @@
 # Schema of a canonical rule
 
-Each document in `rules/*.yaml` is a list named `rules`. One object — one checker.
+Each document in `rules/*.yaml` is a list named `rules`. One object – one checker.
 
 ```yaml
 rules:

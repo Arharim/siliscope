@@ -9,12 +9,15 @@
 #include "siliscope/BooleanCondition.h"
 #include "siliscope/Braces.h"
 #include "siliscope/Check.h"
+#include "siliscope/CheckParams.h"
 #include "siliscope/CheckReturn.h"
 #include "siliscope/CsBalanced.h"
 #include "siliscope/CtypeArg.h"
 #include "siliscope/Cyclomatic.h"
 #include "siliscope/DataflowCheck.h"
 #include "siliscope/DeclConst.h"
+#include "siliscope/DeclVolatile.h"
+#include "siliscope/DefaultIsr.h"
 #include "siliscope/Distinct.h"
 #include "siliscope/EmptyLoopComment.h"
 #include "siliscope/EnumClass.h"
@@ -23,16 +26,19 @@
 #include "siliscope/FixedWidth.h"
 #include "siliscope/ForWellFormed.h"
 #include "siliscope/FpToIntExplicit.h"
+#include "siliscope/HwLayout.h"
 #include "siliscope/IfElseFinal.h"
 #include "siliscope/InitMembers.h"
 #include "siliscope/InitSideEffect.h"
 #include "siliscope/InlineIsStatic.h"
 #include "siliscope/IrqMaskBalanced.h"
+#include "siliscope/IsrBody.h"
 #include "siliscope/IsrMarked.h"
 #include "siliscope/IsrNoFp.h"
 #include "siliscope/IsrNotCalled.h"
 #include "siliscope/LayoutStaticAssert.h"
 #include "siliscope/LocalizeExtensions.h"
+#include "siliscope/LockOrder.h"
 #include "siliscope/MaxIfNesting.h"
 #include "siliscope/MaxIndirection.h"
 #include "siliscope/MaxLength.h"
@@ -51,6 +57,7 @@
 #include "siliscope/NoComma.h"
 #include "siliscope/NoContinue.h"
 #include "siliscope/NoCvAway.h"
+#include "siliscope/NoDataRace.h"
 #include "siliscope/NoDeadCode.h"
 #include "siliscope/NoDefaultArgs.h"
 #include "siliscope/NoErrnoHost.h"
@@ -79,6 +86,7 @@
 #include "siliscope/NoQsort.h"
 #include "siliscope/NoRand.h"
 #include "siliscope/NoRecursion.h"
+#include "siliscope/NoRepresentationPun.h"
 #include "siliscope/NoReserved.h"
 #include "siliscope/NoRestrict.h"
 #include "siliscope/NoRtti.h"
@@ -108,6 +116,7 @@
 #include "siliscope/NoVLA.h"
 #include "siliscope/NoVectorBool.h"
 #include "siliscope/NoVoidArith.h"
+#include "siliscope/NoVolatileMutex.h"
 #include "siliscope/Noreturn.h"
 #include "siliscope/Nullptr.h"
 #include "siliscope/OnePerLine.h"
@@ -140,7 +149,10 @@ static std::unique_ptr<Check> makeCheck(Reporter &reporter) {
 }
 
 static const CheckSpec kSpecs[] = {
+    {"ss.conc.lock-order", makeCheck<LockOrderCheck>},
     {"ss.conc.no-block-in-cs", makeCheck<NoBlockInCsCheck>},
+    {"ss.conc.no-data-race", makeCheck<NoDataRaceCheck>},
+    {"ss.conc.no-volatile-mutex", makeCheck<NoVolatileMutexCheck>},
     {"ss.conc.seq-cst-or-documented", makeCheck<SeqCstCheck>},
     {"ss.conv.fp-to-int-explicit", makeCheck<FpToIntExplicitCheck>},
     {"ss.conv.no-cv-away", makeCheck<NoCvAwayCheck>},
@@ -210,8 +222,11 @@ static const CheckSpec kSpecs[] = {
     {"ss.decl.no-unused", makeCheck<NoUnusedCheck>},
     {"ss.decl.one-per-line", makeCheck<OnePerLineCheck>},
     {"ss.decl.ptr-null", makeCheck<PtrNullCheck>},
+    {"ss.decl.volatile", makeCheck<DeclVolatileCheck>},
     {"ss.emb.cs-balanced", makeCheck<CsBalancedCheck>},
+    {"ss.emb.default-isr", makeCheck<DefaultIsrCheck>},
     {"ss.emb.irq-mask-balanced", makeCheck<IrqMaskBalancedCheck>},
+    {"ss.emb.isr-body", makeCheck<IsrBodyCheck>},
     {"ss.emb.isr-marked", makeCheck<IsrMarkedCheck>},
     {"ss.emb.isr-no-fp", makeCheck<IsrNoFpCheck>},
     {"ss.emb.isr-not-called", makeCheck<IsrNotCalledCheck>},
@@ -233,6 +248,7 @@ static const CheckSpec kSpecs[] = {
     {"ss.expr.parens", makeCheck<ParensCheck>},
     {"ss.expr.string-const", makeCheck<StringConstCheck>},
     {"ss.expr.uninit", makeCheck<DataflowCheck>},
+    {"ss.fn.check-params", makeCheck<CheckParamsCheck>},
     {"ss.fn.check-return", makeCheck<CheckReturnCheck>},
     {"ss.fn.cyclomatic", makeCheck<CyclomaticCheck>},
     {"ss.fn.header-decl", makeCheck<SymbolCheck>},
@@ -297,7 +313,9 @@ static const CheckSpec kSpecs[] = {
     {"ss.type.enum-init", makeCheck<EnumInitCheck>},
     {"ss.type.explicit", makeCheck<ExplicitTypeCheck>},
     {"ss.type.fixed-width", makeCheck<FixedWidthCheck>},
+    {"ss.type.hw-layout", makeCheck<HwLayoutCheck>},
     {"ss.type.no-bool-math", makeCheck<NoBoolMathCheck>},
+    {"ss.type.no-representation-pun", makeCheck<NoRepresentationPunCheck>},
     {"ss.type.no-restrict", makeCheck<NoRestrictCheck>},
 };
 

@@ -1,4 +1,4 @@
-/* ss-run: profile=embedded-cpp expect=clean */
+/* ss-run: profile=embedded-cpp allow=ss.type.hw-layout:Reg expect=clean */
 struct Point {
   int x;
   int y;

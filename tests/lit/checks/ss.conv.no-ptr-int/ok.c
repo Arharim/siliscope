@@ -1,3 +1,4 @@
+/* ss-run: allow=ss.type.hw-layout:RegBlock expect=clean */
 typedef struct {
   volatile unsigned CR;
 } RegBlock;

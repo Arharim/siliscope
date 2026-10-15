@@ -89,6 +89,15 @@ if(SILISCOPE_ENABLE_CLANG)
     src/checks/NoDeadCode.cpp
     src/checks/NoUnusedLabel.cpp
     src/checks/Cyclomatic.cpp
+    src/checks/LockOrder.cpp
+    src/checks/NoDataRace.cpp
+    src/checks/NoVolatileMutex.cpp
+    src/checks/DeclVolatile.cpp
+    src/checks/DefaultIsr.cpp
+    src/checks/IsrBody.cpp
+    src/checks/CheckParams.cpp
+    src/checks/HwLayout.cpp
+    src/checks/NoRepresentationPun.cpp
     src/checks/NoComma.cpp
     src/checks/NoFlexibleArray.cpp
     src/checks/NoBlockScope.cpp

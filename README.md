@@ -234,5 +234,18 @@ Live checkers (see `src/catalog/Registry.cpp` and `just test`):
   an asm goto is in use. A function with more than 15 independent paths
   warns: each `if`, loop, `case`, `catch`, `&&`, `||`, and `?:` adds one.
   `--allow` names the function
+- Review hints: a non-volatile object written from an ISR, `main`, or one
+  `*_task` / `*_thread` and read from another of those is a shared object
+  without a synchronization story. A comment on its declaration that names a
+  critical section, queue, mutex, lock, or atomic keeps it. `volatile` is not
+  a lock: a read-modify-write of a volatile scalar, or a test followed by
+  storing 1, is the hint. A vector table with a null slot needs a default
+  handler. An interrupt handler does not block, allocate, or loop forever;
+  `*FromISR` stays. A function declared in a project header rejects a null
+  pointer it dereferences and checks an integer it uses as an index. A
+  hardware or wire struct (a volatile field, or a name such as register,
+  packet, or wire) is packed or has a `sizeof` static assert. On the strict
+  profile, reading a second member of a union is a representation pun.
+  `--allow` names the object, the record, the vector table, or the function
 
 Not in this release: the rest of `ss.conv.*`, review-only catalog rows.

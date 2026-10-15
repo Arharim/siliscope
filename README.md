@@ -3,10 +3,9 @@
 Static checker for C/C++ firmware (bare-metal / small RTOS). Clang LibTooling
 frontend, own rule ids (`ss.<topic>.<name>`). Catalog: [`ruleset/`](ruleset/).
 
-**0.2.0** — working analyzer, not a complete catalog. About 40 checkers are
-wired (syntax/AST, a slice of CFG/callgraph, some types). The YAML catalog
-lists 192 rules; dataflow, loop bounds, most C++, and preprocessor checks are
-not implemented yet. Not a MISRA/CERT clone and not a certified tool.
+**0.2.0** — working analyzer, not a complete catalog. 168 checkers are wired.
+The YAML catalog lists 192 rules. `--list` is the live count for a profile.
+Not a MISRA/CERT clone and not a certified tool.
 
 ## Tree
 
@@ -42,6 +41,13 @@ instead (for example `/usr/lib/cmake/llvm` and `/usr/lib/cmake/clang`):
 ```text
 just build-clang <llvm-build>/lib/cmake/llvm <llvm-build>/lib/cmake/clang
 ```
+
+`just build` configures without `-DSILISCOPE_ENABLE_CLANG`. A fresh `build/`
+is a stub: `just run --version` prints `frontend: stub`. `just build-clang`
+turns LibTooling on and stores that in the CMake cache. A later `just build`,
+`just fw`, or `just test` does not pass the flag again and does not turn it
+off. `just clean` deletes the cache, so the next `just build` is a stub until
+`build-clang` runs again.
 
 Typical LLVM configure:
 
@@ -95,6 +101,10 @@ follows those findings. The summary then adds `suppressed:` and, for a
 baseline, `baseline-missing:`. The accepted set is those sites. The profile
 keeps every rule, and no directory is skipped by name.
 
+`python3 tools/diff_report.py previous.txt current.txt` prints diagnostics
+that appeared or disappeared. Summary lines are not findings. The exit status
+is 0 when both logs parse.
+
 ```text
 just rules
 just fmt
@@ -105,6 +115,11 @@ the include path and `-xc` for `.c` files. The compiler and system includes
 belong in the user clangd config.
 
 ## What 0.2.0 actually runs
+
+On the default `embedded-c` profile, 149 rules are on and 142 have a checker.
+`embedded-cpp` is 157 on, 149 with a checker. `strict` is 176 / 167. `style`
+turns on 12 formatting rules and links no checker. A run's `no-checker:` count
+is that gap.
 
 Live checkers (see `src/catalog/Registry.cpp` and `just test`):
 
@@ -258,4 +273,14 @@ Live checkers (see `src/catalog/Registry.cpp` and `just test`):
   profile, reading a second member of a union is a representation pun.
   `--allow` names the object, the record, the vector table, or the function
 
-Not in this release: the rest of `ss.conv.*`, review-only catalog rows.
+Not linked yet:
+
+- The `style` profile: `ss.style.*`, `ss.emb.isr-naming`, `ss.emb.thread-naming`
+- Build policy, not a source checker: `ss.proc.all-warnings`,
+  `ss.proc.static-analysis`
+- Catalog rows still without a checker: `ss.conv.no-assign-as-value`,
+  `ss.ctrl.single-break-in-loop`, `ss.fn.single-exit` (default off),
+  `ss.ptr.no-fn-pointer`, `ss.type.no-fp-unless-needed`, `ss.type.no-union`,
+  `ss.conc.no-recursive-mutex` (C++ profile), `ss.conv.no-mixed-categories`
+  (strict), `ss.expr.float-literal-suffix` (strict),
+  `ss.expr.literal-suffix-case` (default off)

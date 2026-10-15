@@ -7,7 +7,8 @@ void nvic_isr(void);
 void USART1_IRQHandler(void);
 
 /* Vector-table entries take the address; that is not a call. */
-static void (*const vectors[2])(void) = {nvic_isr, USART1_IRQHandler};
+enum { kVectors = 2 };
+static void (*const vectors[kVectors])(void) = {nvic_isr, USART1_IRQHandler};
 
 void nvic_isr(void) { (void)vectors[0]; }
 

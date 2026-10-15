@@ -7,8 +7,9 @@ struct Pair {
 };
 
 static void copies(void) {
-  char a[8];
-  char b[8];
+  enum { kN = 8 };
+  char a[kN];
+  char b[kN];
   struct Pair s;
   struct Pair t;
   a[0] = 1;

@@ -9,7 +9,8 @@ void USART1_IRQHandler(void);
 
 static void SysTick_Handler(void);
 
-static void (*const vectors[3])(void) = {nvic_isr, USART1_IRQHandler, SysTick_Handler};
+enum { kVectors = 3 };
+static void (*const vectors[kVectors])(void) = {nvic_isr, USART1_IRQHandler, SysTick_Handler};
 
 void nvic_isr(void) { (void)vectors[0]; }
 

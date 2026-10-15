@@ -23,9 +23,10 @@ static void skip(void) {
 }
 
 static int width(void) {
+  static const unsigned kIntBytes = 4U;
   int x;
   x = 0;
-  if (sizeof(int) == 4U) {
+  if (sizeof(int) == kIntBytes) {
     x = 1;
   }
   return x;

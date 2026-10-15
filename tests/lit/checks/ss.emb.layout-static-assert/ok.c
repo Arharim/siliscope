@@ -11,6 +11,7 @@ _Static_assert(__builtin_offsetof(struct Wire, kind) == 1U, "kind");
 static int use(const struct Wire *wire) { return wire->n != 0; }
 
 int main(void) {
-  const struct Wire wire = {1, 2};
+  enum { kKind = 2 };
+  const struct Wire wire = {1, kKind};
   return use(&wire);
 }

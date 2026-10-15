@@ -1,5 +1,6 @@
 static int use(const int values[]) {
-  int sized[4];
+  enum { kSized = 4 };
+  int sized[kSized];
   const int deduced[] = {1, 2, 3};
   sized[0] = 1;
   return values[0] + deduced[0] + sized[0];

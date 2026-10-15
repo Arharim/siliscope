@@ -1,7 +1,8 @@
 static int read1(const int *p);
 
 static int use(void) {
-  int a[4];
+  enum { kN = 4 };
+  int a[kN];
   a[0] = 1;
   return read1(a);
 }

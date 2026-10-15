@@ -280,8 +280,8 @@ class Runner:
         )
         self.check(
             "embedded-cpp still has rules without a checker",
-            present(cpp_rows, "ss.conv.no-assign-as-value", "no-checker"),
-            "ss.conv.no-assign-as-value missing",
+            present(cpp_rows, "ss.ctrl.for-well-formed", "no-checker"),
+            "ss.ctrl.for-well-formed missing",
         )
         self.check(
             "embedded-cpp keeps shared checker",
@@ -316,6 +316,7 @@ class Runner:
             "ss.fn.inline-is-static",
             "ss.type.explicit",
             "ss.type.no-restrict",
+            "ss.libc.no-tgmath-fenv",
         }
         cpp_only = {
             "ss.cpp.enum-class",

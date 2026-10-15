@@ -76,6 +76,15 @@ if(SILISCOPE_ENABLE_CLANG)
     src/checks/InitSideEffect.cpp
     src/checks/NoReserved.cpp
     src/checks/OnePerLine.cpp
+    src/checks/MaxIfNesting.cpp
+    src/checks/NamedLoopLimit.cpp
+    src/checks/MaxLength.cpp
+    src/checks/MaxParams.cpp
+    src/checks/Parens.cpp
+    src/checks/NamedConstants.cpp
+    src/checks/NoTime.cpp
+    src/checks/NoTgmathFenv.cpp
+    src/checks/SeqCst.cpp
     src/checks/NoComma.cpp
     src/checks/NoFlexibleArray.cpp
     src/checks/NoBlockScope.cpp

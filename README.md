@@ -214,5 +214,17 @@ Live checkers (see `src/catalog/Registry.cpp` and `just test`):
   a libc name. One declaration statement names one identifier. `--allow`
   names the symbol, or the enclosing function for a call, an operator, or an
   extension inside a function
+- Advisory syntax: an `if` nested more than two levels (an `else if` chain
+  stays one level). A `for` / `while` / `do` bound written as a bare number
+  other than 0 or 1. A function body longer than 80 lines of code, and a
+  parameter list longer than eight. On the strict profile, a mixed-precedence
+  expression and an `&&` / `||` operand that is not a name or a parenthesized
+  expression. A numeric literal other than 0, 1, or -1 in a condition, a
+  delay or sleep call, an array bound, a designated field initializer, or a
+  packed-struct initializer. A macro that spells the literal is already a
+  name. `<time.h>` and its calls, and in C `<tgmath.h>`, `<fenv.h>`, and the
+  `fenv.h` functions. A non-sequential atomic order without a comment on that
+  line or the line above. `--allow` names the function, or the declared
+  object for an array bound
 
 Not in this release: the rest of `ss.conv.*`, review-only catalog rows.

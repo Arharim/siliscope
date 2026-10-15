@@ -1,5 +1,6 @@
 static int index_both(const int *p, int i) {
-  int a[4];
+  enum { kN = 4 };
+  int a[kN];
   a[0] = 1;
   a[1] = i;
   return a[1] + p[0];

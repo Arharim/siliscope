@@ -1,5 +1,6 @@
 static int sum(void) {
-  int values[2];
+  enum { kValues = 2 };
+  int values[kValues];
   int total;
   values[0] = 1;
   values[1] = 2;

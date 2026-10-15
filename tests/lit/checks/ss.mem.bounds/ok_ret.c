@@ -1,7 +1,8 @@
 static const int *shift(const int *p);
 
 static int use(void) {
-  int a[4];
+  enum { kN = 4 };
+  int a[kN];
   const int *p = 0;
   a[0] = 1;
   p = shift(a);

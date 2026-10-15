@@ -1,4 +1,5 @@
 static void f(void) {
-  char dst[8];
+  enum { kDst = 8 };
+  char dst[kDst];
   dst[0] = 0;
 }

@@ -31,9 +31,14 @@
 #include "siliscope/IsrNotCalled.h"
 #include "siliscope/LayoutStaticAssert.h"
 #include "siliscope/LocalizeExtensions.h"
+#include "siliscope/MaxIfNesting.h"
 #include "siliscope/MaxIndirection.h"
+#include "siliscope/MaxLength.h"
+#include "siliscope/MaxParams.h"
 #include "siliscope/MemcmpString.h"
 #include "siliscope/MinScope.h"
+#include "siliscope/NamedConstants.h"
+#include "siliscope/NamedLoopLimit.h"
 #include "siliscope/NoAbortSystem.h"
 #include "siliscope/NoAssignInCond.h"
 #include "siliscope/NoAtoi.h"
@@ -83,9 +88,11 @@
 #include "siliscope/NoSizeofSideEffect.h"
 #include "siliscope/NoStdarg.h"
 #include "siliscope/NoStdio.h"
+#include "siliscope/NoTgmathFenv.h"
 #include "siliscope/NoThrowDtor.h"
 #include "siliscope/NoThrowSpec.h"
 #include "siliscope/NoThrowingSwap.h"
+#include "siliscope/NoTime.h"
 #include "siliscope/NoTrigraphs.h"
 #include "siliscope/NoUnaryMinusUnsigned.h"
 #include "siliscope/NoUnboundedString.h"
@@ -101,11 +108,13 @@
 #include "siliscope/Nullptr.h"
 #include "siliscope/OnePerLine.h"
 #include "siliscope/Override.h"
+#include "siliscope/Parens.h"
 #include "siliscope/PreprocessorCheck.h"
 #include "siliscope/PrivateData.h"
 #include "siliscope/Prototype.h"
 #include "siliscope/PtrNull.h"
 #include "siliscope/ReturnAllPaths.h"
+#include "siliscope/SeqCst.h"
 #include "siliscope/ShiftRange.h"
 #include "siliscope/SignedUnsignedMix.h"
 #include "siliscope/SizeofArrayParam.h"
@@ -128,6 +137,7 @@ static std::unique_ptr<Check> makeCheck(Reporter &reporter) {
 
 static const CheckSpec kSpecs[] = {
     {"ss.conc.no-block-in-cs", makeCheck<NoBlockInCsCheck>},
+    {"ss.conc.seq-cst-or-documented", makeCheck<SeqCstCheck>},
     {"ss.conv.fp-to-int-explicit", makeCheck<FpToIntExplicitCheck>},
     {"ss.conv.no-cv-away", makeCheck<NoCvAwayCheck>},
     {"ss.conv.no-div-zero", makeCheck<DataflowCheck>},
@@ -171,6 +181,8 @@ static const CheckSpec kSpecs[] = {
     {"ss.ctrl.empty-loop-comment", makeCheck<EmptyLoopCommentCheck>},
     {"ss.ctrl.if-else-final", makeCheck<IfElseFinalCheck>},
     {"ss.ctrl.loop-bound", makeCheck<DataflowCheck>},
+    {"ss.ctrl.max-if-nesting", makeCheck<MaxIfNestingCheck>},
+    {"ss.ctrl.named-loop-limit", makeCheck<NamedLoopLimitCheck>},
     {"ss.ctrl.no-assignment-in-condition", makeCheck<NoAssignInCondCheck>},
     {"ss.ctrl.no-continue", makeCheck<NoContinueCheck>},
     {"ss.ctrl.no-fp-loop-counter", makeCheck<NoFpLoopCounterCheck>},
@@ -204,6 +216,7 @@ static const CheckSpec kSpecs[] = {
     {"ss.expr.aggregate-init", makeCheck<AggregateInitCheck>},
     {"ss.expr.fp-must-be-finite", makeCheck<DataflowCheck>},
     {"ss.expr.init-side-effect-free", makeCheck<InitSideEffectCheck>},
+    {"ss.expr.named-constants", makeCheck<NamedConstantsCheck>},
     {"ss.expr.no-comma", makeCheck<NoCommaCheck>},
     {"ss.expr.no-inc-in-expr", makeCheck<NoIncInExprCheck>},
     {"ss.expr.no-logical-rhs-side-effect", makeCheck<NoLogicalRhsCheck>},
@@ -211,11 +224,14 @@ static const CheckSpec kSpecs[] = {
     {"ss.expr.no-sizeof-side-effect", makeCheck<NoSizeofSideEffectCheck>},
     {"ss.expr.no-trigraphs", makeCheck<NoTrigraphsCheck>},
     {"ss.expr.no-unseq", makeCheck<DataflowCheck>},
+    {"ss.expr.parens", makeCheck<ParensCheck>},
     {"ss.expr.string-const", makeCheck<StringConstCheck>},
     {"ss.expr.uninit", makeCheck<DataflowCheck>},
     {"ss.fn.check-return", makeCheck<CheckReturnCheck>},
     {"ss.fn.header-decl", makeCheck<SymbolCheck>},
     {"ss.fn.inline-is-static", makeCheck<InlineIsStaticCheck>},
+    {"ss.fn.max-length", makeCheck<MaxLengthCheck>},
+    {"ss.fn.max-params", makeCheck<MaxParamsCheck>},
     {"ss.fn.no-block-scope", makeCheck<NoBlockScopeCheck>},
     {"ss.fn.no-stdarg", makeCheck<NoStdargCheck>},
     {"ss.fn.no-unused-params", makeCheck<NoUnusedParamsCheck>},
@@ -235,6 +251,8 @@ static const CheckSpec kSpecs[] = {
     {"ss.libc.no-setlocale", makeCheck<NoSetlocaleCheck>},
     {"ss.libc.no-signal", makeCheck<NoSignalCheck>},
     {"ss.libc.no-stdio", makeCheck<NoStdioCheck>},
+    {"ss.libc.no-tgmath-fenv", makeCheck<NoTgmathFenvCheck>},
+    {"ss.libc.no-time", makeCheck<NoTimeCheck>},
     {"ss.libc.no-unbounded-string", makeCheck<NoUnboundedStringCheck>},
     {"ss.mem.bounds", makeCheck<DataflowCheck>},
     {"ss.mem.no-dangling", makeCheck<DataflowCheck>},

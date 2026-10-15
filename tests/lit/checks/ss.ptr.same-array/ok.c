@@ -1,5 +1,6 @@
 static int inside(void) {
-  int a[4];
+  enum { kN = 4 };
+  int a[kN];
   int x;
   a[0] = 1;
   a[1] = 2;

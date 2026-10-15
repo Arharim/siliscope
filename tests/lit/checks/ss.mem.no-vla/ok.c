@@ -1,9 +1,9 @@
-enum { N = 4 };
+enum { N = 4, kWide = 8 };
 
-static void f(const int x[4]) {
-  int a[4];
+static void f(const int x[N]) {
+  int a[N];
   int b[N];
-  const int c[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+  const int c[kWide] = {0, 0, 0, 0, 0, 0, 0, 0};
   a[0] = 1;
   b[0] = 1;
   (void)x;

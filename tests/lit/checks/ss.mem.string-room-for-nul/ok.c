@@ -1,7 +1,8 @@
 char *strncpy(char *dst, const char *src, unsigned n);
 
 static void fits(void) {
-  char dst[8];
+  enum { kDst = 8 };
+  char dst[kDst];
   dst[0] = 0;
   (void)strncpy(dst, "ab", 4U);
 }

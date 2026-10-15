@@ -1,4 +1,5 @@
 static void f(void) {
-  char buf[16];
+  enum { kBuf = 16 };
+  char buf[kBuf];
   buf[0] = 0;
 }

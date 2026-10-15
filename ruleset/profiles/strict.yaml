@@ -18,6 +18,7 @@ include:
     - ss.fn.param-names-consistent
     - ss.conv.no-mixed-categories
     - ss.expr.named-constants
+    - ss.expr.parens
     - ss.expr.float-literal-suffix
     - ss.pre.no-unused-include
     - ss.type.no-representation-pun

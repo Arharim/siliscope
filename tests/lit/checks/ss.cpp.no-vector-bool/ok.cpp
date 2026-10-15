@@ -10,7 +10,8 @@ private:
 } // namespace mine
 
 int fill() {
-  unsigned char bits[4] = {0, 0, 0, 0};
+  constexpr int kBits = 4;
+  unsigned char bits[kBits] = {0, 0, 0, 0};
   bits[0] = 1;
   mine::vector<bool> local;
   local = mine::vector<bool>{};

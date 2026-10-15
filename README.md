@@ -226,5 +226,13 @@ Live checkers (see `src/catalog/Registry.cpp` and `just test`):
   `fenv.h` functions. A non-sequential atomic order without a comment on that
   line or the line above. `--allow` names the function, or the declared
   object for an array bound
+- Control flow: a `for` with a condition has one counter, and that counter
+  changes only in the for-clause. The condition does not assign. An infinite
+  `for (;;)` has no counter. An expression statement that cannot affect
+  observable behaviour is dead code. A cast to `void` is a deliberate discard,
+  and a volatile access stays. A label named by a goto, a computed goto, or
+  an asm goto is in use. A function with more than 15 independent paths
+  warns: each `if`, loop, `case`, `catch`, `&&`, `||`, and `?:` adds one.
+  `--allow` names the function
 
 Not in this release: the rest of `ss.conv.*`, review-only catalog rows.

@@ -280,8 +280,8 @@ class Runner:
         )
         self.check(
             "embedded-cpp still has rules without a checker",
-            present(cpp_rows, "ss.ctrl.for-well-formed", "no-checker"),
-            "ss.ctrl.for-well-formed missing",
+            present(cpp_rows, "ss.ctrl.single-break-in-loop", "no-checker"),
+            "ss.ctrl.single-break-in-loop missing",
         )
         self.check(
             "embedded-cpp keeps shared checker",

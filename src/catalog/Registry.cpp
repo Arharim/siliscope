@@ -12,6 +12,7 @@
 #include "siliscope/CheckReturn.h"
 #include "siliscope/CsBalanced.h"
 #include "siliscope/CtypeArg.h"
+#include "siliscope/Cyclomatic.h"
 #include "siliscope/DataflowCheck.h"
 #include "siliscope/DeclConst.h"
 #include "siliscope/Distinct.h"
@@ -20,6 +21,7 @@
 #include "siliscope/EnumInit.h"
 #include "siliscope/ExplicitType.h"
 #include "siliscope/FixedWidth.h"
+#include "siliscope/ForWellFormed.h"
 #include "siliscope/FpToIntExplicit.h"
 #include "siliscope/IfElseFinal.h"
 #include "siliscope/InitMembers.h"
@@ -49,6 +51,7 @@
 #include "siliscope/NoComma.h"
 #include "siliscope/NoContinue.h"
 #include "siliscope/NoCvAway.h"
+#include "siliscope/NoDeadCode.h"
 #include "siliscope/NoDefaultArgs.h"
 #include "siliscope/NoErrnoHost.h"
 #include "siliscope/NoExceptions.h"
@@ -98,6 +101,7 @@
 #include "siliscope/NoUnboundedString.h"
 #include "siliscope/NoUnsignedWrap.h"
 #include "siliscope/NoUnused.h"
+#include "siliscope/NoUnusedLabel.h"
 #include "siliscope/NoUnusedParams.h"
 #include "siliscope/NoUsingDirective.h"
 #include "siliscope/NoUsingInHeader.h"
@@ -179,12 +183,14 @@ static const CheckSpec kSpecs[] = {
     {"ss.ctrl.braces", makeCheck<BracesCheck>},
     {"ss.ctrl.boolean-condition", makeCheck<BooleanConditionCheck>},
     {"ss.ctrl.empty-loop-comment", makeCheck<EmptyLoopCommentCheck>},
+    {"ss.ctrl.for-well-formed", makeCheck<ForWellFormedCheck>},
     {"ss.ctrl.if-else-final", makeCheck<IfElseFinalCheck>},
     {"ss.ctrl.loop-bound", makeCheck<DataflowCheck>},
     {"ss.ctrl.max-if-nesting", makeCheck<MaxIfNestingCheck>},
     {"ss.ctrl.named-loop-limit", makeCheck<NamedLoopLimitCheck>},
     {"ss.ctrl.no-assignment-in-condition", makeCheck<NoAssignInCondCheck>},
     {"ss.ctrl.no-continue", makeCheck<NoContinueCheck>},
+    {"ss.ctrl.no-dead-code", makeCheck<NoDeadCodeCheck>},
     {"ss.ctrl.no-fp-loop-counter", makeCheck<NoFpLoopCounterCheck>},
     {"ss.ctrl.no-goto", makeCheck<NoGotoCheck>},
     {"ss.ctrl.no-invariant-condition", makeCheck<DataflowCheck>},
@@ -228,6 +234,7 @@ static const CheckSpec kSpecs[] = {
     {"ss.expr.string-const", makeCheck<StringConstCheck>},
     {"ss.expr.uninit", makeCheck<DataflowCheck>},
     {"ss.fn.check-return", makeCheck<CheckReturnCheck>},
+    {"ss.fn.cyclomatic", makeCheck<CyclomaticCheck>},
     {"ss.fn.header-decl", makeCheck<SymbolCheck>},
     {"ss.fn.inline-is-static", makeCheck<InlineIsStaticCheck>},
     {"ss.fn.max-length", makeCheck<MaxLengthCheck>},
@@ -235,6 +242,7 @@ static const CheckSpec kSpecs[] = {
     {"ss.fn.no-block-scope", makeCheck<NoBlockScopeCheck>},
     {"ss.fn.no-stdarg", makeCheck<NoStdargCheck>},
     {"ss.fn.no-unused-params", makeCheck<NoUnusedParamsCheck>},
+    {"ss.fn.no-unused-label", makeCheck<NoUnusedLabelCheck>},
     {"ss.fn.noreturn-does-not-return", makeCheck<NoreturnCheck>},
     {"ss.fn.param-names-consistent", makeCheck<SymbolCheck>},
     {"ss.fn.prototype", makeCheck<PrototypeCheck>},

@@ -85,6 +85,10 @@ if(SILISCOPE_ENABLE_CLANG)
     src/checks/NoTime.cpp
     src/checks/NoTgmathFenv.cpp
     src/checks/SeqCst.cpp
+    src/checks/ForWellFormed.cpp
+    src/checks/NoDeadCode.cpp
+    src/checks/NoUnusedLabel.cpp
+    src/checks/Cyclomatic.cpp
     src/checks/NoComma.cpp
     src/checks/NoFlexibleArray.cpp
     src/checks/NoBlockScope.cpp

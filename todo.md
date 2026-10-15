@@ -1,6 +1,6 @@
 # План работ
 
-Снимок после остатка cfg: один счётчик у `for`, оператор без эффекта, метка без goto, функция сложнее 15 путей. Каталог — 192 правила. Suite: 462. `embedded-cpp`: 157 включено, 141 с чекером, 16 без. `embedded-c`: 149 / 134 / 15. `strict`: 176 / 158 / 18. Живых чекеров 159. Pump, те же 11 `.cpp`: 5398 срабатываний, дельта +848 относительно `out/pump-syntax.txt` и дельта +15 относительно `out/pump-advisory.txt`. no-checker 16. Stderr совпал с прошлым: 0 fatal, 6 ошибок clang, 3884 предупреждения. Лог этого прогона: `out/pump-cfg.txt`. Замороженные `out/pump-syntax.txt`, `out/pump-syntax-rules.txt`, `out/pump-advisory.txt`, `out/pump-dataflow.txt`, `out/pump-callgraph.txt`, `out/pump-dataflow2.txt`, `out/pump-policies.txt`, `out/pump-interproc.txt`, `out/pump-symbols.txt`, `out/pump-conv.txt`, `out/pump-ptr.txt`, `out/pump-decl.txt`, `out/pump-libc.txt` и `out/pump-types.txt` не трогали, в git они не входят.
+Снимок после review-подсказок: общий объект без истории синхронизации, обратный порядок захватов, read-modify-write volatile-скаляра, запись 1 после проверки на ноль, дырка в таблице векторов, блокировка или вечный цикл в обработчике, непроверенный параметр опубликованной функции, аппаратная структура без раскладки, pun через второй член union в strict. Каталог — 192 правила. Suite: 480. `embedded-cpp`: 157 включено, 149 с чекером, 8 без. `embedded-c`: 149 / 142 / 7. `strict`: 176 / 167 / 9. Живых чекеров 168. Pump, те же 11 `.cpp`: 5788 срабатываний, дельта +1238 относительно `out/pump-syntax.txt` и дельта +390 относительно `out/pump-cfg.txt`. no-checker 8. Stderr совпал с прошлым: 0 fatal, 6 ошибок clang, 3884 предупреждения. Лог этого прогона: `out/pump-review.txt`. Замороженные `out/pump-syntax.txt`, `out/pump-syntax-rules.txt`, `out/pump-advisory.txt`, `out/pump-cfg.txt`, `out/pump-dataflow.txt`, `out/pump-callgraph.txt`, `out/pump-dataflow2.txt`, `out/pump-policies.txt`, `out/pump-interproc.txt`, `out/pump-symbols.txt`, `out/pump-conv.txt`, `out/pump-ptr.txt`, `out/pump-decl.txt`, `out/pump-libc.txt` и `out/pump-types.txt` не трогали, в git они не входят.
 
 Каждый срез: фикстуры, suite, `--list`, прогон тех же 11 файлов pump. Дельту считать так: `python3 tools/diff_report.py out/pump-syntax.txt НОВЫЙ`. Сырой лог в разбор не тащить. `out/pump-syntax.txt` не подменять следующим прогоном. `just fw` для замера шума не использовать. Шум FreeRTOS, CMSIS и SEGGER оставляем: правила не ослабляем и отдельный путь для вендора не заводим. `ruleset/INDEX.md` и `ruleset/coverage.md` руками не правим. Коммит по просьбе, один срез за раз.
 
@@ -193,21 +193,23 @@ Advisory syntax сделан. Девять правил. `parens` включён
 
 `--allow` называет функцию. На pump дельта +15 относительно лога после advisory syntax, пропавших диагностик нет. Все 15 — `ss.fn.cyclomatic`: 10 в `usb_task.cpp`, 2 в `pump_task.cpp` (1171 и 1737), по одному в `can_task.cpp:273`, `esp32_uart_task.cpp:431` и `exp_pump_task.cpp:213`. `for-well-formed`, `no-dead-code` и `no-unused-label` на этих 11 файлах молчат. Живых чекеров 159 из 192. В `embedded-cpp` 141 из 157. В `embedded-c` 134 из 149. В `strict` 158 из 176.
 
-Дальше шаг 13, девять review-подсказок.
-
 ### 13. Review-подсказки
 
-Девять правил вида `review`. Это замечание для ревью, не доказательство:
+Review-подсказки сделаны. Девять правил. Это замечание для ревью, не доказательство. `ss.type.no-representation-pun` включён только в `strict`. Сторож no-checker остаётся `ss.ctrl.single-break-in-loop`.
 
-- `ss.conc.no-data-race`
-- `ss.conc.lock-order`
-- `ss.conc.no-volatile-mutex`
-- `ss.decl.volatile`
-- `ss.emb.default-isr`
-- `ss.emb.isr-body`
-- `ss.fn.check-params`
-- `ss.type.hw-layout`
-- `ss.type.no-representation-pun`
+- `ss.conc.no-data-race`: файловый или `static` объект, не `const`, не `volatile` и не атомик. Есть запись, и к нему обращаются из обработчика и ещё откуда-то, из двух обработчиков, из двух `*_task` или `*_thread`, либо из потока и `main`. Обычная функция вторым контекстом не считается. Комментарий на объявлении со словами critical, atomic, queue, mutex, sync или lock глушит. `*p =` пишет указатель, не объект за ним. Сообщение: «say how this shared object stays consistent».
+- `ss.conc.lock-order`: вложенный захват, чья пара в другом месте взята в обратном порядке. Захват внутри ветки после ветки не держится. Сообщение: «this lock nests in the opposite order elsewhere».
+- `ss.conc.no-volatile-mutex`: `++`, `--`, составное присваивание или `flag = flag + 1` у volatile-скаляра с глобальным хранением. Указатель, поле и `*reg` молчат. Сообщение: «volatile does not make this read-modify-write atomic».
+- `ss.decl.volatile`: в одной функции и проверка на ноль, и запись литерала 1. `flag = 1` в обработчике и `if (flag != 0) flag = 0` в потоке молчат. Сообщение: «volatile is not a lock».
+- `ss.emb.default-isr`: таблица из указателей на функцию, чьё имя или секция содержит `vector`, с нулевым слотом. Полная таблица молчит. Сообщение: «give this vector a default handler».
+- `ss.emb.isr-body`: в теле обработчика задержка, ожидание очереди или семафора, `malloc`, `free`, `new`, `delete`, либо `for (;;)` или `while (1)`. Вызов `*FromISR` молчит. `while (flag)` молчит. Сообщения: «do not block in an interrupt handler», «an interrupt handler has no unbounded loop».
+- `ss.fn.check-params`: функция видна снаружи и объявлена в проектном заголовке. Указатель разыменован без проверки на нуль. Целый параметр стоит в индексе и нигде не сравнивается. `static` и функция только в `.c` молчат. Сообщения: «reject a null pointer», «check this index against its bound».
+- `ss.type.hw-layout`: полная структура, не union и не в системном заголовке, с volatile-полем или с именем reg, dma, packet, proto, wire, mailbox, descriptor, frame. Нет `packed` и нет `static_assert` на `sizeof`. Упакованная остаётся у `ss.emb.layout-static-assert`. Сообщение: «give this hardware struct a defined layout».
+- `ss.type.no-representation-pun`: в одной функции прочитаны два разных поля одного union. Один член молчит. Сообщение: «do not pun this value through another union member».
+
+`--allow` называет объект, запись, таблицу векторов или функцию. На pump дельта +390 относительно лога после cfg, пропавших диагностик нет. 375 — `ss.type.hw-layout` в заголовках AT32 (60 в `at32f403a_407_emac.h`, 46 в `at32f403a_407_bpr.h`, 29 в `at32f403a_407_flash.h`). 14 — `ss.fn.check-params` у функций из проектных заголовков: 11 нулевых указателей, 3 индекса. 1 — `ss.conc.no-volatile-mutex`, обновление `can_rx_cap_tail` в `CAN1_RX1_IRQHandler` (`can_task.cpp:246`). `no-data-race`, `lock-order`, `decl.volatile`, `default-isr` и `isr-body` на этих 11 файлах молчат. `no-representation-pun` профиль `embedded-cpp` не включает. Живых чекеров 168 из 192. В `embedded-cpp` 149 из 157. В `embedded-c` 142 из 149. В `strict` 167 из 176.
+
+Дальше шаг 14, разбор отчёта.
 
 ### 14. Разбор отчёта
 

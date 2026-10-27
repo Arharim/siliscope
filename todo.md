@@ -1,10 +1,10 @@
 # План работ
 
-Снимок после принятия каталога: `--suppress <dir>/` глушит находки под префиксом, без строки, столбца и текста. `--suppress <rule>:<dir>/` глушит одно правило там. Путь без слэша по-прежнему один файл. `..` сворачивается. Корень `/` отклоняется. Каталог – 192 правила. Suite: 501. `embedded-cpp`: 157 включено, 149 с чекером, 8 без. `embedded-c`: 149 / 142 / 7. `strict`: 176 / 167 / 9. Живых чекеров 168. Pump, те же 11 `.cpp`: 5788 срабатываний, дельта 0 относительно `out/pump-review.txt` и дельта +1238 относительно `out/pump-syntax.txt`. С `--baseline out/pump-review.txt` напечатано 0, снято 5788, из baseline не встретилось 0. С `--suppress <pump>/libraries/` напечатано 3262, снято 2526, добавленных нет: дельта -2526 относительно `out/pump-step14.txt`. Строк из `libraries/` не осталось. no-checker 8. Stderr прошлого обычного прогона: 0 fatal, 6 ошибок clang, 3884 предупреждения. Лог обычного прогона: `out/pump-step14.txt`. Лог с baseline: `out/pump-baseline.txt`. Лог с префиксом: `out/pump-tree.txt`. Замороженные `out/pump-syntax.txt`, `out/pump-syntax-rules.txt`, `out/pump-advisory.txt`, `out/pump-cfg.txt`, `out/pump-review.txt`, `out/pump-dataflow.txt`, `out/pump-callgraph.txt`, `out/pump-dataflow2.txt`, `out/pump-policies.txt`, `out/pump-interproc.txt`, `out/pump-symbols.txt`, `out/pump-conv.txt`, `out/pump-ptr.txt`, `out/pump-decl.txt`, `out/pump-libc.txt` и `out/pump-types.txt` не трогали, в git они не входят.
+Снимок после профиля `style`: 12 правил, все с чекером. В `embedded-c`, `embedded-cpp` и `strict` их нет. Каталог – 192 правила. Suite: 527. `embedded-cpp`: 157 включено, 149 с чекером, 8 без. `embedded-c`: 149 / 142 / 7. `strict`: 176 / 167 / 9. `style`: 12 / 12 / 0. Живых чекеров 180. Pump, те же 11 `.cpp`: 5788 срабатываний, дельта 0 относительно `out/pump-review.txt` и дельта +1238 относительно `out/pump-syntax.txt`. С `--baseline out/pump-review.txt` напечатано 0, снято 5788, из baseline не встретилось 0. С `--suppress <pump>/libraries/` напечатано 3262, снято 2526, добавленных нет: дельта -2526 относительно `out/pump-step14.txt`. Строк из `libraries/` не осталось. Профиль `embedded-cpp` на тех же 11 `.cpp` после style: 5788, дельта 0 относительно `out/pump-step14.txt`. Лог: `out/pump-style.txt`. no-checker 8. Stderr прошлого обычного прогона: 0 fatal, 6 ошибок clang, 3884 предупреждения. Лог обычного прогона: `out/pump-step14.txt`. Лог с baseline: `out/pump-baseline.txt`. Лог с префиксом: `out/pump-tree.txt`. Замороженные `out/pump-syntax.txt`, `out/pump-syntax-rules.txt`, `out/pump-advisory.txt`, `out/pump-cfg.txt`, `out/pump-review.txt`, `out/pump-dataflow.txt`, `out/pump-callgraph.txt`, `out/pump-dataflow2.txt`, `out/pump-policies.txt`, `out/pump-interproc.txt`, `out/pump-symbols.txt`, `out/pump-conv.txt`, `out/pump-ptr.txt`, `out/pump-decl.txt`, `out/pump-libc.txt` и `out/pump-types.txt` не трогали, в git они не входят.
 
 Каждый срез: фикстуры, suite, `--list`, прогон тех же 11 файлов pump. Дельту считать так: `python3 tools/diff_report.py out/pump-syntax.txt НОВЫЙ`. Сырой лог в разбор не тащить. `out/pump-syntax.txt` не подменять следующим прогоном. `just fw` для замера шума не использовать. Шум FreeRTOS, CMSIS и SEGGER оставляем: правила не ослабляем и отдельный путь для вендора не заводим. `ruleset/INDEX.md` и `ruleset/coverage.md` руками не правим. Коммит по просьбе, один срез за раз.
 
-Сравнение двух логов делает `tools/diff_report.py`, это шаг 4. Принятие сохранённого отчёта и подавление по файлу – шаг 14, сделано. Принятие префикса каталога сделано, пункт в потенциальных работах.
+Сравнение двух логов делает `tools/diff_report.py`, это шаг 4. Принятие сохранённого отчёта и подавление по файлу – шаг 14, сделано. Принятие префикса каталога сделано, пункт в потенциальных работах. Профиль `style` сделан.
 
 ## Уже закрыто
 
@@ -222,6 +222,23 @@ Review-подсказки сделаны. Девять правил. Это за
 На pump обычный прогон совпал с логом после review: 5788, дельта 0, пропавших диагностик нет. С `--baseline out/pump-review.txt` напечатано 0, снято 5788, пропавших из baseline 0. Stderr тот же: 0 fatal, 6 ошибок clang, 3884 предупреждения. Эти шесть – прежнее сужение в `esp32_uart_task.cpp` и `usb_task.cpp`, поэтому процесс завершается с кодом 1. Лог обычного прогона: `out/pump-step14.txt`. Лог с baseline: `out/pump-baseline.txt`.
 
 Очередь на этом закрыта.
+
+## Профиль style
+
+Сделано. Двенадцать правил, все с чекером. В `embedded-c`, `embedded-cpp` и `strict` их нет. Suite: 527. Живых чекеров 180 из 192.
+
+- Строка не длиннее 80 колонок. Таб доводится до следующей позиции, кратной 8.
+- Отступ кратен 4 пробелам. Директива может стоять у левого края.
+- Табов нет. На строке одна инструкция. Точки с запятой внутри `for (...)` не считаются.
+- `{` у `if`, `else`, `for`, `while`, `do`, `switch` и функции на следующей строке, в колонке ключевого слова.
+- Функции и переменные в `snake_case`, макросы в `UPPER_CASE`.
+- В C `typedef` кончается на `_t`. В заголовке имя начинается с основы имени файла.
+- У `==` константа слева. В C нет `register` и `auto`. В C++ `auto` как тип молчит.
+- `имя.c` подключает `"имя.h"`, у заголовка есть сторож.
+- Обработчик прерывания кончается на `_isr`.
+- Функция, переданная в вызов с `task` или `thread` в имени, называется `*_task` или `*_thread`.
+
+На pump профиль `embedded-cpp`, эти правила выключены. Те же 11 `.cpp`: 5788, дельта 0 относительно `out/pump-step14.txt`. Лог: `out/pump-style.txt`. Замороженные логи не трогали.
 
 ## Вне очереди
 

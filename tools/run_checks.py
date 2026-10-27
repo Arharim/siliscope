@@ -552,11 +552,90 @@ class Runner:
                 f"rc={rc}\n{half}\n{err}",
             )
 
-            rc, bad, err = self.invoke([*base, "--suppress", goto + "/", goto])
+            tree = "tests/lit/checks/ss.ctrl.no-goto/"
+            plain_rc, plain, plain_err = self.invoke([*base, goto, jump])
+            plain_findings = findings_of(plain)
+            goto_n = sum(1 for ln in plain.splitlines() if "ss.ctrl.no-goto/bad.c:" in ln)
+            rc, under, err = self.invoke([*base, "--suppress", tree, goto, jump])
             self.check(
-                "suppress rejects a directory",
+                "suppress directory hides files inside it",
+                plain_rc != 0
+                and plain_findings is not None
+                and goto_n > 0
+                and rc != 0
+                and "ss.ctrl.no-goto/bad.c:" not in under
+                and "[ss.ctrl.no-setjmp]" in under
+                and field(under, "suppressed") == goto_n
+                and findings_of(under) == plain_findings - goto_n,
+                f"plain rc={plain_rc}\n{plain}\n{plain_err}\nrc={rc}\n{under}\n{err}",
+            )
+            rc, noslash, err = self.invoke(
+                [*base, "--suppress", "tests/lit/checks/ss.ctrl.no-goto", goto]
+            )
+            self.check(
+                "a directory without a slash does not hide files inside it",
+                rc != 0
+                and "[ss.ctrl.no-goto]" in noslash
+                and field(noslash, "suppressed") == 0,
+                f"rc={rc}\n{noslash}\n{err}",
+            )
+            rc, prefix, err = self.invoke(
+                [*base, "--suppress", "tests/lit/checks/ss.ctrl.no-got/", goto]
+            )
+            self.check(
+                "a directory name prefix does not match",
+                rc != 0
+                and "[ss.ctrl.no-goto]" in prefix
+                and field(prefix, "suppressed") == 0,
+                f"rc={rc}\n{prefix}\n{err}",
+            )
+            rc, ruled, err = self.invoke([*base, "--suppress", f"ss.ctrl.no-goto:{tree}", goto])
+            self.check(
+                "suppress rule in a directory hides that rule",
+                rc != 0
+                and "[ss.ctrl.no-goto]" not in ruled
+                and findings_of(ruled) == saved_findings - 1
+                and field(ruled, "suppressed") == 1,
+                f"rc={rc}\n{ruled}\n{err}",
+            )
+            rc, both, err = self.invoke([*base, "--suppress", "tests/lit/checks/", goto, jump])
+            self.check(
+                "a parent directory hides both files",
+                plain_findings is not None
+                and rc == 0
+                and findings_of(both) == 0
+                and field(both, "suppressed") == plain_findings,
+                f"rc={rc}\n{both}\n{err}",
+            )
+            via = "tests/lit/checks/ss.ctrl.no-setjmp/../ss.ctrl.no-goto/bad.c"
+            rc, crossed, err = self.invoke(
+                [*base, "--suppress", "tests/lit/checks/ss.ctrl.no-setjmp/", via]
+            )
+            self.check(
+                "a dot-dot path is not inside the directory it walks out of",
+                rc != 0 and "[ss.ctrl.no-goto]" in crossed and field(crossed, "suppressed") == 0,
+                f"rc={rc}\n{crossed}\n{err}",
+            )
+            rc, home, err = self.invoke([*base, "--suppress", tree, via])
+            self.check(
+                "a dot-dot path is inside the directory it lands in",
+                rc == 0 and findings_of(home) == 0 and field(home, "suppressed") == saved_findings,
+                f"rc={rc}\n{home}\n{err}",
+            )
+            rc, file_slash, err = self.invoke([*base, "--suppress", goto + "/", goto])
+            self.check(
+                "a trailing slash on a file does not hide that file",
+                rc != 0
+                and findings_of(file_slash) == saved_findings
+                and field(file_slash, "suppressed") == 0
+                and "error: --suppress" not in err,
+                f"rc={rc}\n{file_slash}\n{err}",
+            )
+            rc, root, err = self.invoke([*base, "--suppress", "/", goto])
+            self.check(
+                "suppress rejects the filesystem root",
                 rc == 2 and "error: --suppress" in err,
-                f"rc={rc}\n{bad}\n{err}",
+                f"rc={rc}\n{root}\n{err}",
             )
             rc, bare, err = self.invoke([*base, "--suppress", "ss.ctrl.no-goto", goto])
             self.check(

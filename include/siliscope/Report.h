@@ -40,7 +40,9 @@ public:
   bool allows(const char *id, const char *name) const;
 
   // `--suppress <path>` or `--suppress <rule>:<path>`. A path matches the
-  // diagnostic file in full, or as a suffix at a directory boundary.
+  // diagnostic file in full, or as a suffix at a directory boundary. A
+  // trailing slash is a directory prefix: every file under it, ignoring the
+  // line, the column, and the message.
   bool addSuppress(const std::string &text, std::string &err);
   // A saved siliscope report. A finding already listed at the same file,
   // line, column, severity, message, and rule is not printed again.
@@ -57,8 +59,9 @@ private:
   };
 
   struct SuppressSpec {
-    std::string rule; // empty: every rule in the file
+    std::string rule; // empty: every rule in the file or directory
     std::string path;
+    bool tree = false; // path is a directory prefix
   };
 
   struct BaselineEntry {

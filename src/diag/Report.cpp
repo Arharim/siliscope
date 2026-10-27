@@ -12,19 +12,52 @@
 #include <fstream>
 #include <limits>
 #include <set>
+#include <vector>
 
 namespace {
 
+// Slashes, `.`, and `..` are collapsed. `main/../libraries/foo.h` is the same
+// file as `libraries/foo.h`. A trailing slash is dropped.
 std::string normPath(std::string path) {
   for (char &ch : path) {
     if (ch == '\\') {
       ch = '/';
     }
   }
-  while (path.size() > 1 && path.back() == '/') {
-    path.pop_back();
+  const bool absolute = !path.empty() && path.front() == '/';
+  std::vector<llvm::StringRef> parts;
+  size_t begin = 0;
+  auto push = [&](llvm::StringRef part) {
+    if (part.empty() || part == ".") {
+      return;
+    }
+    if (part == "..") {
+      if (!parts.empty() && parts.back() != "..") {
+        parts.pop_back();
+      } else if (!absolute) {
+        parts.push_back(part);
+      }
+      return;
+    }
+    parts.push_back(part);
+  };
+  for (size_t i = 0; i <= path.size(); ++i) {
+    if (i == path.size() || path[i] == '/') {
+      push(llvm::StringRef(path.data() + begin, i - begin));
+      begin = i + 1;
+    }
   }
-  return path;
+  std::string out;
+  if (absolute) {
+    out.push_back('/');
+  }
+  for (size_t i = 0; i < parts.size(); ++i) {
+    if (i != 0) {
+      out.push_back('/');
+    }
+    out.append(parts[i].data(), parts[i].size());
+  }
+  return out;
 }
 
 // Equal, or one path continues the other after a directory separator.
@@ -38,6 +71,34 @@ bool sameFile(llvm::StringRef path, llvm::StringRef spec) {
            full[full.size() - tail.size() - 1] == '/';
   };
   return boundary(path, spec) || boundary(spec, path);
+}
+
+// `dir` has no trailing slash. The file sits inside that directory. `task`
+// matches `task/foo.c` and `a/task/foo.c`, and does not match `can_task/foo.c`.
+// The line, column, and message are not part of the match.
+bool inTree(llvm::StringRef path, llvm::StringRef dir) {
+  if (dir.empty() || path.size() <= dir.size()) {
+    return false;
+  }
+  auto inside = [&](size_t at) {
+    if (at + dir.size() >= path.size() || path[at + dir.size()] != '/') {
+      return false;
+    }
+    if (at > 0 && path[at - 1] != '/') {
+      return false;
+    }
+    return path.substr(at, dir.size()) == dir;
+  };
+  if (inside(0)) {
+    return true;
+  }
+  for (size_t slash = path.find('/'); slash != llvm::StringRef::npos;
+       slash = path.find('/', slash + 1)) {
+    if (inside(slash + 1)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 bool ruleId(llvm::StringRef id) {
@@ -240,23 +301,26 @@ bool Reporter::addSuppress(const std::string &text, std::string &err) {
   const llvm::StringRef spec(text);
   SuppressSpec parsed;
   std::string rawPath;
+  const auto fail = [&] {
+    err = "--suppress wants a file, ss.rule:file, or a directory ending in / (got " + text + ")";
+    return false;
+  };
   if (spec.starts_with("ss.")) {
     const size_t colon = text.find(':');
     if (colon == std::string::npos || !ruleId(llvm::StringRef(text).take_front(colon)) ||
         colon + 1 >= text.size()) {
-      err = "--suppress wants a file path, or ss.rule:path (got " + text + ")";
-      return false;
+      return fail();
     }
     parsed.rule = text.substr(0, colon);
     rawPath = text.substr(colon + 1);
   } else {
     rawPath = text;
   }
-  const bool directory = !rawPath.empty() && (rawPath.back() == '/' || rawPath.back() == '\\');
+  parsed.tree = !rawPath.empty() && (rawPath.back() == '/' || rawPath.back() == '\\');
   parsed.path = normPath(std::move(rawPath));
-  if (directory || parsed.path.empty() || parsed.path == "." || parsed.path == "..") {
-    err = "--suppress wants a file path, or ss.rule:path (got " + text + ")";
-    return false;
+  // `/` would quiet every file. `.` and `..` are not a directory the user named.
+  if (parsed.path.empty() || parsed.path == ".." || parsed.path == "/") {
+    return fail();
   }
   suppress.push_back(std::move(parsed));
   filter_active = true;
@@ -348,7 +412,8 @@ bool Reporter::drop(const SeenDiag &key, const char *severity) {
     if (!spec.rule.empty() && spec.rule != key.id) {
       continue;
     }
-    if (sameFile(path, spec.path)) {
+    const bool hit = spec.tree ? inTree(path, spec.path) : sameFile(path, spec.path);
+    if (hit) {
       file = true;
       break;
     }

@@ -94,12 +94,19 @@ emits its `[ss.*]` id. A file that fails to parse does not count as a hit.
 `--suppress <file>` drops every finding in that file. `--suppress <rule>:<file>`
 drops one rule there. The path matches the diagnostic file in full, or as a
 suffix at a directory boundary, so `inc/foo.h` matches a longer absolute path
-and `task.cpp` does not match `can_task.cpp`. `--baseline <report>` drops a
-finding the saved log already lists at the same file, line, column, severity,
-message, and rule. What remains is still printed, and the exit status still
-follows those findings. The summary then adds `suppressed:` and, for a
-baseline, `baseline-missing:`. The accepted set is those sites. The profile
-keeps every rule, and no directory is skipped by name.
+and `task.cpp` does not match `can_task.cpp`. A path with no trailing slash is
+one file: `dir` does not cover `dir/file.c`. A trailing slash is a directory
+prefix. `--suppress <dir>/` drops every finding in files under that directory,
+and `--suppress <rule>:<dir>/` drops one rule there. The prefix matches a
+directory component, so a moved line or a rewritten message stays quiet, and
+`task/` does not match `can_task/`. `.` and `..` collapse, so
+`main/../libraries/` is `libraries/`. `/` is rejected. `--baseline <report>`
+drops a finding the saved log already lists at the same file, line, column,
+severity, message, and rule. What remains is still printed, and the exit
+status still follows those findings. The summary then adds `suppressed:` and,
+for a baseline, `baseline-missing:`. The accepted set is those files,
+directories, and sites. The profile keeps every rule. Nothing is skipped
+because of a vendor name.
 
 `python3 tools/diff_report.py previous.txt current.txt` prints diagnostics
 that appeared or disappeared. Summary lines are not findings. The exit status

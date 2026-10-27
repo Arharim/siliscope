@@ -13,7 +13,8 @@ struct FrontendOptions {
   std::vector<std::string> sources;
   // --allow rule:name (e.g. ss.fn.no-stdarg:log_printf)
   std::vector<std::pair<std::string, std::string>> allow;
-  // --suppress path, or --suppress rule:path. Repeatable.
+  // --suppress path, --suppress rule:path, or either with a trailing slash
+  // for a directory prefix. Repeatable.
   std::vector<std::string> suppress;
   // Saved report. Findings listed in it are not printed again.
   std::string baseline;

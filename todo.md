@@ -1,10 +1,10 @@
 # План работ
 
-Снимок после профиля `style`: 12 правил, все с чекером. В `embedded-c`, `embedded-cpp` и `strict` их нет. Каталог – 192 правила. Suite: 527. `embedded-cpp`: 157 включено, 149 с чекером, 8 без. `embedded-c`: 149 / 142 / 7. `strict`: 176 / 167 / 9. `style`: 12 / 12 / 0. Живых чекеров 180. Pump, те же 11 `.cpp`: 5788 срабатываний, дельта 0 относительно `out/pump-review.txt` и дельта +1238 относительно `out/pump-syntax.txt`. С `--baseline out/pump-review.txt` напечатано 0, снято 5788, из baseline не встретилось 0. С `--suppress <pump>/libraries/` напечатано 3262, снято 2526, добавленных нет: дельта -2526 относительно `out/pump-step14.txt`. Строк из `libraries/` не осталось. Профиль `embedded-cpp` на тех же 11 `.cpp` после style: 5788, дельта 0 относительно `out/pump-step14.txt`. Лог: `out/pump-style.txt`. no-checker 8. Stderr прошлого обычного прогона: 0 fatal, 6 ошибок clang, 3884 предупреждения. Лог обычного прогона: `out/pump-step14.txt`. Лог с baseline: `out/pump-baseline.txt`. Лог с префиксом: `out/pump-tree.txt`. Замороженные `out/pump-syntax.txt`, `out/pump-syntax-rules.txt`, `out/pump-advisory.txt`, `out/pump-cfg.txt`, `out/pump-review.txt`, `out/pump-dataflow.txt`, `out/pump-callgraph.txt`, `out/pump-dataflow2.txt`, `out/pump-policies.txt`, `out/pump-interproc.txt`, `out/pump-symbols.txt`, `out/pump-conv.txt`, `out/pump-ptr.txt`, `out/pump-decl.txt`, `out/pump-libc.txt` и `out/pump-types.txt` не трогали, в git они не входят.
+Снимок после присваивания и одного выхода из цикла. Каталог – 192 правила. Suite: 532. `embedded-cpp`: 157 включено, 151 с чекером, 6 без. `embedded-c`: 149 / 144 / 5. `strict`: 176 / 169 / 7. `style`: 12 / 12 / 0. Живых чекеров 182. Pump, те же 11 `.cpp`: 5788 срабатываний, дельта 0 относительно `out/pump-review.txt` и дельта +1238 относительно `out/pump-syntax.txt`. С `--baseline out/pump-review.txt` напечатано 0, снято 5788, из baseline не встретилось 0. С `--suppress <pump>/libraries/` напечатано 3262, снято 2526, добавленных нет: дельта -2526 относительно `out/pump-step14.txt`. Строк из `libraries/` не осталось. Профиль `embedded-cpp` на тех же 11 `.cpp` после style: 5788, дельта 0 относительно `out/pump-step14.txt`. Лог: `out/pump-style.txt`. После присваивания и одного `break`: 5790, дельта +2 относительно `out/pump-style.txt`, пропавших нет. Оба срабатывания – `ss.ctrl.single-break-in-loop`. `ss.conv.no-assign-as-value` молчит. Лог: `out/pump-break.txt`. no-checker 6. Stderr прошлого обычного прогона: 0 fatal, 6 ошибок clang, 3884 предупреждения. Лог обычного прогона: `out/pump-step14.txt`. Лог с baseline: `out/pump-baseline.txt`. Лог с префиксом: `out/pump-tree.txt`. Замороженные `out/pump-syntax.txt`, `out/pump-syntax-rules.txt`, `out/pump-advisory.txt`, `out/pump-cfg.txt`, `out/pump-review.txt`, `out/pump-dataflow.txt`, `out/pump-callgraph.txt`, `out/pump-dataflow2.txt`, `out/pump-policies.txt`, `out/pump-interproc.txt`, `out/pump-symbols.txt`, `out/pump-conv.txt`, `out/pump-ptr.txt`, `out/pump-decl.txt`, `out/pump-libc.txt` и `out/pump-types.txt` не трогали, в git они не входят.
 
 Каждый срез: фикстуры, suite, `--list`, прогон тех же 11 файлов pump. Дельту считать так: `python3 tools/diff_report.py out/pump-syntax.txt НОВЫЙ`. Сырой лог в разбор не тащить. `out/pump-syntax.txt` не подменять следующим прогоном. `just fw` для замера шума не использовать. Шум FreeRTOS, CMSIS и SEGGER оставляем: правила не ослабляем и отдельный путь для вендора не заводим. `ruleset/INDEX.md` и `ruleset/coverage.md` руками не правим. Коммит по просьбе, один срез за раз.
 
-Сравнение двух логов делает `tools/diff_report.py`, это шаг 4. Принятие сохранённого отчёта и подавление по файлу – шаг 14, сделано. Принятие префикса каталога сделано, пункт в потенциальных работах. Профиль `style` сделан.
+Сравнение двух логов делает `tools/diff_report.py`, это шаг 4. Принятие сохранённого отчёта и подавление по файлу – шаг 14, сделано. Принятие префикса каталога сделано, пункт в потенциальных работах. Профиль `style` сделан. Присваивание как значение и один `break` или `goto` из цикла сделаны.
 
 ## Уже закрыто
 
@@ -239,6 +239,15 @@ Review-подсказки сделаны. Девять правил. Это за
 - Функция, переданная в вызов с `task` или `thread` в имени, называется `*_task` или `*_thread`.
 
 На pump профиль `embedded-cpp`, эти правила выключены. Те же 11 `.cpp`: 5788, дельта 0 относительно `out/pump-step14.txt`. Лог: `out/pump-style.txt`. Замороженные логи не трогали.
+
+## Присваивание и один выход из цикла
+
+Сделано. `ss.conv.no-assign-as-value` включено по умолчанию, оба языка. `ss.ctrl.single-break-in-loop` advisory и лежит в `extra` у `embedded-c`, поэтому оно есть и в `embedded-cpp`, и в `strict`. Suite: 532. Живых чекеров 182 из 192.
+
+- Значение присваивания не читают. `if ((a = f()) != 0)`, аргумент и `c = a = b` отмечаются. `a = b = 0;` как оператор тихо: простые цели и одна константа, результат дальше не читается. `--allow` называет левую цель.
+- У цикла не больше одного `break` или одного `goto` наружу. `break` в `switch` не считается. `goto` на метку внутри цикла не считается. Вложенный цикл считает свои переходы. `--allow` называет функцию.
+
+На pump те же 11 `.cpp`, профиль `embedded-cpp`: 5790, дельта +2 относительно `out/pump-style.txt`, пропавших нет. Оба срабатывания – `ss.ctrl.single-break-in-loop`: `pump_task.cpp:1263`, второй `break` в `for (;;)` фазы насоса, и `usb_task.cpp:1135`, второй `break` в разборе байтов `can send`. `ss.conv.no-assign-as-value` на этих файлах молчит. Лог: `out/pump-break.txt`. Замороженные логи не трогали. Сторож no-checker в suite теперь `ss.type.no-union`.
 
 ## Вне очереди
 

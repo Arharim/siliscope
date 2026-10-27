@@ -362,7 +362,7 @@ class Runner:
         )
         self.check(
             "style is naming only",
-            present(style_rows, "ss.style.line-width", "no-checker") and absent(style_rows, "ss.ctrl.no-goto"),
+            present(style_rows, "ss.style.line-width", "checker") and absent(style_rows, "ss.ctrl.no-goto"),
             "style profile rule set",
         )
 
@@ -377,7 +377,11 @@ class Runner:
                 "tests/lit/checks/ss.ctrl.no-goto/bad.c",
             ]
         )
-        self.check("style ignores goto", rc == 0 and findings_of(out) == 0, f"rc={rc}\n{out}\n{err}")
+        self.check(
+            "style ignores goto",
+            "[ss.ctrl.no-goto]" not in out and findings_of(out) is not None,
+            f"rc={rc}\n{out}\n{err}",
+        )
 
         rc, out, err = self.invoke(
             [

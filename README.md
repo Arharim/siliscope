@@ -3,7 +3,7 @@
 Static checker for C/C++ firmware (bare-metal / small RTOS). Clang LibTooling
 frontend, own rule ids (`ss.<topic>.<name>`). Catalog: [`ruleset/`](ruleset/).
 
-**0.2.0** – working analyzer, not a complete catalog. 168 checkers are wired.
+**0.2.0** – working analyzer, not a complete catalog. 180 checkers are wired.
 The YAML catalog lists 192 rules. `--list` is the live count for a profile.
 Not a MISRA/CERT clone and not a certified tool.
 
@@ -125,8 +125,20 @@ belong in the user clangd config.
 
 On the default `embedded-c` profile, 149 rules are on and 142 have a checker.
 `embedded-cpp` is 157 on, 149 with a checker. `strict` is 176 / 167. `style`
-turns on 12 formatting rules and links no checker. A run's `no-checker:` count
-is that gap.
+turns on 12 rules and links all 12. It stays off unless the run passes
+`--profile style`. A line is at most 80 columns, and a tab advances to the
+next multiple of 8. Indent is a multiple of 4 spaces. A preprocessor line may
+stay at the left edge. Tabs are rejected. One statement sits on a line.
+Semicolons inside `for (...)` do not count. The `{` of `if`, `else`, `for`,
+`while`, `do`, `switch`, and a function is on the next line, in the keyword's
+column. Functions and variables are `snake_case`. Macros are `UPPER_CASE`. In
+C a typedef ends in `_t`, and a typedef written in a header starts with that
+file's basename. The constant stands on the left of `==`. C `register` and C
+`auto` are rejected. C++ `auto` is a type and stays quiet. `adc.c`
+quote-includes `"adc.h"`, and that header has an include guard. An interrupt
+handler ends in `_isr`. A function passed to a call whose name contains
+`task` or `thread` is named `*_task` or `*_thread`. A run's `no-checker:`
+count is the catalog gap on that profile.
 
 Live checkers (see `src/catalog/Registry.cpp` and `just test`):
 
@@ -282,7 +294,6 @@ Live checkers (see `src/catalog/Registry.cpp` and `just test`):
 
 Not linked yet:
 
-- The `style` profile: `ss.style.*`, `ss.emb.isr-naming`, `ss.emb.thread-naming`
 - Build policy, not a source checker: `ss.proc.all-warnings`,
   `ss.proc.static-analysis`
 - Catalog rows still without a checker: `ss.conv.no-assign-as-value`,

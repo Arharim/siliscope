@@ -19,6 +19,8 @@ public:
   // One external definition, a C header declaration, parameter names, and a
   // single extern header share one table of the whole run.
   virtual bool wantsSymbols() const { return false; }
+  // The style profile shares one pass: line shape, Allman braces, names.
+  virtual bool wantsStyle() const { return false; }
 
 protected:
   Reporter &reporter;

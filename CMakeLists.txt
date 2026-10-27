@@ -167,6 +167,7 @@ if(SILISCOPE_ENABLE_CLANG)
     src/checks/NoVectorBool.cpp
     src/checks/NoMoveConst.cpp
     src/checks/NoThrowingSwap.cpp
+    src/checks/Style.cpp
     src/checks/PreprocessorPass.cpp
     src/checks/DataflowPass.cpp
     src/checks/Interproc.cpp

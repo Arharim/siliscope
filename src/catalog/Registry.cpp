@@ -134,6 +134,7 @@
 #include "siliscope/SpecialMembers.h"
 #include "siliscope/StaticInternal.h"
 #include "siliscope/StringConst.h"
+#include "siliscope/Style.h"
 #include "siliscope/SwitchFallthroughComment.h"
 #include "siliscope/SwitchWellFormed.h"
 #include "siliscope/Symbols.h"
@@ -228,12 +229,14 @@ static const CheckSpec kSpecs[] = {
     {"ss.emb.irq-mask-balanced", makeCheck<IrqMaskBalancedCheck>},
     {"ss.emb.isr-body", makeCheck<IsrBodyCheck>},
     {"ss.emb.isr-marked", makeCheck<IsrMarkedCheck>},
+    {"ss.emb.isr-naming", makeCheck<StyleCheck>},
     {"ss.emb.isr-no-fp", makeCheck<IsrNoFpCheck>},
     {"ss.emb.isr-not-called", makeCheck<IsrNotCalledCheck>},
     {"ss.emb.layout-static-assert", makeCheck<LayoutStaticAssertCheck>},
     {"ss.emb.localize-extensions", makeCheck<LocalizeExtensionsCheck>},
     {"ss.emb.no-errno-host", makeCheck<NoErrnoHostCheck>},
     {"ss.emb.no-log-in-isr", makeCheck<NoLogInIsrCheck>},
+    {"ss.emb.thread-naming", makeCheck<StyleCheck>},
     {"ss.expr.aggregate-init", makeCheck<AggregateInitCheck>},
     {"ss.expr.fp-must-be-finite", makeCheck<DataflowCheck>},
     {"ss.expr.init-side-effect-free", makeCheck<InitSideEffectCheck>},
@@ -317,6 +320,16 @@ static const CheckSpec kSpecs[] = {
     {"ss.type.no-bool-math", makeCheck<NoBoolMathCheck>},
     {"ss.type.no-representation-pun", makeCheck<NoRepresentationPunCheck>},
     {"ss.type.no-restrict", makeCheck<NoRestrictCheck>},
+    {"ss.style.brace-own-line", makeCheck<StyleCheck>},
+    {"ss.style.indent-4", makeCheck<StyleCheck>},
+    {"ss.style.line-width", makeCheck<StyleCheck>},
+    {"ss.style.module-files", makeCheck<StyleCheck>},
+    {"ss.style.no-register-auto", makeCheck<StyleCheck>},
+    {"ss.style.no-tabs", makeCheck<StyleCheck>},
+    {"ss.style.one-stmt", makeCheck<StyleCheck>},
+    {"ss.style.snake-case", makeCheck<StyleCheck>},
+    {"ss.style.type-suffix-t", makeCheck<StyleCheck>},
+    {"ss.style.yoda", makeCheck<StyleCheck>},
 };
 
 const CheckSpec *checkSpecs() {

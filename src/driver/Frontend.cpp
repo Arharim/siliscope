@@ -8,6 +8,7 @@
 #include "siliscope/Profile.h"
 #include "siliscope/Registry.h"
 #include "siliscope/Report.h"
+#include "siliscope/Style.h"
 #include "siliscope/Symbols.h"
 
 #include "clang/AST/ASTConsumer.h"
@@ -137,6 +138,9 @@ public:
       if (checks.back()->wantsSymbols()) {
         watchSymbols = true;
       }
+      if (checks.back()->wantsStyle()) {
+        watchStyle = true;
+      }
     }
   }
 
@@ -152,6 +156,9 @@ public:
     }
     if (watchSymbols) {
       attachSymbols(finder, symbols, reporter, symbolPass);
+    }
+    if (watchStyle) {
+      attachStylePass(ci.getPreprocessor(), reporter, finder);
     }
     std::vector<std::unique_ptr<ASTConsumer>> cs;
     cs.push_back(finder.newASTConsumer());
@@ -171,6 +178,7 @@ private:
   bool watchDataflow = false;
   bool watchCallGraph = false;
   bool watchSymbols = false;
+  bool watchStyle = false;
   std::unique_ptr<MatchFinder::MatchCallback> dataflow;
   std::unique_ptr<MatchFinder::MatchCallback> callGraph;
   std::unique_ptr<MatchFinder::MatchCallback> symbolPass;

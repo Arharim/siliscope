@@ -24,6 +24,7 @@
 #include "siliscope/EnumInit.h"
 #include "siliscope/ExplicitType.h"
 #include "siliscope/FixedWidth.h"
+#include "siliscope/FloatLiteralSuffix.h"
 #include "siliscope/ForWellFormed.h"
 #include "siliscope/FpToIntExplicit.h"
 #include "siliscope/HwLayout.h"
@@ -87,6 +88,7 @@
 #include "siliscope/NoQsort.h"
 #include "siliscope/NoRand.h"
 #include "siliscope/NoRecursion.h"
+#include "siliscope/NoRecursiveMutex.h"
 #include "siliscope/NoRepresentationPun.h"
 #include "siliscope/NoReserved.h"
 #include "siliscope/NoRestrict.h"
@@ -155,6 +157,7 @@ static const CheckSpec kSpecs[] = {
     {"ss.conc.lock-order", makeCheck<LockOrderCheck>},
     {"ss.conc.no-block-in-cs", makeCheck<NoBlockInCsCheck>},
     {"ss.conc.no-data-race", makeCheck<NoDataRaceCheck>},
+    {"ss.conc.no-recursive-mutex", makeCheck<NoRecursiveMutexCheck>},
     {"ss.conc.no-volatile-mutex", makeCheck<NoVolatileMutexCheck>},
     {"ss.conc.seq-cst-or-documented", makeCheck<SeqCstCheck>},
     {"ss.conv.fp-to-int-explicit", makeCheck<FpToIntExplicitCheck>},
@@ -242,6 +245,7 @@ static const CheckSpec kSpecs[] = {
     {"ss.emb.no-log-in-isr", makeCheck<NoLogInIsrCheck>},
     {"ss.emb.thread-naming", makeCheck<StyleCheck>},
     {"ss.expr.aggregate-init", makeCheck<AggregateInitCheck>},
+    {"ss.expr.float-literal-suffix", makeCheck<FloatLiteralSuffixCheck>},
     {"ss.expr.fp-must-be-finite", makeCheck<DataflowCheck>},
     {"ss.expr.init-side-effect-free", makeCheck<InitSideEffectCheck>},
     {"ss.expr.named-constants", makeCheck<NamedConstantsCheck>},

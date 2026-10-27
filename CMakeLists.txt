@@ -92,6 +92,8 @@ if(SILISCOPE_ENABLE_CLANG)
     src/checks/NoUnusedLabel.cpp
     src/checks/Cyclomatic.cpp
     src/checks/LockOrder.cpp
+    src/checks/NoRecursiveMutex.cpp
+    src/checks/FloatLiteralSuffix.cpp
     src/checks/NoDataRace.cpp
     src/checks/NoVolatileMutex.cpp
     src/checks/DeclVolatile.cpp

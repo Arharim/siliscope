@@ -3,7 +3,7 @@
 Static checker for C/C++ firmware (bare-metal / small RTOS). Clang LibTooling
 frontend, own rule ids (`ss.<topic>.<name>`). Catalog: [`ruleset/`](ruleset/).
 
-**0.2.0** – working analyzer, not a complete catalog. 182 checkers are wired.
+**0.2.0** – working analyzer, not a complete catalog. 184 checkers are wired.
 The YAML catalog lists 192 rules. `--list` is the live count for a profile.
 Not a MISRA/CERT clone and not a certified tool.
 
@@ -124,7 +124,7 @@ belong in the user clangd config.
 ## What 0.2.0 actually runs
 
 On the default `embedded-c` profile, 149 rules are on and 144 have a checker.
-`embedded-cpp` is 157 on, 151 with a checker. `strict` is 176 / 169. `style`
+`embedded-cpp` is 157 on, 152 with a checker. `strict` is 176 / 170. `style`
 turns on 12 rules and links all 12. It stays off unless the run passes
 `--profile style`. A line is at most 80 columns, and a tab advances to the
 next multiple of 8. Indent is a multiple of 4 spaces. A preprocessor line may
@@ -148,6 +148,12 @@ and a `goto` whose label is inside the loop, do not count. A nested loop
 counts its own jumps. `--allow` names the assigned variable, or the function
 that contains the loop.
 
+On `strict`, a floating literal that is stored, passed, or returned as
+`float` needs an `f` suffix. `1.0f` is already `float`. `return 1.0` from a
+`double` function stays quiet. On `embedded-cpp`, a type, field, call, or
+name that contains both `recursive` and `mutex` is a recursive mutex. `mutex`
+alone stays quiet. `--allow` names the function.
+
 Live checkers (see `src/catalog/Registry.cpp` and `just test`):
 
 - Control / style-adjacent AST: goto, setjmp, braces, assignment-in-condition,
@@ -158,7 +164,8 @@ Live checkers (see `src/catalog/Registry.cpp` and `just test`):
 - Memory / libc: no heap after init, VLA, flexible array, unbounded string,
   stdio, stdarg (+ `--allow`), signal, atoi, abort/system, rand, qsort,
   setlocale
-- Expressions: octal, comma, the value of an assignment, `++`/`--` as a statement,
+- Expressions: octal, comma, the value of an assignment, an unsuffixed literal
+  stored as `float`, `++`/`--` as a statement,
   sizeof side effects,
   logical-rhs side effects, string literal → `const char *`
 - CFG / callgraph: return on all paths, unreachable, noreturn, no recursion,
@@ -308,8 +315,7 @@ Not linked yet:
   `ss.proc.static-analysis`
 - Catalog rows still without a checker: `ss.fn.single-exit` (default off),
   `ss.ptr.no-fn-pointer`, `ss.type.no-fp-unless-needed`, `ss.type.no-union`,
-  `ss.conc.no-recursive-mutex` (C++ profile), `ss.conv.no-mixed-categories`
-  (strict), `ss.expr.float-literal-suffix` (strict),
+  `ss.conv.no-mixed-categories` (strict),
   `ss.expr.literal-suffix-case` (default off)
 
 ## License

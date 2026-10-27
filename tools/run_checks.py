@@ -341,6 +341,7 @@ class Runner:
             "ss.cpp.private-data",
             "ss.cpp.special-members",
             "ss.cpp.virtual-dtor",
+            "ss.conc.no-recursive-mutex",
         }
         c_checkers = {rid for rid, parts in c_rows.items() if parts[3] == "checker"}
         cpp_checkers = {rid for rid, parts in cpp_rows.items() if parts[3] == "checker"}

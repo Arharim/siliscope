@@ -69,6 +69,7 @@
 #include "siliscope/NoFpEq.h"
 #include "siliscope/NoFpLoopCounter.h"
 #include "siliscope/NoFpNarrow.h"
+#include "siliscope/NoFpUnlessNeeded.h"
 #include "siliscope/NoFriend.h"
 #include "siliscope/NoGoto.h"
 #include "siliscope/NoHeap.h"
@@ -326,6 +327,7 @@ static const CheckSpec kSpecs[] = {
     {"ss.type.fixed-width", makeCheck<FixedWidthCheck>},
     {"ss.type.hw-layout", makeCheck<HwLayoutCheck>},
     {"ss.type.no-bool-math", makeCheck<NoBoolMathCheck>},
+    {"ss.type.no-fp-unless-needed", makeCheck<NoFpUnlessNeededCheck>},
     {"ss.type.no-representation-pun", makeCheck<NoRepresentationPunCheck>},
     {"ss.type.no-restrict", makeCheck<NoRestrictCheck>},
     {"ss.style.brace-own-line", makeCheck<StyleCheck>},

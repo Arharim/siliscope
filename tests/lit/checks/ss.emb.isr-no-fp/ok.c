@@ -1,4 +1,5 @@
 /* ss-run: allow=ss.emb.localize-extensions:systick_isr allow=ss.conc.no-volatile-mutex:systick_isr expect=clean */
+/* numeric */
 static volatile int flag;
 
 #if defined(__GNUC__) // GNU interrupt attribute

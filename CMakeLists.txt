@@ -145,6 +145,7 @@ if(SILISCOPE_ENABLE_CLANG)
     src/checks/NoObjectPtrCast.cpp
     src/checks/NoFnPtrCast.cpp
     src/checks/NoFpNarrow.cpp
+    src/checks/NoFpUnlessNeeded.cpp
     src/checks/FpToIntExplicit.cpp
     src/checks/NoIntToEnum.cpp
     src/checks/SwitchWellFormed.cpp

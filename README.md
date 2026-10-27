@@ -3,7 +3,7 @@
 Static checker for C/C++ firmware (bare-metal / small RTOS). Clang LibTooling
 frontend, own rule ids (`ss.<topic>.<name>`). Catalog: [`ruleset/`](ruleset/).
 
-**0.2.0** – working analyzer, not a complete catalog. 184 checkers are wired.
+**0.2.0** – working analyzer, not a complete catalog. 185 checkers are wired.
 The YAML catalog lists 192 rules. `--list` is the live count for a profile.
 Not a MISRA/CERT clone and not a certified tool.
 
@@ -123,8 +123,8 @@ belong in the user clangd config.
 
 ## What 0.2.0 actually runs
 
-On the default `embedded-c` profile, 149 rules are on and 144 have a checker.
-`embedded-cpp` is 157 on, 152 with a checker. `strict` is 176 / 170. `style`
+On the default `embedded-c` profile, 149 rules are on and 145 have a checker.
+`embedded-cpp` is 157 on, 153 with a checker. `strict` is 176 / 171. `style`
 turns on 12 rules and links all 12. It stays off unless the run passes
 `--profile style`. A line is at most 80 columns, and a tab advances to the
 next multiple of 8. Indent is a multiple of 4 spaces. A preprocessor line may
@@ -154,6 +154,13 @@ On `strict`, a floating literal that is stored, passed, or returned as
 name that contains both `recursive` and `mutex` is a recursive mutex. `mutex`
 alone stays quiet. `--allow` names the function.
 
+A file that uses `float`, `double`, or a floating literal gets one advisory
+unless the module is marked numeric. The mark is a comment whose text is
+exactly `numeric`: `/* numeric */` or `// numeric`. The same comment in the
+header of the same basename covers the source that includes it. `numeric
+keypad` does not count. `--suppress` still drops the rule under a file or
+directory you do not edit.
+
 Live checkers (see `src/catalog/Registry.cpp` and `just test`):
 
 - Control / style-adjacent AST: goto, setjmp, braces, assignment-in-condition,
@@ -175,7 +182,8 @@ Live checkers (see `src/catalog/Registry.cpp` and `just test`):
   pairing, irq-mask restore (not a blind enable). Heap use is still an error
   after init: it is quiet only in static initialization, or when every path
   reaches it from a function named with `--allow ss.mem.no-heap-after-init:NAME`
-- Types / decls: ISR no FP, check-return, no-shadow, ptr-null, distinct
+- Types / decls: ISR no FP, floating point unless the module is marked
+  numeric, check-return, no-shadow, ptr-null, distinct
   names, const, file-local `static`
 - Symbols across one run: an external function or object is defined once.
   An inline function, a template, and a C `inline` without `extern` may
@@ -314,7 +322,7 @@ Not linked yet:
 - Build policy, not a source checker: `ss.proc.all-warnings`,
   `ss.proc.static-analysis`
 - Catalog rows still without a checker: `ss.fn.single-exit` (default off),
-  `ss.ptr.no-fn-pointer`, `ss.type.no-fp-unless-needed`, `ss.type.no-union`,
+  `ss.ptr.no-fn-pointer`, `ss.type.no-union`,
   `ss.conv.no-mixed-categories` (strict),
   `ss.expr.literal-suffix-case` (default off)
 

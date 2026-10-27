@@ -281,8 +281,8 @@ class Runner:
         )
         self.check(
             "embedded-cpp still has rules without a checker",
-            present(cpp_rows, "ss.ctrl.single-break-in-loop", "no-checker"),
-            "ss.ctrl.single-break-in-loop missing",
+            present(cpp_rows, "ss.type.no-union", "no-checker"),
+            "ss.type.no-union missing",
         )
         self.check(
             "embedded-cpp keeps shared checker",

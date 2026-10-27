@@ -48,6 +48,7 @@
 #include "siliscope/NamedConstants.h"
 #include "siliscope/NamedLoopLimit.h"
 #include "siliscope/NoAbortSystem.h"
+#include "siliscope/NoAssignAsValue.h"
 #include "siliscope/NoAssignInCond.h"
 #include "siliscope/NoAtoi.h"
 #include "siliscope/NoBlockInCs.h"
@@ -130,6 +131,7 @@
 #include "siliscope/SeqCst.h"
 #include "siliscope/ShiftRange.h"
 #include "siliscope/SignedUnsignedMix.h"
+#include "siliscope/SingleBreak.h"
 #include "siliscope/SizeofArrayParam.h"
 #include "siliscope/SpecialMembers.h"
 #include "siliscope/StaticInternal.h"
@@ -156,6 +158,7 @@ static const CheckSpec kSpecs[] = {
     {"ss.conc.no-volatile-mutex", makeCheck<NoVolatileMutexCheck>},
     {"ss.conc.seq-cst-or-documented", makeCheck<SeqCstCheck>},
     {"ss.conv.fp-to-int-explicit", makeCheck<FpToIntExplicitCheck>},
+    {"ss.conv.no-assign-as-value", makeCheck<NoAssignAsValueCheck>},
     {"ss.conv.no-cv-away", makeCheck<NoCvAwayCheck>},
     {"ss.conv.no-div-zero", makeCheck<DataflowCheck>},
     {"ss.conv.no-fn-ptr-cast", makeCheck<NoFnPtrCastCheck>},
@@ -210,6 +213,7 @@ static const CheckSpec kSpecs[] = {
     {"ss.ctrl.no-nested-ternary", makeCheck<NoNestedTernaryCheck>},
     {"ss.ctrl.no-recursion", makeCheck<NoRecursionCheck>},
     {"ss.ctrl.no-setjmp", makeCheck<NoSetjmpCheck>},
+    {"ss.ctrl.single-break-in-loop", makeCheck<SingleBreakCheck>},
     {"ss.ctrl.switch-fallthrough-comment", makeCheck<SwitchFallthroughCommentCheck>},
     {"ss.ctrl.switch-well-formed", makeCheck<SwitchWellFormedCheck>},
     {"ss.ctrl.unreachable", makeCheck<UnreachableCheck>},

@@ -36,6 +36,8 @@ if(SILISCOPE_ENABLE_CLANG)
     src/checks/Braces.cpp
     src/checks/NoStdio.cpp
     src/checks/NoAssignInCond.cpp
+    src/checks/NoAssignAsValue.cpp
+    src/checks/SingleBreak.cpp
     src/checks/NoOctal.cpp
     src/checks/NoVLA.cpp
     src/checks/NoLargeFrame.cpp

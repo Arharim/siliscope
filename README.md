@@ -3,7 +3,7 @@
 Static checker for C/C++ firmware (bare-metal / small RTOS). Clang LibTooling
 frontend, own rule ids (`ss.<topic>.<name>`). Catalog: [`ruleset/`](ruleset/).
 
-**0.2.0** – working analyzer, not a complete catalog. 180 checkers are wired.
+**0.2.0** – working analyzer, not a complete catalog. 182 checkers are wired.
 The YAML catalog lists 192 rules. `--list` is the live count for a profile.
 Not a MISRA/CERT clone and not a certified tool.
 
@@ -123,8 +123,8 @@ belong in the user clangd config.
 
 ## What 0.2.0 actually runs
 
-On the default `embedded-c` profile, 149 rules are on and 142 have a checker.
-`embedded-cpp` is 157 on, 149 with a checker. `strict` is 176 / 167. `style`
+On the default `embedded-c` profile, 149 rules are on and 144 have a checker.
+`embedded-cpp` is 157 on, 151 with a checker. `strict` is 176 / 169. `style`
 turns on 12 rules and links all 12. It stays off unless the run passes
 `--profile style`. A line is at most 80 columns, and a tab advances to the
 next multiple of 8. Indent is a multiple of 4 spaces. A preprocessor line may
@@ -140,16 +140,26 @@ handler ends in `_isr`. A function passed to a call whose name contains
 `task` or `thread` is named `*_task` or `*_thread`. A run's `no-checker:`
 count is the catalog gap on that profile.
 
+An assignment is a statement. `if ((a = f()) != 0)`, a call argument, and
+`c = a = b` use the value and are reported. `a = b = 0;` stays quiet: a chain
+of simple targets and one constant, and nothing reads the result. A loop has
+at most one `break` or one `goto` that leaves it. A `break` in a `switch`,
+and a `goto` whose label is inside the loop, do not count. A nested loop
+counts its own jumps. `--allow` names the assigned variable, or the function
+that contains the loop.
+
 Live checkers (see `src/catalog/Registry.cpp` and `just test`):
 
 - Control / style-adjacent AST: goto, setjmp, braces, assignment-in-condition,
-  if-else-final, continue, nested ternary, switch labels and default,
+  one break or goto leaving a loop, if-else-final, continue, nested ternary,
+  switch labels and default,
   commented fall-through, empty loop (braces and a comment), no-block-scope,
   prototype, unused params
 - Memory / libc: no heap after init, VLA, flexible array, unbounded string,
   stdio, stdarg (+ `--allow`), signal, atoi, abort/system, rand, qsort,
   setlocale
-- Expressions: octal, comma, `++`/`--` as a statement, sizeof side effects,
+- Expressions: octal, comma, the value of an assignment, `++`/`--` as a statement,
+  sizeof side effects,
   logical-rhs side effects, string literal → `const char *`
 - CFG / callgraph: return on all paths, unreachable, noreturn, no recursion,
   ISR not called as a function, no log from ISR, no delay, queue-wait,
@@ -296,8 +306,7 @@ Not linked yet:
 
 - Build policy, not a source checker: `ss.proc.all-warnings`,
   `ss.proc.static-analysis`
-- Catalog rows still without a checker: `ss.conv.no-assign-as-value`,
-  `ss.ctrl.single-break-in-loop`, `ss.fn.single-exit` (default off),
+- Catalog rows still without a checker: `ss.fn.single-exit` (default off),
   `ss.ptr.no-fn-pointer`, `ss.type.no-fp-unless-needed`, `ss.type.no-union`,
   `ss.conc.no-recursive-mutex` (C++ profile), `ss.conv.no-mixed-categories`
   (strict), `ss.expr.float-literal-suffix` (strict),

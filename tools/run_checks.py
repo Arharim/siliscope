@@ -29,6 +29,7 @@ case of its own.
 
 from __future__ import annotations
 
+import json
 import re
 import shutil
 import subprocess
@@ -687,6 +688,109 @@ class Runner:
             )
 
 
+    def check_process(self) -> None:
+        src = "static int tick(void) { return 0; }\nint main(void) { return tick(); }\n"
+        pragma = '#pragma GCC diagnostic ignored "-Wunused"\n' + src
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            tu = root / "tu.c"
+            db = root / "db"
+            db.mkdir()
+            commands = db / "compile_commands.json"
+
+            def run(text: str, command: str) -> tuple[int, str, str]:
+                tu.write_text(text)
+                commands.write_text(
+                    json.dumps(
+                        [
+                            {
+                                "directory": str(root),
+                                "file": str(tu),
+                                "command": command,
+                            }
+                        ]
+                    )
+                )
+                return self.invoke(
+                    [
+                        "--ruleset-dir",
+                        "ruleset",
+                        "--profile",
+                        "embedded-c",
+                        "--target",
+                        "arm-none-eabi",
+                        "-p",
+                        str(db),
+                        str(tu),
+                    ]
+                )
+
+            bare = f"/usr/bin/arm-none-eabi-g++ -c {tu}"
+            good = f"/usr/bin/arm-none-eabi-g++ -Wall -Wextra -Wpedantic -Werror -c {tu}"
+            rc, out, err = run(src, bare)
+            self.check(
+                "a build without the warning set is reported",
+                "[ss.proc.all-warnings]" in out and "[ss.proc.static-analysis]" not in out,
+                f"rc={rc}\n{out}\n{err}",
+            )
+            rc, out, err = run(src, good)
+            self.check(
+                "pedantic -Werror keeps the warning rule quiet",
+                "[ss.proc.all-warnings]" not in out and "[ss.proc.static-analysis]" not in out,
+                f"rc={rc}\n{out}\n{err}",
+            )
+            rc, out, err = run(
+                src, f"/usr/bin/arm-none-eabi-g++ -Wall -Wextra -pedantic -Werror -c {tu}"
+            )
+            self.check(
+                "-pedantic counts as the pedantic set",
+                "[ss.proc.all-warnings]" not in out,
+                f"rc={rc}\n{out}\n{err}",
+            )
+            rc, out, err = run(src, good + " -w")
+            self.check(
+                "-w disables the warning set",
+                "[ss.proc.all-warnings]" in out,
+                f"rc={rc}\n{out}\n{err}",
+            )
+            rc, out, err = run(src, good + " -Wno-unused-function")
+            self.check(
+                "-Wno- tolerates a diagnostic",
+                "[ss.proc.all-warnings]" in out,
+                f"rc={rc}\n{out}\n{err}",
+            )
+            rc, out, err = run(src, good.replace(" -Werror", ""))
+            self.check(
+                "warnings without -Werror are tolerated",
+                "[ss.proc.all-warnings]" in out,
+                f"rc={rc}\n{out}\n{err}",
+            )
+            rc, out, err = run(pragma, good)
+            self.check(
+                "a diagnostic pragma is not a fix",
+                "[ss.proc.all-warnings]" in out and "do not hide a diagnostic" in out,
+                f"rc={rc}\n{out}\n{err}",
+            )
+            plain = root / "plain.c"
+            plain.write_text(src)
+            rc, out, err = self.invoke(
+                [
+                    "--ruleset-dir",
+                    "ruleset",
+                    "--profile",
+                    "embedded-c",
+                    "--target",
+                    "arm-none-eabi",
+                    str(plain),
+                ]
+            )
+            self.check(
+                "a direct file has no build command",
+                "[ss.proc.all-warnings]" not in out and "[ss.proc.static-analysis]" not in out,
+                f"rc={rc}\n{out}\n{err}",
+            )
+
+
 def collect_cases(filters: list[str]) -> list[tuple[Path, str, dict]]:
     cases: list[tuple[Path, str, dict]] = []
     for directory in sorted(p for p in CHECKS.iterdir() if p.is_dir()):
@@ -724,6 +828,7 @@ def main() -> int:
         runner.check_profiles()
         runner.check_probe()
         runner.check_report_filter()
+        runner.check_process()
     if runner.failures:
         print(f"{runner.passed} passed, {len(runner.failures)} failed")
         for item in runner.failures:

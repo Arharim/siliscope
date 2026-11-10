@@ -3,7 +3,7 @@
 Static checker for C/C++ firmware (bare-metal / small RTOS). Clang LibTooling
 frontend, own rule ids (`ss.<topic>.<name>`). Catalog: [`ruleset/`](ruleset/).
 
-**0.2.0** – working analyzer, not a complete catalog. 185 checkers are wired.
+**0.2.0** – working analyzer, not a complete catalog. 187 checkers are wired.
 The YAML catalog lists 192 rules. `--list` is the live count for a profile.
 Not a MISRA/CERT clone and not a certified tool.
 
@@ -123,8 +123,8 @@ belong in the user clangd config.
 
 ## What 0.2.0 actually runs
 
-On the default `embedded-c` profile, 149 rules are on and 145 have a checker.
-`embedded-cpp` is 157 on, 153 with a checker. `strict` is 176 / 171. `style`
+On the default `embedded-c` profile, 149 rules are on and 147 have a checker.
+`embedded-cpp` is 157 on, 155 with a checker. `strict` is 176 / 173. `style`
 turns on 12 rules and links all 12. It stays off unless the run passes
 `--profile style`. A line is at most 80 columns, and a tab advances to the
 next multiple of 8. Indent is a multiple of 4 spaces. A preprocessor line may
@@ -160,6 +160,15 @@ exactly `numeric`: `/* numeric */` or `// numeric`. The same comment in the
 header of the same basename covers the source that includes it. `numeric
 keypad` does not count. `--suppress` still drops the rule under a file or
 directory you do not edit.
+
+With `-p` and a compilation database, the command for each file must contain
+`-Wall`, `-Wextra`, `-Wpedantic` or `-pedantic`, and `-Werror`, and it must
+not contain `-w` or `-Wno-`. `#pragma GCC diagnostic ignored`, `#pragma clang
+diagnostic ignored`, and `#pragma warning(disable` in that file are the same
+hole. A file passed without a database has no build command, so this check
+stays quiet. The running siliscope is the analyzer the catalog asks for. A
+second analyzer is only preferred, and findings that were not suppressed are
+already in the report, so `ss.proc.static-analysis` adds no line of its own.
 
 Live checkers (see `src/catalog/Registry.cpp` and `just test`):
 
@@ -319,8 +328,6 @@ Live checkers (see `src/catalog/Registry.cpp` and `just test`):
 
 Not linked yet:
 
-- Build policy, not a source checker: `ss.proc.all-warnings`,
-  `ss.proc.static-analysis`
 - Catalog rows still without a checker: `ss.fn.single-exit` (default off),
   `ss.ptr.no-fn-pointer`, `ss.type.no-union`,
   `ss.conv.no-mixed-categories` (strict),

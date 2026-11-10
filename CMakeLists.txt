@@ -174,6 +174,7 @@ if(SILISCOPE_ENABLE_CLANG)
     src/checks/NoThrowingSwap.cpp
     src/checks/Style.cpp
     src/checks/PreprocessorPass.cpp
+    src/checks/Process.cpp
     src/checks/DataflowPass.cpp
     src/checks/Interproc.cpp
   )

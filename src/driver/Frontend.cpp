@@ -5,6 +5,7 @@
 #include "siliscope/DataflowCheck.h"
 #include "siliscope/Interproc.h"
 #include "siliscope/PreprocessorCheck.h"
+#include "siliscope/Process.h"
 #include "siliscope/Profile.h"
 #include "siliscope/Registry.h"
 #include "siliscope/Report.h"
@@ -490,7 +491,8 @@ int runFrontend(const FrontendOptions &opt) {
     const std::vector<std::string> extras = opt.extra_args;
     const std::string resourceDir = clangResourceDir();
     tool.appendArgumentsAdjuster(
-        [tgt, extras, resourceDir](const CommandLineArguments &args, llvm::StringRef) {
+        [tgt, extras, resourceDir](const CommandLineArguments &args, llvm::StringRef file) {
+          rememberCompileCommand(file, args);
           CommandLineArguments out;
           const bool gnuArm =
               !args.empty() &&

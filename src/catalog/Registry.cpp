@@ -38,6 +38,7 @@
 #include "siliscope/IsrNoFp.h"
 #include "siliscope/IsrNotCalled.h"
 #include "siliscope/LayoutStaticAssert.h"
+#include "siliscope/LiteralSuffixCase.h"
 #include "siliscope/LocalizeExtensions.h"
 #include "siliscope/LockOrder.h"
 #include "siliscope/MaxIfNesting.h"
@@ -81,6 +82,7 @@
 #include "siliscope/NoLargeFrame.h"
 #include "siliscope/NoLogInIsr.h"
 #include "siliscope/NoLogicalRhs.h"
+#include "siliscope/NoMixedCategories.h"
 #include "siliscope/NoMoveConst.h"
 #include "siliscope/NoNestedTernary.h"
 #include "siliscope/NoObjectPtrCast.h"
@@ -172,6 +174,7 @@ static const CheckSpec kSpecs[] = {
     {"ss.conv.no-fp-eq", makeCheck<NoFpEqCheck>},
     {"ss.conv.no-fp-narrow", makeCheck<NoFpNarrowCheck>},
     {"ss.conv.no-int-to-enum", makeCheck<NoIntToEnumCheck>},
+    {"ss.conv.no-mixed-categories", makeCheck<NoMixedCategoriesCheck>},
     {"ss.conv.no-object-ptr-cast", makeCheck<NoObjectPtrCastCheck>},
     {"ss.conv.no-ptr-int", makeCheck<NoPtrIntCheck>},
     {"ss.conv.no-signed-bitwise", makeCheck<NoSignedBitwiseCheck>},
@@ -252,6 +255,7 @@ static const CheckSpec kSpecs[] = {
     {"ss.expr.float-literal-suffix", makeCheck<FloatLiteralSuffixCheck>},
     {"ss.expr.fp-must-be-finite", makeCheck<DataflowCheck>},
     {"ss.expr.init-side-effect-free", makeCheck<InitSideEffectCheck>},
+    {"ss.expr.literal-suffix-case", makeCheck<LiteralSuffixCaseCheck>},
     {"ss.expr.named-constants", makeCheck<NamedConstantsCheck>},
     {"ss.expr.no-comma", makeCheck<NoCommaCheck>},
     {"ss.expr.no-inc-in-expr", makeCheck<NoIncInExprCheck>},

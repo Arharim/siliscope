@@ -150,6 +150,8 @@ if(SILISCOPE_ENABLE_CLANG)
     src/checks/NoFpUnlessNeeded.cpp
     src/checks/FpToIntExplicit.cpp
     src/checks/NoIntToEnum.cpp
+    src/checks/NoMixedCategories.cpp
+    src/checks/LiteralSuffixCase.cpp
     src/checks/SwitchWellFormed.cpp
     src/checks/SwitchFallthroughComment.cpp
     src/checks/EmptyLoopComment.cpp

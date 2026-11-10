@@ -3,7 +3,7 @@
 Static checker for C/C++ firmware (bare-metal / small RTOS). Clang LibTooling
 frontend, own rule ids (`ss.<topic>.<name>`). Catalog: [`ruleset/`](ruleset/).
 
-**0.2.0** – working analyzer, not a complete catalog. 189 checkers are wired.
+**0.2.0** – working analyzer, not a complete catalog. 191 checkers are wired.
 The YAML catalog lists 192 rules. `--list` is the live count for a profile.
 Not a MISRA/CERT clone and not a certified tool.
 
@@ -124,8 +124,8 @@ belong in the user clangd config.
 ## What 0.2.0 actually runs
 
 On the default `embedded-c` profile, 149 rules are on and 149 have a checker.
-`embedded-cpp` is 157 on, 157 with a checker. `strict` is 176 / 175. `style`
-turns on 12 rules and links all 12. It stays off unless the run passes
+`embedded-cpp` is 157 on, 157 with a checker. `strict` is 176 / 176. `style`
+turns on 13 rules and links all 13. It stays off unless the run passes
 `--profile style`. A line is at most 80 columns, and a tab advances to the
 next multiple of 8. Indent is a multiple of 4 spaces. A preprocessor line may
 stay at the left edge. Tabs are rejected. One statement sits on a line.
@@ -176,6 +176,12 @@ quiet when a nearby comment says vector, driver, table, isr, irq, or hook.
 A function-pointer parameter stays quiet when the comment says hook, task,
 thread, or rtos. The name `vectors` alone does not. `--allow` names the
 union, the typedef, the variable, or the function.
+
+On `strict`, and only in C, arithmetic, a shift, a bitwise operator, and
+`++` / `--` do not take a `bool`, a `char`, or an `enum`. A comparison and
+`if (flag)` stay quiet. The checker returns immediately on C++. On `style`,
+a literal suffix is uppercase: `1U`, `1L`, `1.0F`. `1u` and `1.0f` are
+reported. A literal with no suffix stays quiet. `--allow` names the function.
 
 Live checkers (see `src/catalog/Registry.cpp` and `just test`):
 
@@ -335,9 +341,7 @@ Live checkers (see `src/catalog/Registry.cpp` and `just test`):
 
 Not linked yet:
 
-- Catalog rows still without a checker: `ss.fn.single-exit` (default off),
-  `ss.conv.no-mixed-categories` (strict),
-  `ss.expr.literal-suffix-case` (default off)
+- Catalog rows still without a checker: `ss.fn.single-exit` (default off)
 
 ## License
 

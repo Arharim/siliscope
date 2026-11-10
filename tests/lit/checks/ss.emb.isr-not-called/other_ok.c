@@ -8,6 +8,7 @@ void handler(void);
 
 void worker(void);
 
+/* vector table */
 static void (*const vectors[1])(void) = {handler};
 
 void handler(void) { (void)vectors[0]; }

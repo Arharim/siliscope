@@ -65,6 +65,7 @@
 #include "siliscope/NoErrnoHost.h"
 #include "siliscope/NoExceptions.h"
 #include "siliscope/NoFlexibleArray.h"
+#include "siliscope/NoFnPointer.h"
 #include "siliscope/NoFnPtrCast.h"
 #include "siliscope/NoFpEq.h"
 #include "siliscope/NoFpLoopCounter.h"
@@ -111,6 +112,7 @@
 #include "siliscope/NoTrigraphs.h"
 #include "siliscope/NoUnaryMinusUnsigned.h"
 #include "siliscope/NoUnboundedString.h"
+#include "siliscope/NoUnion.h"
 #include "siliscope/NoUnsignedWrap.h"
 #include "siliscope/NoUnused.h"
 #include "siliscope/NoUnusedLabel.h"
@@ -317,6 +319,7 @@ static const CheckSpec kSpecs[] = {
     {"ss.pre.prefer-inline", makeCheck<PreprocessorCheck>},
     {"ss.pre.source-includes-own-header", makeCheck<PreprocessorCheck>},
     {"ss.ptr.array-arg", makeCheck<ArrayArgCheck>},
+    {"ss.ptr.no-fn-pointer", makeCheck<NoFnPointerCheck>},
     {"ss.ptr.max-indirection", makeCheck<MaxIndirectionCheck>},
     {"ss.ptr.no-deref-one-past", makeCheck<DataflowCheck>},
     {"ss.ptr.no-ptr-arith", makeCheck<NoPtrArithCheck>},
@@ -333,6 +336,7 @@ static const CheckSpec kSpecs[] = {
     {"ss.type.no-fp-unless-needed", makeCheck<NoFpUnlessNeededCheck>},
     {"ss.type.no-representation-pun", makeCheck<NoRepresentationPunCheck>},
     {"ss.type.no-restrict", makeCheck<NoRestrictCheck>},
+    {"ss.type.no-union", makeCheck<NoUnionCheck>},
     {"ss.style.brace-own-line", makeCheck<StyleCheck>},
     {"ss.style.indent-4", makeCheck<StyleCheck>},
     {"ss.style.line-width", makeCheck<StyleCheck>},

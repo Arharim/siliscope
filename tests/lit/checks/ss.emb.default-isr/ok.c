@@ -3,6 +3,7 @@ enum { kVectors = 2 };
 void USART1_IRQHandler(void);
 void SysTick_IRQHandler(void);
 
+/* vector table */
 static void (*const vectors[kVectors])(void) = {USART1_IRQHandler, SysTick_IRQHandler};
 
 void USART1_IRQHandler(void) { (void)vectors[0]; }

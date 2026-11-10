@@ -281,9 +281,10 @@ class Runner:
             "ss.cpp.no-exceptions missing",
         )
         self.check(
-            "embedded-cpp still has rules without a checker",
-            present(cpp_rows, "ss.type.no-union", "no-checker"),
-            "ss.type.no-union missing",
+            "embedded-cpp links union and function pointers",
+            present(cpp_rows, "ss.type.no-union", "checker")
+                and present(cpp_rows, "ss.ptr.no-fn-pointer", "checker"),
+            "union or function pointer is not a checker",
         )
         self.check(
             "embedded-cpp keeps shared checker",

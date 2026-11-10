@@ -1,4 +1,4 @@
-/* ss-run: profile=strict expect=clean */
+/* ss-run: profile=strict allow=ss.type.no-union:Word expect=clean */
 union Word {
   unsigned value;
 };

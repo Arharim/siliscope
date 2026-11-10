@@ -1,3 +1,4 @@
+/* ss-run: allow=ss.ptr.no-fn-pointer:fp expect=clean */
 #define NULL ((void *)0)
 
 static int g;

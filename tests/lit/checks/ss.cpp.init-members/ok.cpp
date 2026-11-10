@@ -1,4 +1,4 @@
-/* ss-run: profile=embedded-cpp expect=clean */
+/* ss-run: profile=embedded-cpp allow=ss.type.no-union:Word expect=clean */
 struct Inner {
   Inner() : value_(0) {}
   Inner(const Inner &) = default;

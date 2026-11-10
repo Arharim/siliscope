@@ -3,7 +3,7 @@
 Static checker for C/C++ firmware (bare-metal / small RTOS). Clang LibTooling
 frontend, own rule ids (`ss.<topic>.<name>`). Catalog: [`ruleset/`](ruleset/).
 
-**0.2.0** – working analyzer, not a complete catalog. 187 checkers are wired.
+**0.2.0** – working analyzer, not a complete catalog. 189 checkers are wired.
 The YAML catalog lists 192 rules. `--list` is the live count for a profile.
 Not a MISRA/CERT clone and not a certified tool.
 
@@ -123,8 +123,8 @@ belong in the user clangd config.
 
 ## What 0.2.0 actually runs
 
-On the default `embedded-c` profile, 149 rules are on and 147 have a checker.
-`embedded-cpp` is 157 on, 155 with a checker. `strict` is 176 / 173. `style`
+On the default `embedded-c` profile, 149 rules are on and 149 have a checker.
+`embedded-cpp` is 157 on, 157 with a checker. `strict` is 176 / 175. `style`
 turns on 12 rules and links all 12. It stays off unless the run passes
 `--profile style`. A line is at most 80 columns, and a tab advances to the
 next multiple of 8. Indent is a multiple of 4 spaces. A preprocessor line may
@@ -169,6 +169,13 @@ hole. A file passed without a database has no build command, so this check
 stays quiet. The running siliscope is the analyzer the catalog asks for. A
 second analyzer is only preferred, and findings that were not suppressed are
 already in the report, so `ss.proc.static-analysis` adds no line of its own.
+
+A union stays quiet when a nearby comment names the overlay as hardware,
+register, wire, protocol, or packet. An array of function pointers stays
+quiet when a nearby comment says vector, driver, table, isr, irq, or hook.
+A function-pointer parameter stays quiet when the comment says hook, task,
+thread, or rtos. The name `vectors` alone does not. `--allow` names the
+union, the typedef, the variable, or the function.
 
 Live checkers (see `src/catalog/Registry.cpp` and `just test`):
 
@@ -329,7 +336,6 @@ Live checkers (see `src/catalog/Registry.cpp` and `just test`):
 Not linked yet:
 
 - Catalog rows still without a checker: `ss.fn.single-exit` (default off),
-  `ss.ptr.no-fn-pointer`, `ss.type.no-union`,
   `ss.conv.no-mixed-categories` (strict),
   `ss.expr.literal-suffix-case` (default off)
 

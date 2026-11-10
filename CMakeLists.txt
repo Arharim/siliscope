@@ -66,6 +66,8 @@ if(SILISCOPE_ENABLE_CLANG)
     src/checks/BoolType.cpp
     src/checks/ExplicitType.cpp
     src/checks/NoRestrict.cpp
+    src/checks/NoUnion.cpp
+    src/checks/NoFnPointer.cpp
     src/checks/BitField.cpp
     src/checks/EnumInit.cpp
     src/checks/ArraySize.cpp
